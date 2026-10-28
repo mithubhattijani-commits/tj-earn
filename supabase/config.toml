@@ -1,0 +1,11 @@
+[functions.get-balance]
+verify_jwt = true
+
+[functions.request-withdrawal]
+verify_jwt = true
+
+[functions.simulate-callback]
+verify_jwt = false
+
+[functions.version-check]
+verify_jwt = false

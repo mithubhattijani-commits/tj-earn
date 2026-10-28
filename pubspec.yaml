@@ -1,0 +1,29 @@
+name: tj_earn
+description: "TJ Earn - rewards app (Flutter + Supabase). Stage 1 foundation: auth, server-side wallet, withdrawals, in-app updater."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.13.7
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  intl: ^0.20.2
+  supabase_flutter: ^2.9.0
+  http: ^1.3.0
+  path_provider: ^2.1.5
+  package_info_plus: ^8.3.0
+  shared_preferences: ^2.3.3
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+  generate: true
