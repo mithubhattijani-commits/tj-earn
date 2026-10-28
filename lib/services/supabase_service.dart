@@ -4,11 +4,11 @@ import '../config.dart';
 
 /// All Supabase access for the app.
 ///
-/// SECURITY: the app only ever *reads* the wallet. It never inserts into the
-/// ledger — there is deliberately no function here that writes coins. Coin
-/// grants happen only inside Edge Functions (service role) after a verified
-/// provider callback. A grep for `from('ledger').insert` across lib/ must
-/// return zero matches.
+/// SECURITY: the app only ever *reads* the wallet. There is deliberately
+/// no function here that writes coins to the ledger table. Coin grants
+/// happen only inside Edge Functions (service role) after a verified
+/// provider callback. A grep for ledger inserts across lib/ must return
+/// zero code matches.
 class SupabaseService {
   static SupabaseClient get client => Supabase.instance.client;
 
