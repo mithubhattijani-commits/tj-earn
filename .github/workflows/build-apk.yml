@@ -43,19 +43,19 @@ jobs:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
         run: echo "$KEYSTORE_BASE64" | base64 -d > android/app/tjearn.keystore
 
-      - name: Build debug APK (keystore-signed)
+      - name: Build release APK (keystore-signed)
         env:
           KEYSTORE_STORE_PASSWORD: ${{ secrets.KEYSTORE_STORE_PASSWORD }}
           KEYSTORE_KEY_PASSWORD: ${{ secrets.KEYSTORE_KEY_PASSWORD }}
-        run: flutter build apk --debug --dart-define=SUPABASE_URL=https://znyaxxkhhopdqrvxhxmb.supabase.co --dart-define=SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
+        run: flutter build apk --release --dart-define=SUPABASE_URL=https://znyaxxkhhopdqrvxhxmb.supabase.co --dart-define=SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
 
       - name: Verify APK
         run: |
-          ls -la build/app/outputs/flutter-apk/app-debug.apk
-          unzip -t build/app/outputs/flutter-apk/app-debug.apk | tail -3
+          ls -la build/app/outputs/flutter-apk/app-release.apk
+          unzip -t build/app/outputs/flutter-apk/app-release.apk | tail -3
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: app-debug
-          path: build/app/outputs/flutter-apk/app-debug.apk
+          name: app-release
+          path: build/app/outputs/flutter-apk/app-release.apk
