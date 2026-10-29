@@ -7,6 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'config.dart';
 import 'screens/auth_screen.dart';
 import 'screens/main_shell.dart';
+import 'services/admin_status.dart';
 import 'services/supabase_service.dart';
 
 /// Language choice, persisted locally. Defaults to English.
@@ -116,7 +117,11 @@ class AuthGate extends StatelessWidget {
       builder: (context, snapshot) {
         final session = snapshot.data?.session ??
             Supabase.instance.client.auth.currentSession;
-        if (session == null) return const AuthScreen();
+        if (session == null) {
+          AdminStatus.reset();
+          return const AuthScreen();
+        }
+        AdminStatus.probe();
         return MainShell(
           locale: appLocale.value,
           onLocaleChanged: onLocaleChanged,
