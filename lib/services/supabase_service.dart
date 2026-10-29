@@ -9,8 +9,7 @@ import '../config.dart';
 /// happen only inside Edge Functions (service role) after a verified
 /// provider callback. A grep for ledger inserts across lib/ must return
 /// zero code matches.
-class SupabaseService {
-  static SupabaseClient get client => Supabase.instance.client;
+class SupabaseService {  static SupabaseClient get client => Supabase.instance.client;
 
   static Future<void> init() async {
     await Supabase.initialize(
@@ -130,4 +129,105 @@ class SupabaseService {
       return null;
     }
   }
+
+  /// ADMIN — referrals queue (read-only). Server enforces the admin gate;
+  /// a 403 (forbidden) or 503 (admin not configured) surfaces as
+  /// [AdminAccessDenied] so the UI can show the "admin access required"
+  /// empty state instead of retrying.
+  static Future<Map<String, dynamic>> listReferrals({
+    String status = 'eligible',
+    int limit = 50,
+    int offset = 0,
+  }) async {
+    final res = await client.functions.invoke(
+      'list-referrals',
+      method: HttpMethod.get,
+      queryParameters: {
+        'status': status,
+        'limit': '$limit',
+        'offset': '$offset',
+      },
+    );
+    return _adminResult(res, 'list-referrals');
+  }
+
+  /// ADMIN — referral aggregate stats (read-only). See [listReferrals] for
+  /// the authorization behaviour.
+  static Future<Map<String, dynamic>> referralStats() async {
+    final res = await client.functions.invoke(
+      'referral-stats',
+      method: HttpMethod.get,
+    );
+    return _adminResult(res, 'referral-stats');
+  }
+
+  /// ADMIN — paginated ledger view (read-only). Optional `userId` / `type`
+  /// filters. See [listReferrals] for the authorization behaviour.
+  static Future<Map<String, dynamic>> listLedger({
+    int limit = 50,
+    int offset = 0,
+    String? userId,
+    String? type,
+  }) async {
+    final params = <String, String>{
+      'limit': '$limit',
+      'offset': '$offset',
+    };
+    if (userId != null && userId.isNotEmpty) params['user_id'] = userId;
+    if (type != null && type.isNotEmpty) params['type'] = type;
+    final res = await client.functions.invoke(
+      'list-ledger',
+      method: HttpMethod.get,
+      queryParameters: params,
+    );
+    return _adminResult(res, 'list-ledger');
+  }
+
+  /// ADMIN — approves or rejects a referral via the existing
+  /// `review-referral` Edge Function. Server-side idempotent: replaying an
+  /// approval can never double-credit the referrer.
+  static Future<Map<String, dynamic>> reviewReferral({
+    required String referralId,
+    required String action,
+    String? reason,
+  }) async {
+    final body = <String, dynamic>{
+      'referral_id': referralId,
+      'action': action,
+    };
+    if (reason != null && reason.trim().isNotEmpty) {
+      body['reason'] = reason.trim();
+    }
+    final res = await client.functions.invoke('review-referral', body: body);
+    return _adminResult(res, 'review-referral');
+  }
+
+  /// Unpacks an admin function response: 200 -> the payload map;
+  /// 403/503 -> [AdminAccessDenied]; anything else -> a generic Exception
+  /// carrying the server's error string when present.
+  static Map<String, dynamic> _adminResult(
+      FunctionResponse res, String name) {
+    if (res.status == 403 || res.status == 503) {
+      throw AdminAccessDenied(res.status);
+    }
+    final data = res.data;
+    if (res.status != 200) {
+      final message =
+          data is Map && data['error'] is String ? data['error'] : 'failed';
+      throw Exception('$name failed: $message');
+    }
+    if (data is Map<String, dynamic>) return data;
+    throw Exception('$name returned an unexpected response');
+  }
+}
+
+/// Thrown when an admin Edge Function denies the caller: 403 means the
+/// signed-in email is not an admin; 503 means no admin is configured.
+/// The server is the enforcer — the client only renders the empty state.
+class AdminAccessDenied implements Exception {
+  final int status;
+  const AdminAccessDenied(this.status);
+
+  @override
+  String toString() => 'admin access denied ($status)';
 }

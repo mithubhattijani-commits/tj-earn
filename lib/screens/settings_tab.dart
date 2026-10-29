@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:tj_earn/l10n/app_localizations.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'admin_screen.dart';
+
 /// Settings: language switch (persisted) + logout.
 ///
 /// The language choice is saved locally and, when signed in, also written
@@ -45,6 +47,14 @@ class SettingsTab extends StatelessWidget {
           },
         ),
         const SizedBox(height: 24),
+        OutlinedButton.icon(
+          onPressed: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const AdminScreen()),
+          ),
+          icon: const Icon(Icons.admin_panel_settings_outlined),
+          label: Text(t.adminTitle),
+        ),
+        const SizedBox(height: 12),
         FilledButton(
           onPressed: () => Supabase.instance.client.auth.signOut(),
           child: Text(t.logout),
