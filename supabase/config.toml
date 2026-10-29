@@ -9,3 +9,12 @@ verify_jwt = false
 
 [functions.version-check]
 verify_jwt = false
+
+[functions.get-referral]
+verify_jwt = true
+
+[functions.apply-referral]
+verify_jwt = true
+
+[functions.review-referral]
+verify_jwt = true
