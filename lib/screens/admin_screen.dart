@@ -67,6 +67,18 @@ class _AdminDenied extends StatelessWidget {
             const Icon(Icons.admin_panel_settings_outlined, size: 48),
             const SizedBox(height: 16),
             Text(message, textAlign: TextAlign.center),
+            const SizedBox(height: 8),
+            Text(
+              '${t.adminLoggedInAs} ${SupabaseService.userEmail ?? ''}',
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 13, color: Colors.black54),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              t.adminNotAdminHint,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 13, color: Colors.black54),
+            ),
             const SizedBox(height: 16),
             OutlinedButton.icon(
               onPressed: onRetry,
