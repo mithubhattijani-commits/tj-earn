@@ -251,7 +251,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get referHow4 => 'Approved referral rewards arrive in your wallet as coins.';
 
   @override
-  String get referRewardNote => 'Referral reward is currently 0 coins. The owner sets the reward budget before any coins are paid — nothing is promised.';
+  String get referRewardNote => 'Approved referrals pay 1,000 coins each (Rs 10) — paid only after the invited account passes verification and the admin approves the referral. Rewards are coins, never cash.';
 
   @override
   String get referHistoryTitle => 'Referral history';

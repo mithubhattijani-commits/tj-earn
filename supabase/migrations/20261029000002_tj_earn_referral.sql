@@ -9,11 +9,15 @@
 -- SELECT-only policies; there are deliberately NO insert/update/delete
 -- policies for authenticated/anon, plus explicit revokes below.
 --
--- Config keys (safe defaults — owner configures the budget later):
---   referral_reward_coins   '0'                 (no invented reward amount)
+-- Config keys (owner decisions, 29 Oct 2026 — Jaani):
+--   referral_reward_coins   '1000'              (Rs 10 per approved referral)
 --   referral_eligibility_rule 'verified_activity'
 --   referral_daily_cap      '20'
---   admin_user_ids          '{}'  (empty = review function denies everyone)
+--   admin_emails            '{mithubhattijani@gmail.com}' (owner identifies the
+--                             admin by EMAIL because the Supabase auth UUID for
+--                             the owner is not known; the review function
+--                             compares the caller's JWT email claim,
+--                             case-insensitive. Empty list = deny everyone.)
 
 -- ------------------------------------------------------- referral_codes
 create table if not exists public.referral_codes (
@@ -47,10 +51,10 @@ create index if not exists referrals_status_idx
 
 -- ---------------------------------------------------------------- config
 insert into public.app_config (key, value) values
-  ('referral_reward_coins', '0'),
+  ('referral_reward_coins', '1000'),
   ('referral_eligibility_rule', 'verified_activity'),
   ('referral_daily_cap', '20'),
-  ('admin_user_ids', '{}')
+  ('admin_emails', '{mithubhattijani@gmail.com}')
 on conflict (key) do nothing;
 
 -- ------------------------------------------------------------------ RLS
@@ -81,7 +85,7 @@ revoke insert, update, delete on public.referrals from anon, authenticated;
 --
 -- delete from public.app_config
 --  where key in ('referral_reward_coins', 'referral_eligibility_rule',
---                'referral_daily_cap', 'admin_user_ids');
+--                'referral_daily_cap', 'admin_emails');
 -- drop policy if exists referrals_select_involved on public.referrals;
 -- drop policy if exists referral_codes_select_own on public.referral_codes;
 -- drop table if exists public.referrals;

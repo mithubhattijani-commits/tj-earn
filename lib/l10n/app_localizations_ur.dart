@@ -250,7 +250,7 @@ class AppLocalizationsUr extends AppLocalizations {
   String get referHow4 => 'منظور شدہ ریفرل انعام کوائنز کی صورت میں آپ کے wallet میں آتا ہے۔';
 
   @override
-  String get referRewardNote => 'ریفرل انعام فی الحال 0 کوائنز ہے۔ کوئی کوائن ادا کرنے سے پہلے مالک انعامی بجٹ مقرر کرے گا — کوئی وعدہ نہیں۔';
+  String get referRewardNote => 'منظور شدہ ہر ریفرل پر 1,000 کوائنز ملتے ہیں (10 روپے) — صرف مدعو کیے گئے اکاؤنٹ کی تصدیق مکمل ہونے اور ایڈمن کی منظوری کے بعد۔ انعام کوائنز کی صورت میں ہوتا ہے، نقد نہیں۔';
 
   @override
   String get referHistoryTitle => 'ریفرل ہسٹری';

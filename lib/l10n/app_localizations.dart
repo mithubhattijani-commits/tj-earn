@@ -575,7 +575,7 @@ abstract class AppLocalizations {
   /// No description provided for @referRewardNote.
   ///
   /// In en, this message translates to:
-  /// **'Referral reward is currently 0 coins. The owner sets the reward budget before any coins are paid — nothing is promised.'**
+  /// **'Approved referrals pay 1,000 coins each (Rs 10) — paid only after the invited account passes verification and the admin approves the referral. Rewards are coins, never cash.'**
   String get referRewardNote;
 
   /// No description provided for @referHistoryTitle.
