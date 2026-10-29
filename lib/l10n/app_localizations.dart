@@ -679,6 +679,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Too many attempts. Please try again later.'**
   String get referErrRate;
+
+  /// No description provided for @adminNavLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Admin'**
+  String get adminNavLabel;
+
+  /// No description provided for @adminLoggedInAs.
+  ///
+  /// In en, this message translates to:
+  /// **'Logged in as:'**
+  String get adminLoggedInAs;
+
+  /// No description provided for @adminNotAdminHint.
+  ///
+  /// In en, this message translates to:
+  /// **'This account is not an admin \u2014 log in with the admin email.'**
+  String get adminNotAdminHint;
 }
 
 class _AppLocalizationsDelegate
