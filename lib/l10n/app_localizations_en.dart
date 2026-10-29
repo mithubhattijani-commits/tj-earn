@@ -303,4 +303,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get referErrRate => 'Too many attempts. Please try again later.';
+
+  @override
+  String get adminNavLabel => 'Admin';
+
+  @override
+  String get adminLoggedInAs => 'Logged in as:';
+
+  @override
+  String get adminNotAdminHint => 'This account is not an admin \u2014 log in with the admin email.';
 }
