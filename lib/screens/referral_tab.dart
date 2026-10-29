@@ -44,8 +44,10 @@ class _ReferralTabState extends State<ReferralTab> {
   }
 
   Future<void> _copy(String text) async {
+    // Capture before the async gap (analyzer: use_build_context_synchronously).
+    final copiedMsg = AppLocalizations.of(context)!.referCopied;
     await Clipboard.setData(ClipboardData(text: text));
-    _snack(AppLocalizations.of(context)!.referCopied);
+    _snack(copiedMsg);
   }
 
   /// System share sheet; falls back to clipboard when unavailable.
