@@ -302,4 +302,13 @@ class AppLocalizationsUr extends AppLocalizations {
 
   @override
   String get referErrRate => 'بہت زیادہ کوششیں۔ براہ کرم بعد میں دوبارہ کوشش کریں۔';
+
+  @override
+  String get adminNavLabel => 'ایڈمن';
+
+  @override
+  String get adminLoggedInAs => 'لاگ ان بطور:';
+
+  @override
+  String get adminNotAdminHint => 'یہ اکاؤنٹ ایڈمن نہیں ہے — ایڈمن ای میل سے لاگ ان کریں۔';
 }
