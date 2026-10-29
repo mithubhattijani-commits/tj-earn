@@ -47,7 +47,7 @@ jobs:
         env:
           KEYSTORE_STORE_PASSWORD: ${{ secrets.KEYSTORE_STORE_PASSWORD }}
           KEYSTORE_KEY_PASSWORD: ${{ secrets.KEYSTORE_KEY_PASSWORD }}
-        run: flutter build apk --debug
+        run: flutter build apk --debug --dart-define=SUPABASE_URL=https://znyaxxkhhopdqrvxhxmb.supabase.co --dart-define=SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
 
       - name: Verify APK
         run: |
