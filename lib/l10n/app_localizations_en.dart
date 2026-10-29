@@ -198,4 +198,109 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get withdrawalSubmitted => 'Withdrawal request submitted.';
+
+  @override
+  String get referTab => 'Refer';
+
+  @override
+  String get referTitle => 'Refer & Earn';
+
+  @override
+  String get referSubtitle => 'Invite friends, earn coins';
+
+  @override
+  String get referYourCode => 'Your referral code';
+
+  @override
+  String get referYourLink => 'Your referral link';
+
+  @override
+  String get referCopy => 'Copy';
+
+  @override
+  String get referCopied => 'Copied to clipboard';
+
+  @override
+  String get referShare => 'Share';
+
+  @override
+  String get referShareText => 'Join TJ Earn with my referral link and earn coins:';
+
+  @override
+  String get referTotal => 'Total invites';
+
+  @override
+  String get referPending => 'Pending';
+
+  @override
+  String get referApproved => 'Approved';
+
+  @override
+  String get referHowTitle => 'How it works';
+
+  @override
+  String get referHow1 => 'Share your code or link with friends.';
+
+  @override
+  String get referHow2 => 'They create their account with your link. One person, one account.';
+
+  @override
+  String get referHow3 => 'After their account passes verification, the referral becomes eligible.';
+
+  @override
+  String get referHow4 => 'Approved referral rewards arrive in your wallet as coins.';
+
+  @override
+  String get referRewardNote => 'Referral reward is currently 0 coins. The owner sets the reward budget before any coins are paid — nothing is promised.';
+
+  @override
+  String get referHistoryTitle => 'Referral history';
+
+  @override
+  String get referHistoryEmpty => 'No referrals yet. Share your link to get started.';
+
+  @override
+  String get referLoadFailed => 'Could not load referral info.';
+
+  @override
+  String get referStatusPending => 'Pending';
+
+  @override
+  String get referStatusEligible => 'Eligible';
+
+  @override
+  String get referStatusApproved => 'Approved';
+
+  @override
+  String get referStatusRejected => 'Rejected';
+
+  @override
+  String get referYouInvited => 'You invited';
+
+  @override
+  String get referInvitedYou => 'Invited you';
+
+  @override
+  String get referApplyTitle => 'Have a referral code?';
+
+  @override
+  String get referApplyHint => 'Enter the code shared with you';
+
+  @override
+  String get referApplyButton => 'Apply code';
+
+  @override
+  String get referApplied => 'Referral recorded!';
+
+  @override
+  String get referErrSelf => 'You cannot use your own code.';
+
+  @override
+  String get referErrDuplicate => 'You already have a referrer.';
+
+  @override
+  String get referErrInvalid => 'This code is not valid.';
+
+  @override
+  String get referErrRate => 'Too many attempts. Please try again later.';
 }

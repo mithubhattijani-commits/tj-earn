@@ -85,6 +85,37 @@ class SupabaseService {
     }
   }
 
+  /// Referral info from the server: code, share link, totals and a
+  /// privacy-conscious history (masked ids only). The code is auto-minted
+  /// server-side on first call; the app never generates one itself.
+  static Future<Map<String, dynamic>> getReferral() async {
+    final res = await client.functions.invoke('get-referral');
+    if (res.status != 200) {
+      throw Exception('get-referral failed: ${res.status}');
+    }
+    final data = res.data;
+    if (data is Map<String, dynamic>) return data;
+    throw Exception('get-referral returned an unexpected response');
+  }
+
+  /// Forwards a referral code the user typed. Every rule (self-referral,
+  /// duplicates, rate limits) is enforced by the `apply-referral` Edge
+  /// Function; the app only surfaces the server's verdict.
+  static Future<Map<String, dynamic>> applyReferral(String code) async {
+    final res = await client.functions.invoke(
+      'apply-referral',
+      body: {'code': code},
+    );
+    final data = res.data;
+    if (res.status != 200) {
+      final message =
+          data is Map && data['error'] is String ? data['error'] : 'failed';
+      throw Exception('apply-referral failed: $message');
+    }
+    if (data is Map<String, dynamic>) return data;
+    throw Exception('apply-referral returned an unexpected response');
+  }
+
   /// Latest published build from the public version-check function.
   /// Returns null when unconfigured or unreachable — the caller then skips
   /// the update check silently instead of showing a fake update.

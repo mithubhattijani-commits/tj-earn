@@ -26,6 +26,16 @@ String formatCoinsAsPkr(int coins) {
 /// Converts whole rupees to coins. 200 -> 20000.
 int pkrToCoins(int wholePkr) => wholePkr * coinsPerPkr;
 
+/// Builds the referral share link for a code. Pure function, unit-tested.
+/// The domain is the production website; never a placeholder.
+String buildReferralLink(String code) =>
+    'https://nigraantv.xyz/earn/?ref=${code.trim().toUpperCase()}';
+
+/// True when a referral code matches the server format: 8 chars from the
+/// unambiguous alphabet (no 0/O, 1/I/L). Mirrors the Edge Function check.
+bool isValidReferralCode(String code) =>
+    RegExp(r'^[A-Z2-9]{8}$').hasMatch(code.trim().toUpperCase());
+
 /// Validation failure keys (localised in the UI). Null means valid.
 String? validateWithdrawal({
   required int amountCoins,
