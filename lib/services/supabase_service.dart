@@ -20,6 +20,8 @@ class SupabaseService {  static SupabaseClient get client => Supabase.instance.c
 
   static User? get currentUser => client.auth.currentUser;
 
+  static String? get userEmail => currentUser?.email;
+
   /// Balance from the server (SUM of the ledger). Never computed locally
   /// from anything the app could edit.
   static Future<int> getBalance() async {
