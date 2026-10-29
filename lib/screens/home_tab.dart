@@ -25,6 +25,15 @@ class _HomeTabState extends State<HomeTab> {
     _balance = SupabaseService.getBalance();
   }
 
+  /// Rs equivalent of a coin balance (1 coin = Rs 0.01), formatted
+  /// without trailing zeros (1000 coins -> "10", 1050 coins -> "10.50").
+  String _rsValue(int coins) {
+    final rs = coins / 100;
+    return rs == rs.roundToDouble()
+        ? rs.toInt().toString()
+        : rs.toStringAsFixed(2);
+  }
+
   @override
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context)!;
@@ -59,9 +68,15 @@ class _HomeTabState extends State<HomeTab> {
                                 .textTheme
                                 .displayMedium,
                           ),
-                          // Coins only — no rupee conversion on the
-                          // dashboard (Jaani, 29 Oct 2026).
                           Text(t.coins),
+                          const SizedBox(height: 4),
+                          // Coins stay primary; the ≈Rs equivalent is
+                          // secondary (1 coin = Rs 0.01). Restored per
+                          // Jaani, 29 Oct 2026 ("Rs rehny do").
+                          Text(
+                            t.balanceRsApprox(_rsValue(coins)),
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
                         ],
                       );
                     },
