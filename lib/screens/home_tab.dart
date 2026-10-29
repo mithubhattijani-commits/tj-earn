@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:tj_earn/l10n/app_localizations.dart';
 
 import '../services/supabase_service.dart';
-import '../services/validation.dart';
 
 /// Home dashboard: server-side balance + quick actions.
 ///
@@ -24,6 +23,15 @@ class _HomeTabState extends State<HomeTab> {
   void initState() {
     super.initState();
     _balance = SupabaseService.getBalance();
+  }
+
+  /// Rs equivalent of a coin balance (1 coin = Rs 0.01), formatted
+  /// without trailing zeros (1000 coins -> "10", 1050 coins -> "10.50").
+  String _rsValue(int coins) {
+    final rs = coins / 100;
+    return rs == rs.roundToDouble()
+        ? rs.toInt().toString()
+        : rs.toStringAsFixed(2);
   }
 
   @override
@@ -60,7 +68,15 @@ class _HomeTabState extends State<HomeTab> {
                                 .textTheme
                                 .displayMedium,
                           ),
-                          Text('${t.coins} • ${formatCoinsAsPkr(coins)}'),
+                          Text(t.coins),
+                          const SizedBox(height: 4),
+                          // Coins stay primary; the ≈Rs equivalent is
+                          // secondary (1 coin = Rs 0.01). Restored per
+                          // Jaani, 29 Oct 2026 ("Rs rehny do").
+                          Text(
+                            t.balanceRsApprox(_rsValue(coins)),
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
                         ],
                       );
                     },
@@ -69,21 +85,55 @@ class _HomeTabState extends State<HomeTab> {
               ),
             ),
           ),
+          const SizedBox(height: 16),
+          Card(
+            child: InkWell(
+              borderRadius: BorderRadius.circular(12),
+              onTap: () => widget.onNavigate(1),
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.group_add,
+                      size: 40,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            t.referTitle,
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(t.referSubtitle),
+                        ],
+                      ),
+                    ),
+                    const Icon(Icons.chevron_right),
+                  ],
+                ),
+              ),
+            ),
+          ),
           const SizedBox(height: 24),
           Text(t.quickActions, style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 12),
           FilledButton(
-            onPressed: () => widget.onNavigate(1),
+            onPressed: () => widget.onNavigate(2),
             child: Text(t.goOffers),
           ),
           const SizedBox(height: 8),
           OutlinedButton(
-            onPressed: () => widget.onNavigate(2),
+            onPressed: () => widget.onNavigate(3),
             child: Text(t.goWallet),
           ),
           const SizedBox(height: 8),
           OutlinedButton(
-            onPressed: () => widget.onNavigate(3),
+            onPressed: () => widget.onNavigate(4),
             child: Text(t.goWithdraw),
           ),
         ],

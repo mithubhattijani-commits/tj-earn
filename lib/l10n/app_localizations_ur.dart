@@ -197,4 +197,109 @@ class AppLocalizationsUr extends AppLocalizations {
 
   @override
   String get withdrawalSubmitted => 'درخواست جمع ہو گئی ہے۔';
+
+  @override
+  String get referTab => 'ریفر';
+
+  @override
+  String get referTitle => 'ریفر اینڈ ارن';
+
+  @override
+  String get referSubtitle => 'دوستوں کو بلائیں، کوائنز کمائیں';
+
+  @override
+  String get referYourCode => 'آپ کا ریفرل کوڈ';
+
+  @override
+  String get referYourLink => 'آپ کا ریفرل لنک';
+
+  @override
+  String get referCopy => 'کاپی کریں';
+
+  @override
+  String get referCopied => 'کلپ بورڈ میں کاپی ہو گیا';
+
+  @override
+  String get referShare => 'شیئر کریں';
+
+  @override
+  String get referShareText => 'میرے ریفرل لنک سے TJ Earn جوائن کریں اور کوائنز کمائیں:';
+
+  @override
+  String get referTotal => 'کل دعوتیں';
+
+  @override
+  String get referPending => 'زیر التواء';
+
+  @override
+  String get referApproved => 'منظور شدہ';
+
+  @override
+  String get referHowTitle => 'طریقہ کار';
+
+  @override
+  String get referHow1 => 'اپنا کوڈ یا لنک دوستوں سے شیئر کریں۔';
+
+  @override
+  String get referHow2 => 'وہ آپ کے لنک سے اکاؤنٹ بناتے ہیں۔ ایک شخص، ایک اکاؤنٹ۔';
+
+  @override
+  String get referHow3 => 'ان کے اکاؤنٹ کی تصدیق مکمل ہونے پر ریفرل اہل ہو جاتا ہے۔';
+
+  @override
+  String get referHow4 => 'منظور شدہ ریفرل انعام کوائنز کی صورت میں آپ کے wallet میں آتا ہے۔';
+
+  @override
+  String get referRewardNote => 'منظور شدہ ہر ریفرل پر 1,000 کوائنز ملتے ہیں (10 روپے) — صرف مدعو کیے گئے اکاؤنٹ کی تصدیق مکمل ہونے اور ایڈمن کی منظوری کے بعد۔ انعام کوائنز کی صورت میں ہوتا ہے، نقد نہیں۔';
+
+  @override
+  String get referHistoryTitle => 'ریفرل ہسٹری';
+
+  @override
+  String get referHistoryEmpty => 'ابھی کوئی ریفرل نہیں۔ شروع کرنے کے لیے اپنا لنک شیئر کریں۔';
+
+  @override
+  String get referLoadFailed => 'ریفرل معلومات لوڈ نہیں ہو سکیں۔';
+
+  @override
+  String get referStatusPending => 'زیر التواء';
+
+  @override
+  String get referStatusEligible => 'اہل';
+
+  @override
+  String get referStatusApproved => 'منظور شدہ';
+
+  @override
+  String get referStatusRejected => 'مسترد';
+
+  @override
+  String get referYouInvited => 'آپ نے مدعو کیا';
+
+  @override
+  String get referInvitedYou => 'آپ کو مدعو کیا';
+
+  @override
+  String get referApplyTitle => 'ریفرل کوڈ ہے؟';
+
+  @override
+  String get referApplyHint => 'جو کوڈ آپ کو ملا ہے وہ درج کریں';
+
+  @override
+  String get referApplyButton => 'کوڈ لگائیں';
+
+  @override
+  String get referApplied => 'ریفرل محفوظ ہو گیا!';
+
+  @override
+  String get referErrSelf => 'آپ اپنا کوڈ استعمال نہیں کر سکتے۔';
+
+  @override
+  String get referErrDuplicate => 'آپ کا ریفرر پہلے سے درج ہے۔';
+
+  @override
+  String get referErrInvalid => 'یہ کوڈ درست نہیں ہے۔';
+
+  @override
+  String get referErrRate => 'بہت زیادہ کوششیں۔ براہ کرم بعد میں دوبارہ کوشش کریں۔';
 }

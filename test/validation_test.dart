@@ -96,4 +96,34 @@ void main() {
       expect(maskAccount('12'), '****');
     });
   });
+
+  group('referral links', () {
+    test('link uses the production domain and uppercases the code', () {
+      expect(
+        buildReferralLink('aBcD1234'),
+        'https://nigraantv.xyz/earn/?ref=ABCD1234',
+      );
+    });
+
+    test('link never contains a placeholder domain', () {
+      expect(buildReferralLink('ABCDEFGH'), isNot(contains('example')));
+      expect(buildReferralLink('ABCDEFGH'), contains('nigraantv.xyz'));
+    });
+  });
+
+  group('referral code format', () {
+    test('accepts 8 unambiguous chars', () {
+      expect(isValidReferralCode('ABCDEFGH'), isTrue);
+      expect(isValidReferralCode('23456789'), isTrue);
+      expect(isValidReferralCode('abcdefgh'), isTrue); // case-insensitive
+    });
+
+    test('rejects ambiguous chars and wrong lengths', () {
+      expect(isValidReferralCode('ABCD01EF'), isFalse); // 0/1 excluded
+      expect(isValidReferralCode('ABCDOIEF'), isFalse); // O/I/L excluded
+      expect(isValidReferralCode('ABC'), isFalse);
+      expect(isValidReferralCode('ABCDEFGHI'), isFalse);
+      expect(isValidReferralCode(''), isFalse);
+    });
+  });
 }

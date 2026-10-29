@@ -469,6 +469,216 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Withdrawal request submitted.'**
   String get withdrawalSubmitted;
+
+  /// No description provided for @referTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Refer'**
+  String get referTab;
+
+  /// No description provided for @referTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Refer & Earn'**
+  String get referTitle;
+
+  /// No description provided for @referSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Invite friends, earn coins'**
+  String get referSubtitle;
+
+  /// No description provided for @referYourCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Your referral code'**
+  String get referYourCode;
+
+  /// No description provided for @referYourLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Your referral link'**
+  String get referYourLink;
+
+  /// No description provided for @referCopy.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy'**
+  String get referCopy;
+
+  /// No description provided for @referCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Copied to clipboard'**
+  String get referCopied;
+
+  /// No description provided for @referShare.
+  ///
+  /// In en, this message translates to:
+  /// **'Share'**
+  String get referShare;
+
+  /// No description provided for @referShareText.
+  ///
+  /// In en, this message translates to:
+  /// **'Join TJ Earn with my referral link and earn coins:'**
+  String get referShareText;
+
+  /// No description provided for @referTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'Total invites'**
+  String get referTotal;
+
+  /// No description provided for @referPending.
+  ///
+  /// In en, this message translates to:
+  /// **'Pending'**
+  String get referPending;
+
+  /// No description provided for @referApproved.
+  ///
+  /// In en, this message translates to:
+  /// **'Approved'**
+  String get referApproved;
+
+  /// No description provided for @referHowTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'How it works'**
+  String get referHowTitle;
+
+  /// No description provided for @referHow1.
+  ///
+  /// In en, this message translates to:
+  /// **'Share your code or link with friends.'**
+  String get referHow1;
+
+  /// No description provided for @referHow2.
+  ///
+  /// In en, this message translates to:
+  /// **'They create their account with your link. One person, one account.'**
+  String get referHow2;
+
+  /// No description provided for @referHow3.
+  ///
+  /// In en, this message translates to:
+  /// **'After their account passes verification, the referral becomes eligible.'**
+  String get referHow3;
+
+  /// No description provided for @referHow4.
+  ///
+  /// In en, this message translates to:
+  /// **'Approved referral rewards arrive in your wallet as coins.'**
+  String get referHow4;
+
+  /// No description provided for @referRewardNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Approved referrals pay 1,000 coins each (Rs 10) — paid only after the invited account passes verification and the admin approves the referral. Rewards are coins, never cash.'**
+  String get referRewardNote;
+
+  /// No description provided for @referHistoryTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Referral history'**
+  String get referHistoryTitle;
+
+  /// No description provided for @referHistoryEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No referrals yet. Share your link to get started.'**
+  String get referHistoryEmpty;
+
+  /// No description provided for @referLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load referral info.'**
+  String get referLoadFailed;
+
+  /// No description provided for @referStatusPending.
+  ///
+  /// In en, this message translates to:
+  /// **'Pending'**
+  String get referStatusPending;
+
+  /// No description provided for @referStatusEligible.
+  ///
+  /// In en, this message translates to:
+  /// **'Eligible'**
+  String get referStatusEligible;
+
+  /// No description provided for @referStatusApproved.
+  ///
+  /// In en, this message translates to:
+  /// **'Approved'**
+  String get referStatusApproved;
+
+  /// No description provided for @referStatusRejected.
+  ///
+  /// In en, this message translates to:
+  /// **'Rejected'**
+  String get referStatusRejected;
+
+  /// No description provided for @referYouInvited.
+  ///
+  /// In en, this message translates to:
+  /// **'You invited'**
+  String get referYouInvited;
+
+  /// No description provided for @referInvitedYou.
+  ///
+  /// In en, this message translates to:
+  /// **'Invited you'**
+  String get referInvitedYou;
+
+  /// No description provided for @referApplyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Have a referral code?'**
+  String get referApplyTitle;
+
+  /// No description provided for @referApplyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the code shared with you'**
+  String get referApplyHint;
+
+  /// No description provided for @referApplyButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Apply code'**
+  String get referApplyButton;
+
+  /// No description provided for @referApplied.
+  ///
+  /// In en, this message translates to:
+  /// **'Referral recorded!'**
+  String get referApplied;
+
+  /// No description provided for @referErrSelf.
+  ///
+  /// In en, this message translates to:
+  /// **'You cannot use your own code.'**
+  String get referErrSelf;
+
+  /// No description provided for @referErrDuplicate.
+  ///
+  /// In en, this message translates to:
+  /// **'You already have a referrer.'**
+  String get referErrDuplicate;
+
+  /// No description provided for @referErrInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'This code is not valid.'**
+  String get referErrInvalid;
+
+  /// No description provided for @referErrRate.
+  ///
+  /// In en, this message translates to:
+  /// **'Too many attempts. Please try again later.'**
+  String get referErrRate;
 }
 
 class _AppLocalizationsDelegate
