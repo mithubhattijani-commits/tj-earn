@@ -167,5 +167,8 @@
   "leaderboardSubtitle": "اس ہفتے کے ٹاپ کمانے والے",
   "leaderboardYourRank": "آپ کی رینک: #{rank}",
   "leaderboardEmpty": "اس ہفتے ابھی کوئی کمائی نہیں۔ پہلے بنیں!",
-  "leaderboardYou": "آپ"
+  "leaderboardYou": "آپ",
+  "appUpToDate": "آپ کا ایپ اپ ٹو ڈیٹ ہے",
+  "noInternetForUpdate": "انٹرنیٹ کنکشن نہیں ہے — چیک کرنے کے لیے انٹرنیٹ آن کریں",
+  "updateInfoNotFound": "اپ ڈیٹ معلومات نہیں ملیں — بعد میں کوشش کریں"
 }
