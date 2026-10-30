@@ -17,7 +17,7 @@ class UnityAdsService {
   static const String rewardedPlacementId = 'BP_Rewarded_Android';
 
   /// Keep true while testing. Production builds set this to false.
-  static const bool testMode = true;
+  static const bool testMode = false;
 
   static bool _initialized = false;
   static bool _initFailed = false;
