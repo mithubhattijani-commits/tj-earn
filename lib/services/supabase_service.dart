@@ -132,6 +132,24 @@ class SupabaseService {  static SupabaseClient get client => Supabase.instance.c
     }
   }
 
+  /// Claims coins for a completed Unity rewarded video ad.
+  ///
+  /// The `claim-unity-reward` Edge Function verifies the caller's JWT,
+  /// enforces the daily cap and the 30-second anti-spam gap, then credits
+  /// coins server-side. Returns the coins credited and remaining claims
+  /// for today. Rewards are coins (virtual currency), never cash.
+  static Future<Map<String, dynamic>> claimUnityReward() async {
+    final res = await client.functions.invoke('claim-unity-reward');
+    final data = res.data;
+    if (res.status != 200) {
+      final message =
+          data is Map && data['error'] is String ? data['error'] : 'failed';
+      throw Exception('claim-unity-reward failed: $message');
+    }
+    if (data is Map<String, dynamic>) return data;
+    throw Exception('claim-unity-reward returned an unexpected response');
+  }
+
   /// ADMIN — referrals queue (read-only). Server enforces the admin gate;
   /// a 403 (forbidden) or 503 (admin not configured) surfaces as
   /// [AdminAccessDenied] so the UI can show the "admin access required"

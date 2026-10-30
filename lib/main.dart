@@ -9,6 +9,7 @@ import 'screens/auth_screen.dart';
 import 'screens/main_shell.dart';
 import 'services/admin_status.dart';
 import 'services/supabase_service.dart';
+import 'services/unity_ads_service.dart';
 
 /// Language choice, persisted locally. Defaults to English.
 final ValueNotifier<Locale> appLocale = ValueNotifier(const Locale('en'));
@@ -26,6 +27,10 @@ Future<void> main() async {
     } catch (_) {
       initFailed = true;
     }
+    // Unity Ads init is best-effort and never blocks startup: the Offers
+    // tab re-tries a late init and explains when ads are unavailable.
+    // ignore: unawaited_futures
+    UnityAdsService.init();
   }
 
   runApp(TjEarnApp(
