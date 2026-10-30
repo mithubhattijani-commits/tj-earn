@@ -3,6 +3,8 @@ import 'package:tj_earn/l10n/app_localizations.dart';
 
 import '../services/supabase_service.dart';
 import '../services/unity_ads_service.dart';
+import '../widgets/leaderboard.dart';
+import '../widgets/spin_wheel.dart';
 
 /// Rewards & offers page.
 ///
@@ -133,6 +135,12 @@ class _OffersTabState extends State<OffersTab> {
               ),
             ),
           ),
+          const SizedBox(height: 16),
+          // Daily spin wheel (Roz Dhan-style engagement)
+          const SpinWheel(),
+          const SizedBox(height: 16),
+          // Weekly leaderboard (social proof + competition)
+          const LeaderboardWidget(),
           const SizedBox(height: 16),
           Text(
             t.watchAdNote,

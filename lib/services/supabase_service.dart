@@ -150,6 +150,154 @@ class SupabaseService {  static SupabaseClient get client => Supabase.instance.c
     throw Exception('claim-unity-reward returned an unexpected response');
   }
 
+  /// Claims the daily check-in streak.
+  ///
+  /// The `claim-streak` Edge Function tracks consecutive days and pays
+  /// milestone bonuses at 7/14/21/30 days. Call this after a successful
+  /// daily check-in. Returns current streak, milestone bonus (if any),
+  /// and the next milestone.
+  static Future<Map<String, dynamic>> claimStreak() async {
+    final res = await client.functions.invoke('claim-streak');
+    final data = res.data;
+    if (res.status != 200) {
+      final message =
+          data is Map && data['error'] is String ? data['error'] : 'failed';
+      // 409 = already claimed today (not a hard error for the UI)
+      if (res.status == 409 && data is Map<String, dynamic>) return data;
+      throw Exception('claim-streak failed: $message');
+    }
+    if (data is Map<String, dynamic>) return data;
+    throw Exception('claim-streak returned an unexpected response');
+  }
+
+  /// Gets the user's current streak info (read-only).
+  ///
+  /// Returns current_streak, longest_streak, total_checkins.
+  /// Returns nulls when the user has no streak yet.
+  static Future<Map<String, dynamic>?> getStreak() async {
+    final user = currentUser;
+    if (user == null) return null;
+    try {
+      final row = await client
+          .from('streaks')
+          .select()
+          .eq('user_id', user.id)
+          .maybeSingle();
+      if (row == null) return null;
+      return (row as Map).cast<String, dynamic>();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Claims the daily spin-wheel reward.
+  ///
+  /// The `claim-spin` Edge Function picks a weighted-random reward
+  /// server-side. Returns reward_coins and spins_remaining.
+  static Future<Map<String, dynamic>> claimSpin() async {
+    final res = await client.functions.invoke('claim-spin');
+    final data = res.data;
+    if (res.status != 200) {
+      final message =
+          data is Map && data['error'] is String ? data['error'] : 'failed';
+      if (res.status == 409 && data is Map<String, dynamic>) return data;
+      throw Exception('claim-spin failed: $message');
+    }
+    if (data is Map<String, dynamic>) return data;
+    throw Exception('claim-spin returned an unexpected response');
+  }
+
+  /// Records an onboarding task completion.
+  ///
+  /// The `claim-onboarding` Edge Function validates the task key and pays
+  /// the completion bonus when all tasks are done. Valid tasks: profile,
+  /// checkin, quiz, spin, referral.
+  static Future<Map<String, dynamic>> claimOnboarding(String task) async {
+    final res = await client.functions.invoke(
+      'claim-onboarding',
+      body: {'task': task},
+    );
+    final data = res.data;
+    if (res.status != 200) {
+      final message =
+          data is Map && data['error'] is String ? data['error'] : 'failed';
+      throw Exception('claim-onboarding failed: $message');
+    }
+    if (data is Map<String, dynamic>) return data;
+    throw Exception('claim-onboarding returned an unexpected response');
+  }
+
+  /// Gets the user's onboarding progress (read-only).
+  ///
+  /// Returns the list of completed task keys.
+  static Future<List<String>> getOnboardingProgress() async {
+    final user = currentUser;
+    if (user == null) return [];
+    try {
+      final rows = await client
+          .from('onboarding_tasks')
+          .select('task_key')
+          .eq('user_id', user.id);
+      return (rows as List)
+          .map((r) => (r as Map)['task_key'] as String)
+          .toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  /// Checks and pays referral milestone tier bonuses.
+  ///
+  /// The `check-referral-milestone` Edge Function counts approved referrals
+  /// and pays tier bonuses at 5/10/25. Idempotent — safe to call often.
+  static Future<Map<String, dynamic>> checkReferralMilestone() async {
+    final res = await client.functions.invoke('check-referral-milestone');
+    final data = res.data;
+    if (res.status != 200) {
+      final message =
+          data is Map && data['error'] is String ? data['error'] : 'failed';
+      throw Exception('check-referral-milestone failed: $message');
+    }
+    if (data is Map<String, dynamic>) return data;
+    throw Exception('check-referral-milestone returned an unexpected response');
+  }
+
+  /// Gets the weekly leaderboard (top 20 earners, anonymized).
+  ///
+  /// The `get-leaderboard` Edge Function returns masked entries plus the
+  /// caller's own rank. Read-only.
+  static Future<Map<String, dynamic>> getLeaderboard() async {
+    final res = await client.functions.invoke('get-leaderboard');
+    final data = res.data;
+    if (res.status != 200) {
+      final message =
+          data is Map && data['error'] is String ? data['error'] : 'failed';
+      throw Exception('get-leaderboard failed: $message');
+    }
+    if (data is Map<String, dynamic>) return data;
+    throw Exception('get-leaderboard returned an unexpected response');
+  }
+
+  /// Registers the device for anti-fraud tracking.
+  ///
+  /// The `register-device` Edge Function stores a device hash. Call once
+  /// per login. Returns whether the device is flagged (>3 users).
+  static Future<Map<String, dynamic>?> registerDevice(
+      String deviceHash, String deviceModel) async {
+    try {
+      final res = await client.functions.invoke(
+        'register-device',
+        body: {'device_hash': deviceHash, 'device_model': deviceModel},
+      );
+      if (res.status != 200) return null;
+      final data = res.data;
+      if (data is Map<String, dynamic>) return data;
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
   /// ADMIN — referrals queue (read-only). Server enforces the admin gate;
   /// a 403 (forbidden) or 503 (admin not configured) surfaces as
   /// [AdminAccessDenied] so the UI can show the "admin access required"

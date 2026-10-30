@@ -311,4 +311,208 @@ class AppLocalizationsUr extends AppLocalizations {
 
   @override
   String get adminNotAdminHint => 'یہ اکاؤنٹ ایڈمن نہیں ہے — ایڈمن ای میل سے لاگ ان کریں۔';
+
+  @override
+  String balanceRsApprox(Object value) => '≈ $value روپے';
+
+  @override
+  String get adminTitle => 'ایڈمن پینل';
+
+  @override
+  String get adminAccessRequired => 'ایڈمن رسائی درکار ہے۔ یہ پینل دیکھنے کے لیے ایڈمن اکاؤنٹ سے سائن ان کریں۔';
+
+  @override
+  String get adminTabReferrals => 'ریفرلز';
+
+  @override
+  String get adminTabStats => 'شماریات';
+
+  @override
+  String get adminTabLedger => 'لیجر';
+
+  @override
+  String get adminStatusAll => 'تمام';
+
+  @override
+  String get adminLoadFailed => 'ایڈمن ڈیٹا لوڈ نہیں ہو سکا۔';
+
+  @override
+  String get adminReferralsEmpty => 'اس حیثیت میں کوئی ریفرل نہیں۔';
+
+  @override
+  String get adminReferrer => 'ریفر کرنے والا';
+
+  @override
+  String get adminInvited => 'مدعو';
+
+  @override
+  String get adminCode => 'کوڈ';
+
+  @override
+  String get adminApprove => 'منظور کریں';
+
+  @override
+  String get adminReject => 'مسترد کریں';
+
+  @override
+  String get adminReasonHint => 'وجہ (اختیاری)';
+
+  @override
+  String get adminConfirmRejectTitle => 'ریفرل مسترد کریں؟';
+
+  @override
+  String get adminConfirmRejectBody => 'کیا یہ ریفرل مسترد کرنا ہے؟ بلانے والے کو انعام نہیں ملے گا۔';
+
+  @override
+  String get adminCancel => 'منسوخ کریں';
+
+  @override
+  String get adminConfirm => 'تصدیق کریں';
+
+  @override
+  String get adminDecisionDone => 'فیصلہ محفوظ ہو گیا۔';
+
+  @override
+  String get adminDecisionFailed => 'فیصلہ محفوظ نہیں ہو سکا۔';
+
+  @override
+  String get adminTotalReferrers => 'کل ریفر کرنے والے';
+
+  @override
+  String get adminCoinsCredited => 'دیے گئے کوائنز';
+
+  @override
+  String get adminLedgerEmpty => 'لیجر میں کوئی اندراج نہیں۔';
+
+  @override
+  String get adminTypeFilter => 'قسم کا فلٹر (اختیاری)';
+
+  @override
+  String get adminApplyFilter => 'لگائیں';
+
+  @override
+  String adminPageOf(Object page) => 'صفحہ $page';
+
+  @override
+  String get adminPrev => 'پچھلا';
+
+  @override
+  String get adminNext => 'اگلا';
+
+  @override
+  String get adminRefresh => 'تازہ کریں';
+
+  @override
+  String get adminUnknownUser => 'نامعلوم صارف';
+
+  @override
+  String get watchAdTitle => 'اشتہار دیکھیں اور کوئنز کمائیں';
+
+  @override
+  String get watchAdSubtitle => 'مختصر ویڈیو اشتہار دیکھیں اور کوئنز حاصل کریں۔ مکمل اشتہار دیکھنے پر کوئنز ملتے ہیں۔';
+
+  @override
+  String get watchAdButton => 'اشتہار دیکھیں';
+
+  @override
+  String get watchAdNote => 'ہر مکمل اشتہار پر ایک انعام۔ روزانہ حد لاگو ہوتی ہے۔';
+
+  @override
+  String get pleaseWait => 'براہ کرم انتظار کریں…';
+
+  @override
+  String rewardEarned(Object coins) => 'آپ نے $coins کوئنز حاصل کیے!';
+
+  @override
+  String get adSkipped => 'اشتہار چھوڑ دیا — کوئی کوئنز نہیں ملے۔ کمانے کے لیے مکمل اشتہار دیکھیں۔';
+
+  @override
+  String get adLoadFailed => 'اشتہار لوڈ نہیں ہو سکا۔ دوبارہ کوشش کریں۔';
+
+  @override
+  String get unityNotReady => 'اشتہارات ابھی تیار نہیں ہیں۔ تھوڑی دیر بعد دوبارہ کوشش کریں۔';
+
+  @override
+  String get streakTitle => 'روزانہ اسٹریک';
+
+  @override
+  String streakDays(Object count) => '$count دن کی اسٹریک';
+
+  @override
+  String get streakKeepGoing => 'اسٹریک جاری رکھنے کے لیے کل چیک اِن کریں!';
+
+  @override
+  String streakMilestone(Object coins) => 'اسٹریک سنگ میل! +$coins کوئنز بونس!';
+
+  @override
+  String streakNext(Object days) => 'اگلا بونس $days دن پر';
+
+  @override
+  String get spinTitle => 'روزانہ اسپن';
+
+  @override
+  String get spinSubtitle => 'روزانہ مفت کوئنز کے لیے وہیل گھمائیں!';
+
+  @override
+  String get spinButton => 'اسپن کریں';
+
+  @override
+  String spinWon(Object coins) => 'آپ نے $coins کوئنز جیتے!';
+
+  @override
+  String get spinUsed => 'اگلے اسپن کے لیے کل واپس آئیں!';
+
+  @override
+  String get spinSpinning => 'گھوم رہا ہے...';
+
+  @override
+  String onboardingTitle(Object coins) => 'شروع کریں - $coins بونس کمائیں!';
+
+  @override
+  String get onboardingSubtitle => 'ویلکم بونس کے لیے یہ کام مکمل کریں';
+
+  @override
+  String get onboardingProfile => 'اپنا ڈسپلے نام سیٹ کریں';
+
+  @override
+  String get onboardingCheckin => 'پہلا چیک اِن مکمل کریں';
+
+  @override
+  String get onboardingQuiz => 'پہلا کوئز مکمل کریں';
+
+  @override
+  String get onboardingSpin => 'پہلا اسپن آزمائیں';
+
+  @override
+  String get onboardingReferral => 'اپنا ریفرل لنک شیئر کریں';
+
+  @override
+  String onboardingComplete(Object coins) => 'سب مکمل! +$coins کوئنز بونس!';
+
+  @override
+  String onboardingProgress(Object done, Object total) => '$done/$total مکمل';
+
+  @override
+  String get referralMilestoneTitle => 'ریفرل سنگ میل';
+
+  @override
+  String referralMilestoneNext(Object bonus, Object remaining) => '+$bonus کوئنز بونس کے لیے $remaining اور!';
+
+  @override
+  String referralMilestoneReached(Object coins) => 'سنگ میل حاصل! +$coins کوئنز!';
+
+  @override
+  String get leaderboardTitle => 'ہفتہ وار لیڈر بورڈ';
+
+  @override
+  String get leaderboardSubtitle => 'اس ہفتے کے ٹاپ کمانے والے';
+
+  @override
+  String leaderboardYourRank(Object rank) => 'آپ کی رینک: #$rank';
+
+  @override
+  String get leaderboardEmpty => 'اس ہفتے ابھی کوئی کمائی نہیں۔ پہلے بنیں!';
+
+  @override
+  String get leaderboardYou => 'آپ';
 }

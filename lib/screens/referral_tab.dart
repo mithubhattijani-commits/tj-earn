@@ -131,6 +131,9 @@ class _ReferralTabState extends State<ReferralTab> {
                 const SizedBox(height: 16),
                 _statsRow(t, total, pending, approved),
                 const SizedBox(height: 16),
+                // Referral milestone tiers (Attapoll-style)
+                _MilestoneCard(approved: approved),
+                const SizedBox(height: 16),
                 _howCard(t),
                 const SizedBox(height: 16),
                 _applyCard(t),
@@ -430,6 +433,111 @@ class _ErrorBlock extends StatelessWidget {
             child: const Icon(Icons.refresh),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Referral milestone tier card.
+///
+/// Shows progress to the next milestone (5/10/25 approved referrals)
+/// and triggers the milestone check. Bonuses are paid server-side.
+class _MilestoneCard extends StatefulWidget {
+  final int approved;
+
+  const _MilestoneCard({required this.approved});
+
+  @override
+  State<_MilestoneCard> createState() => _MilestoneCardState();
+}
+
+class _MilestoneCardState extends State<_MilestoneCard> {
+  Map<String, dynamic>? _milestone;
+  bool _checking = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _check();
+  }
+
+  Future<void> _check() async {
+    if (_checking) return;
+    setState(() => _checking = true);
+    try {
+      final result = await SupabaseService.checkReferralMilestone();
+      if (mounted) {
+        setState(() {
+          _milestone = result;
+          _checking = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _checking = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context)!;
+    final next = _milestone?['next_milestone'] as Map<String, dynamic>?;
+    final bonus = _milestone?['bonus_coins'] as int? ?? 0;
+
+    return Card(
+      color: Colors.amber.shade50,
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.emoji_events,
+                    color: Colors.amber.shade700, size: 28),
+                const SizedBox(width: 12),
+                Text(
+                  t.referralMilestoneTitle,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            if (bonus > 0)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Text(
+                  t.referralMilestoneReached(bonus.toString()),
+                  style: TextStyle(
+                    color: Colors.green.shade700,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            if (next != null)
+              Text(
+                t.referralMilestoneNext(
+                  (next['remaining'] as int).toString(),
+                  (next['bonus'] as int).toString(),
+                ),
+              )
+            else
+              Text(
+                t.referralMilestoneReached(''),
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            if (_checking)
+              const Padding(
+                padding: EdgeInsets.only(top: 8),
+                child: SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

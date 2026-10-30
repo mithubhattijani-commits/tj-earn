@@ -8,6 +8,7 @@ import 'config.dart';
 import 'screens/auth_screen.dart';
 import 'screens/main_shell.dart';
 import 'services/admin_status.dart';
+import 'services/device_service.dart';
 import 'services/supabase_service.dart';
 import 'services/unity_ads_service.dart';
 
@@ -127,6 +128,9 @@ class AuthGate extends StatelessWidget {
           return const AuthScreen();
         }
         AdminStatus.probe();
+        // Register device for anti-fraud (silent, never blocks).
+        // ignore: unawaited_futures
+        DeviceService.register();
         return MainShell(
           locale: appLocale.value,
           onLocaleChanged: onLocaleChanged,

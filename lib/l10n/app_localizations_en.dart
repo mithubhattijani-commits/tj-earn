@@ -312,4 +312,208 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get adminNotAdminHint => 'This account is not an admin \u2014 log in with the admin email.';
+
+  @override
+  String balanceRsApprox(Object value) => '≈ Rs $value';
+
+  @override
+  String get adminTitle => 'Admin panel';
+
+  @override
+  String get adminAccessRequired => 'Admin access required. Sign in with an admin account to view this panel.';
+
+  @override
+  String get adminTabReferrals => 'Referrals';
+
+  @override
+  String get adminTabStats => 'Stats';
+
+  @override
+  String get adminTabLedger => 'Ledger';
+
+  @override
+  String get adminStatusAll => 'All';
+
+  @override
+  String get adminLoadFailed => 'Could not load admin data.';
+
+  @override
+  String get adminReferralsEmpty => 'No referrals in this state.';
+
+  @override
+  String get adminReferrer => 'Referrer';
+
+  @override
+  String get adminInvited => 'Invited';
+
+  @override
+  String get adminCode => 'Code';
+
+  @override
+  String get adminApprove => 'Approve';
+
+  @override
+  String get adminReject => 'Reject';
+
+  @override
+  String get adminReasonHint => 'Reason (optional)';
+
+  @override
+  String get adminConfirmRejectTitle => 'Reject referral?';
+
+  @override
+  String get adminConfirmRejectBody => 'Reject this referral? The inviter will not receive the reward.';
+
+  @override
+  String get adminCancel => 'Cancel';
+
+  @override
+  String get adminConfirm => 'Confirm';
+
+  @override
+  String get adminDecisionDone => 'Decision recorded.';
+
+  @override
+  String get adminDecisionFailed => 'Could not record the decision.';
+
+  @override
+  String get adminTotalReferrers => 'Total referrers';
+
+  @override
+  String get adminCoinsCredited => 'Coins credited';
+
+  @override
+  String get adminLedgerEmpty => 'No ledger entries.';
+
+  @override
+  String get adminTypeFilter => 'Type filter (optional)';
+
+  @override
+  String get adminApplyFilter => 'Apply';
+
+  @override
+  String adminPageOf(Object page) => 'Page $page';
+
+  @override
+  String get adminPrev => 'Previous';
+
+  @override
+  String get adminNext => 'Next';
+
+  @override
+  String get adminRefresh => 'Refresh';
+
+  @override
+  String get adminUnknownUser => 'Unknown user';
+
+  @override
+  String get watchAdTitle => 'Watch Ad & Earn Coins';
+
+  @override
+  String get watchAdSubtitle => 'Watch a short video ad and earn coins. Coins are credited after you finish the full ad.';
+
+  @override
+  String get watchAdButton => 'Watch Ad';
+
+  @override
+  String get watchAdNote => 'One reward per completed ad. Daily limits apply.';
+
+  @override
+  String get pleaseWait => 'Please wait…';
+
+  @override
+  String rewardEarned(Object coins) => 'You earned $coins coins!';
+
+  @override
+  String get adSkipped => 'Ad skipped — no coins earned. Watch the full ad to earn.';
+
+  @override
+  String get adLoadFailed => 'Ad could not be loaded. Please try again.';
+
+  @override
+  String get unityNotReady => 'Ads are not ready yet. Please try again in a moment.';
+
+  @override
+  String get streakTitle => 'Daily Streak';
+
+  @override
+  String streakDays(Object count) => '$count day streak';
+
+  @override
+  String get streakKeepGoing => 'Check in tomorrow to keep your streak!';
+
+  @override
+  String streakMilestone(Object coins) => 'Streak milestone! +$coins coins bonus!';
+
+  @override
+  String streakNext(Object days) => 'Next bonus at $days days';
+
+  @override
+  String get spinTitle => 'Daily Spin';
+
+  @override
+  String get spinSubtitle => 'Spin the wheel once a day for free coins!';
+
+  @override
+  String get spinButton => 'Spin Now';
+
+  @override
+  String spinWon(Object coins) => 'You won $coins coins!';
+
+  @override
+  String get spinUsed => 'Come back tomorrow for your next spin!';
+
+  @override
+  String get spinSpinning => 'Spinning...';
+
+  @override
+  String onboardingTitle(Object coins) => 'Get Started - Earn $coins Bonus!';
+
+  @override
+  String get onboardingSubtitle => 'Complete these tasks to earn your welcome bonus';
+
+  @override
+  String get onboardingProfile => 'Set your display name';
+
+  @override
+  String get onboardingCheckin => 'Complete your first check-in';
+
+  @override
+  String get onboardingQuiz => 'Complete your first quiz';
+
+  @override
+  String get onboardingSpin => 'Try your first spin';
+
+  @override
+  String get onboardingReferral => 'Share your referral link';
+
+  @override
+  String onboardingComplete(Object coins) => 'All done! +$coins coins bonus!';
+
+  @override
+  String onboardingProgress(Object done, Object total) => '$done/$total completed';
+
+  @override
+  String get referralMilestoneTitle => 'Referral Milestones';
+
+  @override
+  String referralMilestoneNext(Object remaining, Object bonus) => '$remaining more for +$bonus coins bonus!';
+
+  @override
+  String referralMilestoneReached(Object coins) => 'Milestone reached! +$coins coins!';
+
+  @override
+  String get leaderboardTitle => 'Weekly Leaderboard';
+
+  @override
+  String get leaderboardSubtitle => 'Top earners this week';
+
+  @override
+  String leaderboardYourRank(Object rank) => 'Your rank: #$rank';
+
+  @override
+  String get leaderboardEmpty => 'No earnings this week yet. Be the first!';
+
+  @override
+  String get leaderboardYou => 'You';
 }

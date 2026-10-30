@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:tj_earn/l10n/app_localizations.dart';
 
 import '../services/supabase_service.dart';
+import '../widgets/onboarding_checklist.dart';
+import '../widgets/streak_card.dart';
 
 /// Home dashboard: server-side balance + quick actions.
 ///
@@ -85,6 +87,12 @@ class _HomeTabState extends State<HomeTab> {
               ),
             ),
           ),
+          const SizedBox(height: 16),
+          // Onboarding checklist for new users (hidden when complete)
+          const OnboardingChecklist(),
+          const SizedBox(height: 16),
+          // Daily streak card (Swagbucks-style retention)
+          const StreakCard(),
           const SizedBox(height: 16),
           Card(
             child: InkWell(
