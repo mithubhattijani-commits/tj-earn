@@ -23,7 +23,6 @@ class _SpinWheelState extends State<SpinWheel>
   bool _spinning = false;
   String? _message;
   bool _isError = false;
-  int? _lastWin;
 
   // Segment rewards (must match server config spin_rewards)
   final List<int> _segments = [1, 2, 3, 5, 10, 20];
@@ -93,7 +92,6 @@ class _SpinWheelState extends State<SpinWheel>
 
       if (!mounted) return;
       setState(() {
-        _lastWin = coins;
         _message = t.spinWon(coins.toString());
         _spinning = false;
       });

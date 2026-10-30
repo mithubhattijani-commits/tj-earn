@@ -17,7 +17,6 @@ class LeaderboardWidget extends StatefulWidget {
 class _LeaderboardWidgetState extends State<LeaderboardWidget> {
   List<dynamic> _entries = [];
   int _myRank = 0;
-  int _myCoins = 0;
   bool _loading = true;
 
   @override
@@ -33,7 +32,6 @@ class _LeaderboardWidgetState extends State<LeaderboardWidget> {
         setState(() {
           _entries = (data['leaderboard'] as List?) ?? [];
           _myRank = (data['my_rank'] as int?) ?? 0;
-          _myCoins = (data['my_coins'] as int?) ?? 0;
           _loading = false;
         });
       }
