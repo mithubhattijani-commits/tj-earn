@@ -811,9 +811,11 @@ AppLocalizations lookupAppLocalizations(Locale locale) {
   String get watchAdNote;
   String get pleaseWait;
   String rewardEarned(Object coins);
+  String get rewardsSection;
   String get adSkipped;
   String get adLoadFailed;
   String get unityNotReady;
+  String get tasksTitle;
   String get streakTitle;
   String streakDays(Object count);
   String get streakKeepGoing;
