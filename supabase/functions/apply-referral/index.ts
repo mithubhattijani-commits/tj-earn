@@ -13,8 +13,13 @@ import { corsHeaders } from '../_shared/cors.ts';
 /// - rate limit: max 5 attempts/hour per user, tracked in audit_logs
 ///   (the attempt is recorded even when rejected, for abuse monitoring)
 ///
-/// A successful apply creates a `pending` referral only. No coins move
-/// here — payout happens exclusively through review-referral approval.
+/// IMMEDIATE CREDIT (Jaani, 31 Oct 2026): a successful apply now credits
+/// the referrer IMMEDIATELY — no admin review wait. The referral is
+/// created with status 'approved', decided_at = now, decided_by =
+/// 'system:auto-credit', and the ledger row is written in the same call
+/// with idempotency_key 'referral:<referral_id>' (exactly-once: a replay
+/// can never double-credit). The reward amount comes from
+/// app_config.referral_reward_coins (owner-set, currently 200 coins).
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -103,26 +108,81 @@ Deno.serve(async (req) => {
     return json({ error: 'referrer already set' }, 409);
   }
 
+  const now = new Date().toISOString();
   const { data: inserted, error: insertError } = await service
     .from('referrals')
     .insert({
       referrer_id: referrerId,
       referred_id: user.id,
-      status: 'pending',
+      status: 'approved',
+      decided_at: now,
+      decided_by: 'system:auto-credit',
     })
     .select('id,status')
     .single();
   if (insertError || !inserted) {
     return json({ error: 'could not record referral' }, 500);
   }
+
+  // IMMEDIATE CREDIT: read the owner-set reward and credit the referrer
+  // in the same call. The UNIQUE idempotency_key makes this exactly-once.
+  const { data: rewardCfg } = await service
+    .from('app_config')
+    .select('value')
+    .eq('key', 'referral_reward_coins')
+    .maybeSingle();
+  const reward = Math.max(0, parseInt(String(rewardCfg?.value ?? '0'), 10) || 0);
+  if (reward > 0) {
+    const { error: ledgerError } = await service.from('ledger').insert({
+      user_id: referrerId,
+      amount_coins: reward,
+      type: 'referral',
+      ref_id: inserted.id,
+      provider: 'tjearn',
+      idempotency_key: `referral:${inserted.id}`,
+    });
+    if (ledgerError) {
+      const msg = String(
+        (ledgerError as { message?: unknown }).message ?? '',
+      ).toLowerCase();
+      const isReplay =
+        (ledgerError as { code?: unknown }).code === '23505' ||
+        msg.includes('duplicate');
+      if (!isReplay) {
+        // Credit failed but the referral row exists as approved; a retry
+        // of apply-referral hits the idempotent path. Surface the error
+        // honestly so the client can retry.
+        await service.from('audit_logs').insert({
+          actor: user.id,
+          action: 'referral_credit_failed',
+          target: inserted.id,
+          details: { referrer_id: referrerId, reward },
+        });
+        return json({ error: 'could not credit reward' }, 500);
+      }
+    }
+  }
+
   await service.from('audit_logs').insert({
     actor: user.id,
     action: 'referral_applied',
     target: inserted.id,
-    details: { referrer_id: referrerId },
+    details: { referrer_id: referrerId, reward_coins: reward, auto_credited: true },
+  });
+  await service.from('audit_logs').insert({
+    actor: 'system:auto-credit',
+    action: 'referral_approved',
+    target: inserted.id,
+    details: { reward_coins: reward },
   });
   return json(
-    { ok: true, already: false, id: inserted.id, status: inserted.status },
+    {
+      ok: true,
+      already: false,
+      id: inserted.id,
+      status: inserted.status,
+      reward_coins: reward,
+    },
     200,
   );
 });
