@@ -846,4 +846,6 @@ AppLocalizations lookupAppLocalizations(Locale locale) {
   String leaderboardYourRank(Object rank);
   String get leaderboardEmpty;
   String get leaderboardYou;
+  String get helpSupport;
+  String get helpSupportName;
 }
