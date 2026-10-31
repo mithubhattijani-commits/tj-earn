@@ -809,6 +809,8 @@ AppLocalizations lookupAppLocalizations(Locale locale) {
   String get watchAdSubtitle;
   String get watchAdButton;
   String get watchAdNote;
+  String get watchAdTile;
+  String get watchAdRewardLine;
   String get pleaseWait;
   String rewardEarned(Object coins);
   String get rewardsSection;
