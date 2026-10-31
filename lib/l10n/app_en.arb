@@ -181,5 +181,7 @@
   "leaderboardYou": "You",
   "appUpToDate": "Your app is up to date",
   "noInternetForUpdate": "No internet connection — turn on internet to check for updates",
-  "updateInfoNotFound": "Update info not found — try again later"
+  "updateInfoNotFound": "Update info not found — try again later",
+  "helpSupport": "Help & Support",
+  "helpSupportName": "Jaani Bhatti — 03090808180"
 }
