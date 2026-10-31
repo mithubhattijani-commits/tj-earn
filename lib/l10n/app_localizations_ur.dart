@@ -19,6 +19,9 @@ class AppLocalizationsUr extends AppLocalizations {
   String get appTitle => 'ٹی جے ارن';
 
   @override
+  String get backToLogin => 'لاگ ان پر واپس جائیں';
+
+  @override
   String get balance => 'بیلنس';
 
   @override
@@ -62,6 +65,18 @@ class AppLocalizationsUr extends AppLocalizations {
   String get errTooManyPending => 'آپ کی پہلے سے 2 درخواستیں زیر التواء ہیں۔';
 
   @override
+  String get forgotPassword => 'پاسورڈ بھول گئے؟';
+
+  @override
+  String get forgotPasswordHint => 'اپنا ای میل درج کریں — ہم آپ کو پاسورڈ ری سیٹ کرنے کا لنک بھیجیں گے۔';
+
+  @override
+  String get forgotPasswordSent => 'ری سیٹ لنک آپ کے ای میل پر بھیج دیا گیا ہے۔ اپنا ان باکس چیک کریں۔';
+
+  @override
+  String get forgotPasswordTitle => 'پاسورڈ ری سیٹ کریں';
+
+  @override
   String get genericError => 'کچھ غلط ہو گیا۔ دوبارہ کوشش کریں۔';
 
   @override
@@ -85,6 +100,9 @@ class AppLocalizationsUr extends AppLocalizations {
   @override
   String get installPermissionNeeded =>
       'سیٹنگز میں انسٹال کی اجازت دیں، پھر دوبارہ کوشش کریں۔';
+
+  @override
+  String get invalidEmail => 'براہ کرم درست ای میل درج کریں۔';
 
   @override
   String get language => 'زبان';
@@ -140,6 +158,9 @@ class AppLocalizationsUr extends AppLocalizations {
 
   @override
   String get registerFailed => 'رجسٹریشن ناکام ہوئی۔ کوئی اور ای میل آزمائیں۔';
+
+  @override
+  String get sendResetLink => 'ری سیٹ لنک بھیجیں';
 
   @override
   String get settingsTitle => 'سیٹنگز';
