@@ -172,6 +172,11 @@ class _HomeTabState extends State<HomeTab> {
                 label: t.tasksTitle,
                 onTap: () => _open(const OnboardingScreen()),
               ),
+              _rewardTile(
+                icon: Icons.play_circle_outline,
+                label: t.watchAdTile,
+                onTap: () => _open(const WatchAdScreen()),
+              ),
             ],
           ),
           const SizedBox(height: 16),
