@@ -4,6 +4,10 @@ import 'package:tj_earn/l10n/app_localizations.dart';
 import '../services/supabase_service.dart';
 import '../widgets/onboarding_checklist.dart';
 import '../widgets/streak_card.dart';
+import 'leaderboard_screen.dart';
+import 'onboarding_screen.dart';
+import 'spin_screen.dart';
+import 'streak_screen.dart';
 
 /// Home dashboard: server-side balance + quick actions.
 ///
@@ -34,6 +38,47 @@ class _HomeTabState extends State<HomeTab> {
     return rs == rs.roundToDouble()
         ? rs.toInt().toString()
         : rs.toStringAsFixed(2);
+  }
+
+  void _open(Widget page) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => page),
+    );
+  }
+
+  Widget _rewardTile({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return Card(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                size: 32,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                label,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.titleSmall,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -93,6 +138,41 @@ class _HomeTabState extends State<HomeTab> {
           const SizedBox(height: 16),
           // Daily streak card (Swagbucks-style retention)
           const StreakCard(),
+          const SizedBox(height: 16),
+          // Rewards — dedicated screens for each engagement feature
+          Text(t.rewardsSection,
+              style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 12),
+          GridView.count(
+            crossAxisCount: 2,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            mainAxisSpacing: 12,
+            crossAxisSpacing: 12,
+            childAspectRatio: 1.5,
+            children: [
+              _rewardTile(
+                icon: Icons.casino,
+                label: t.spinTitle,
+                onTap: () => _open(const SpinScreen()),
+              ),
+              _rewardTile(
+                icon: Icons.local_fire_department,
+                label: t.streakTitle,
+                onTap: () => _open(const StreakScreen()),
+              ),
+              _rewardTile(
+                icon: Icons.leaderboard,
+                label: t.leaderboardTitle,
+                onTap: () => _open(const LeaderboardScreen()),
+              ),
+              _rewardTile(
+                icon: Icons.checklist,
+                label: t.tasksTitle,
+                onTap: () => _open(const OnboardingScreen()),
+              ),
+            ],
+          ),
           const SizedBox(height: 16),
           Card(
             child: InkWell(
