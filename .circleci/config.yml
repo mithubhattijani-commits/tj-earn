@@ -7,10 +7,21 @@ version: 2.1
 jobs:
   build-apk:
     docker:
-      - image: cirrusci/flutter:stable
+      - image: cimg/android:2026.10
     working_directory: ~/repo
     steps:
       - checkout
+      - run:
+          name: Install Flutter (stable channel)
+          command: |
+            if [ ! -d "$HOME/flutter" ]; then
+              git clone --depth 1 -b stable https://github.com/flutter/flutter.git "$HOME/flutter"
+            fi
+            echo 'export PATH="$HOME/flutter/bin:$PATH"' >> "$BASH_ENV"
+            export PATH="$HOME/flutter/bin:$PATH"
+            flutter --version
+            flutter precache --android
+          no_output_timeout: 20m
       - run:
           name: Flutter pub get
           command: flutter pub get
