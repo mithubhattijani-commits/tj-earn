@@ -142,6 +142,8 @@
   "watchAdSubtitle": "Watch a short video ad and earn coins. Coins are credited after you finish the full ad.",
   "watchAdButton": "Watch Ad",
   "watchAdNote": "One reward per completed ad. Daily limits apply.",
+  "watchAdTile": "Watch Ad\nEarn 20 Coins",
+  "watchAdRewardLine": "Earn 20 coins per completed video",
   "pleaseWait": "Please wait…",
   "rewardEarned": "You earned {coins} coins!",
   "rewardsSection": "Rewards",
