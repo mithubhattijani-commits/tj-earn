@@ -61,6 +61,91 @@ class _AuthScreenState extends State<AuthScreen> {
     }
   }
 
+  Future<void> _forgotPassword() async {
+    final t = AppLocalizations.of(context)!;
+    final emailCtrl = TextEditingController(text: _email.text.trim());
+    var sending = false;
+    String? msg;
+    var sent = false;
+
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDlg) => AlertDialog(
+          title: Text(t.forgotPasswordTitle),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(t.forgotPasswordHint),
+              const SizedBox(height: 12),
+              TextField(
+                controller: emailCtrl,
+                keyboardType: TextInputType.emailAddress,
+                enabled: !sent,
+                decoration: InputDecoration(labelText: t.email),
+              ),
+              if (msg != null) ...[
+                const SizedBox(height: 12),
+                Text(
+                  msg!,
+                  style: TextStyle(
+                    color: sent ? Colors.green : Colors.red,
+                  ),
+                ),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: Text(t.backToLogin),
+            ),
+            if (!sent)
+              FilledButton(
+                onPressed: sending
+                    ? null
+                    : () async {
+                        final email = emailCtrl.text.trim();
+                        if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
+                            .hasMatch(email)) {
+                          setDlg(() => msg = t.invalidEmail);
+                          return;
+                        }
+                        setDlg(() {
+                          sending = true;
+                          msg = null;
+                        });
+                        try {
+                          await Supabase.instance.client.auth
+                              .resetPasswordForEmail(email);
+                          setDlg(() {
+                            sent = true;
+                            msg = t.forgotPasswordSent;
+                          });
+                        } on AuthException {
+                          setDlg(() => msg = t.genericError);
+                        } catch (_) {
+                          setDlg(() => msg = t.genericError);
+                        } finally {
+                          setDlg(() => sending = false);
+                        }
+                      },
+                child: sending
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Text(t.sendResetLink),
+              ),
+          ],
+        ),
+      ),
+    );
+    emailCtrl.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context)!;
@@ -99,6 +184,11 @@ class _AuthScreenState extends State<AuthScreen> {
               onPressed: _busy ? null : _submit,
               child: Text(_registerMode ? t.registerButton : t.loginButton),
             ),
+            if (!_registerMode)
+              TextButton(
+                onPressed: _busy ? null : _forgotPassword,
+                child: Text(t.forgotPassword),
+              ),
             TextButton(
               onPressed: _busy
                   ? null
