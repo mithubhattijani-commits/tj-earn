@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:tj_earn/l10n/app_localizations.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'admin_screen.dart';
 
@@ -58,6 +59,23 @@ class SettingsTab extends StatelessWidget {
         FilledButton(
           onPressed: () => Supabase.instance.client.auth.signOut(),
           child: Text(t.logout),
+        ),
+        const SizedBox(height: 24),
+        Text(t.helpSupport, style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 8),
+        Card(
+          child: ListTile(
+            leading: const Icon(Icons.support_agent),
+            title: Text(t.helpSupportName),
+            subtitle: const Text('WhatsApp'),
+            trailing: const Icon(Icons.chat),
+            onTap: () async {
+              final uri = Uri.parse('https://wa.me/923090808180');
+              if (await canLaunchUrl(uri)) {
+                await launchUrl(uri, mode: LaunchMode.externalApplication);
+              }
+            },
+          ),
         ),
       ],
     );
