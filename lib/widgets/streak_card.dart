@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:tj_earn/l10n/app_localizations.dart';
 
 import '../services/supabase_service.dart';
@@ -129,6 +130,8 @@ class _StreakCardState extends State<StreakCard> {
                 t.streakNext(nextMilestone.toString()),
                 style: Theme.of(context).textTheme.bodySmall,
               ),
+              const SizedBox(height: 12),
+              _WeekStrip(currentStreak: current),
               if (_message != null) ...[
                 const SizedBox(height: 8),
                 Text(
@@ -146,3 +149,67 @@ class _StreakCardState extends State<StreakCard> {
     );
   }
 }
+
+/// Seven-day trailing streak calendar.
+///
+/// Shows the last 7 calendar days with the user's localized weekday labels;
+/// the trailing `currentStreak` days are filled (capped at 7). Display only —
+/// check-ins and bonuses are handled server-side.
+class _WeekStrip extends StatelessWidget {
+  final int currentStreak;
+
+  const _WeekStrip({required this.currentStreak});
+
+  @override
+  Widget build(BuildContext context) {
+    final String locale = Localizations.localeOf(context).languageCode;
+    final DateTime today = DateTime.now();
+    final int filled = currentStreak > 7 ? 7 : currentStreak;
+    String dayLabel(DateTime day) {
+      try {
+        return DateFormat('E', locale).format(day);
+      } catch (_) {
+        return DateFormat('E', 'en').format(day);
+      }
+    }
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        for (int i = 6; i >= 0; i++)
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 30,
+                height: 30,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: doneFor(i, filled) ? Colors.orange.shade600 : Colors.transparent,
+                  border: Border.all(
+                    color: doneFor(i, filled)
+                        ? Colors.orange.shade600
+                        : Colors.grey.shade400,
+                    width: 2,
+                  ),
+                ),
+                child: Icon(
+                  doneFor(i, filled) ? Icons.check : Icons.local_fire_department,
+                  size: 14,
+                  color: doneFor(i, filled) ? Colors.white : Colors.grey.shade400,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                dayLabel(today.subtract(Duration(days: i))),
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      fontWeight: i == 0 ? FontWeight.bold : FontWeight.normal,
+                    ),
+              ),
+            ],
+          ),
+      ],
+    );
+  }
+
+  bool doneFor(int daysAgo, int filled) => daysAgo < filled;
