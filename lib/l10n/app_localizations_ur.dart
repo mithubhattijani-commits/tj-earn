@@ -443,6 +443,7 @@ class AppLocalizationsUr extends AppLocalizations {
 
   @override
   String rewardEarned(Object coins) => 'آپ نے $coins کوئنز حاصل کیے!';
+  String get rewardsSection => 'انعامات';
 
   @override
   String get adSkipped => 'اشتہار چھوڑ دیا — کوئی کوئنز نہیں ملے۔ کمانے کے لیے مکمل اشتہار دیکھیں۔';
@@ -452,6 +453,7 @@ class AppLocalizationsUr extends AppLocalizations {
 
   @override
   String get unityNotReady => 'اشتہارات ابھی تیار نہیں ہیں۔ تھوڑی دیر بعد دوبارہ کوشش کریں۔';
+  String get tasksTitle => 'میرے ٹاسکس';
 
   @override
   String get streakTitle => 'روزانہ اسٹریک';
