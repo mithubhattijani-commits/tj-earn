@@ -116,6 +116,12 @@ abstract class AppLocalizations {
   /// **'TJ Earn'**
   String get appTitle;
 
+  /// No description provided for @backToLogin.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to login'**
+  String get backToLogin;
+
   /// No description provided for @balance.
   ///
   /// In en, this message translates to:
@@ -200,6 +206,30 @@ abstract class AppLocalizations {
   /// **'You already have 2 pending withdrawal requests.'**
   String get errTooManyPending;
 
+  /// No description provided for @forgotPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Forgot password?'**
+  String get forgotPassword;
+
+  /// No description provided for @forgotPasswordHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your email — we'll send you a password reset link.'**
+  String get forgotPasswordHint;
+
+  /// No description provided for @forgotPasswordSent.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset link sent to your email. Please check your inbox.'**
+  String get forgotPasswordSent;
+
+  /// No description provided for @forgotPasswordTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset password'**
+  String get forgotPasswordTitle;
+
   /// No description provided for @genericError.
   ///
   /// In en, this message translates to:
@@ -247,6 +277,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Allow install permission in Settings, then try again.'**
   String get installPermissionNeeded;
+
+  /// No description provided for @invalidEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter a valid email address.'**
+  String get invalidEmail;
 
   /// No description provided for @language.
   ///
@@ -355,6 +391,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Registration failed. Try a different email.'**
   String get registerFailed;
+
+  /// No description provided for @sendResetLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Send reset link'**
+  String get sendResetLink;
 
   /// No description provided for @settingsTitle.
   ///
