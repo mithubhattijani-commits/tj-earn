@@ -440,6 +440,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get watchAdNote => 'One reward per completed ad. Daily limits apply.';
 
   @override
+  String get watchAdTile => 'Watch Ad\nEarn 20 Coins';
+
+  @override
+  String get watchAdRewardLine => 'Earn 20 coins per completed video';
+
+  @override
   String get pleaseWait => 'Please wait…';
 
   @override
