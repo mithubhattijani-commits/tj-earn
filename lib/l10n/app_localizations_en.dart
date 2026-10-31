@@ -545,4 +545,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get leaderboardYou => 'You';
+
+  @override
+  String get helpSupport => 'Help & Support';
+
+  @override
+  String get helpSupportName => 'Jaani Bhatti — 03090808180';
 }
