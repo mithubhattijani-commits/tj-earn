@@ -213,3 +213,4 @@ class _WeekStrip extends StatelessWidget {
   }
 
   bool doneFor(int daysAgo, int filled) => daysAgo < filled;
+}
