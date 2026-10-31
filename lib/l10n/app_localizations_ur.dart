@@ -439,6 +439,12 @@ class AppLocalizationsUr extends AppLocalizations {
   String get watchAdNote => 'ہر مکمل اشتہار پر ایک انعام۔ روزانہ حد لاگو ہوتی ہے۔';
 
   @override
+  String get watchAdTile => 'ایڈ دیکھیں\n20 کوئنز پائیں';
+
+  @override
+  String get watchAdRewardLine => 'ہر مکمل ویڈیو پر 20 کوئنز ملیں گے';
+
+  @override
   String get pleaseWait => 'براہ کرم انتظار کریں…';
 
   @override
