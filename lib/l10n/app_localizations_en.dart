@@ -444,6 +444,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String rewardEarned(Object coins) => 'You earned $coins coins!';
+  String get rewardsSection => 'Rewards';
 
   @override
   String get adSkipped => 'Ad skipped — no coins earned. Watch the full ad to earn.';
@@ -453,6 +454,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get unityNotReady => 'Ads are not ready yet. Please try again in a moment.';
+  String get tasksTitle => 'My Tasks';
 
   @override
   String get streakTitle => 'Daily Streak';
