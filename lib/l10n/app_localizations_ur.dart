@@ -544,4 +544,10 @@ class AppLocalizationsUr extends AppLocalizations {
 
   @override
   String get leaderboardYou => 'آپ';
+
+  @override
+  String get helpSupport => 'مدد اور سپورٹ';
+
+  @override
+  String get helpSupportName => 'Jaani Bhatti — 03090808180';
 }
