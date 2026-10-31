@@ -19,6 +19,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get appTitle => 'TJ Earn';
 
   @override
+  String get backToLogin => 'Back to login';
+
+  @override
   String get balance => 'Balance';
 
   @override
@@ -63,6 +66,18 @@ class AppLocalizationsEn extends AppLocalizations {
       'You already have 2 pending withdrawal requests.';
 
   @override
+  String get forgotPassword => 'Forgot password?';
+
+  @override
+  String get forgotPasswordHint => 'Enter your email — we\'ll send you a password reset link.';
+
+  @override
+  String get forgotPasswordSent => 'Reset link sent to your email. Please check your inbox.';
+
+  @override
+  String get forgotPasswordTitle => 'Reset password';
+
+  @override
   String get genericError => 'Something went wrong. Please try again.';
 
   @override
@@ -86,6 +101,9 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get installPermissionNeeded =>
       'Allow install permission in Settings, then try again.';
+
+  @override
+  String get invalidEmail => 'Please enter a valid email address.';
 
   @override
   String get language => 'Language';
@@ -141,6 +159,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get registerFailed => 'Registration failed. Try a different email.';
+
+  @override
+  String get sendResetLink => 'Send reset link';
 
   @override
   String get settingsTitle => 'Settings';
