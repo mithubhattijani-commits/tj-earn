@@ -8,6 +8,7 @@ import 'leaderboard_screen.dart';
 import 'onboarding_screen.dart';
 import 'spin_screen.dart';
 import 'streak_screen.dart';
+import 'watch_ad_screen.dart';
 
 /// Home dashboard: server-side balance + quick actions.
 ///
