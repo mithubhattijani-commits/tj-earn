@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:tj_earn/l10n/app_localizations.dart';
 
 import '../services/supabase_service.dart';
+import '../theme.dart';
 import '../widgets/onboarding_checklist.dart';
 import '../widgets/streak_card.dart';
 import 'leaderboard_screen.dart';
@@ -90,7 +91,17 @@ class _HomeTabState extends State<HomeTab> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Card(
+          Container(
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [TjEarnTheme.navyTop, TjEarnTheme.navyBottom],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                  color: TjEarnTheme.gold.withOpacity(0.35)),
+            ),
             child: Padding(
               padding: const EdgeInsets.all(24),
               child: Column(
@@ -128,7 +139,11 @@ class _HomeTabState extends State<HomeTab> {
                             '$coins',
                             style: Theme.of(context)
                                 .textTheme
-                                .displayMedium,
+                                .displayMedium
+                                ?.copyWith(
+                                  color: TjEarnTheme.gold,
+                                  fontWeight: FontWeight.bold,
+                                ),
                           ),
                           Text(t.coins),
                           const SizedBox(height: 4),

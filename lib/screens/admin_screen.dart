@@ -71,13 +71,13 @@ class _AdminDenied extends StatelessWidget {
             Text(
               '${t.adminLoggedInAs} ${SupabaseService.userEmail ?? ''}',
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 13, color: Colors.black54),
+              style: const TextStyle(fontSize: 13),
             ),
             const SizedBox(height: 4),
             Text(
               t.adminNotAdminHint,
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 13, color: Colors.black54),
+              style: const TextStyle(fontSize: 13),
             ),
             const SizedBox(height: 16),
             OutlinedButton.icon(

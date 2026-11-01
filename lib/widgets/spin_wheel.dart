@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:tj_earn/l10n/app_localizations.dart';
 
 import '../services/supabase_service.dart';
+import '../theme.dart';
 
 /// Daily spin wheel (Roz Dhan-style).
 ///
@@ -32,7 +33,7 @@ class _SpinWheelState extends State<SpinWheel>
     Colors.green.shade400,
     Colors.orange.shade400,
     Colors.purple.shade400,
-    Colors.teal.shade400,
+    TjEarnTheme.gold,
   ];
 
   @override

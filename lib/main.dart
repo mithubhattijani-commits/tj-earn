@@ -11,6 +11,7 @@ import 'services/admin_status.dart';
 import 'services/device_service.dart';
 import 'services/supabase_service.dart';
 import 'services/unity_ads_service.dart';
+import 'theme.dart';
 
 /// Language choice, persisted locally. Defaults to English.
 final ValueNotifier<Locale> appLocale = ValueNotifier(const Locale('en'));
@@ -86,10 +87,7 @@ class _TjEarnAppState extends State<TjEarnApp> {
             GlobalCupertinoLocalizations.delegate,
           ],
           supportedLocales: AppLocalizations.supportedLocales,
-          theme: ThemeData(
-            colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
-            useMaterial3: true,
-          ),
+          theme: TjEarnTheme.dark,
           home: FutureBuilder<bool>(
             future: _boot,
             builder: (context, snapshot) {
