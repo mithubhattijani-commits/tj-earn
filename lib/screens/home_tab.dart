@@ -100,7 +100,7 @@ class _HomeTabState extends State<HomeTab> {
               ),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                  color: TjEarnTheme.gold.withOpacity(0.35)),
+                  color: TjEarnTheme.gold.withValues(alpha: 0.35)),
             ),
             child: Padding(
               padding: const EdgeInsets.all(24),
