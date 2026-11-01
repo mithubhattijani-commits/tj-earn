@@ -5,6 +5,8 @@
   "appTitle": "ٹی جے ارن",
   "backToLogin": "ری سیٹ لنک بھیجیں",
   "balance": "بیلنس",
+  "about": "ہمارے بارے میں",
+  "retry": "دوبارہ کوشش کریں",
   "balanceLoadFailed": "بیلنس لوڈ نہیں ہو سکا۔",
   "coins": "کوائنز",
   "configErrorBody": "اس بلڈ کے لیے سپا بیس کنفیگر نہیں ہے۔ SUPABASE_URL اور SUPABASE_ANON_KEY کے ساتھ دوبارہ بلڈ کریں۔ تب تک کوئی بیلنس نہیں دکھایا جائے گا۔",

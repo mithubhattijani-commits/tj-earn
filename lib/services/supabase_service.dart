@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../config.dart';
@@ -11,10 +13,45 @@ import '../config.dart';
 /// zero code matches.
 class SupabaseService {  static SupabaseClient get client => Supabase.instance.client;
 
+  /// ROOT-CAUSE FIX (Jaani, 2 Nov 2026): every network call in this file
+  /// is bounded by a hard timeout. A stalled network used to hang these
+  /// futures forever — the UI showed infinite spinners and Android raised
+  /// ANR. Now a stall surfaces as [TimeoutException] so every caller can
+  /// render its error state instead.
+  static Future<T> _guard<T>(Future<T> Function() call,
+      {int seconds = 25}) {
+    return call().timeout(
+      Duration(seconds: seconds),
+      onTimeout: () =>
+          throw TimeoutException('Supabase request timed out'),
+    );
+  }
+
+  /// Edge Function invoke with a hard timeout (see [_guard]).
+  static Future<FunctionResponse> _invoke(
+    String functionName, {
+    Map<String, dynamic>? body,
+    HttpMethod method = HttpMethod.post,
+    Map<String, String>? queryParameters,
+  }) {
+    return _guard(
+      () => _invoke(
+        functionName,
+        body: body,
+        method: method,
+        queryParameters: queryParameters,
+      ),
+    );
+  }
+
   static Future<void> init() async {
+    // 15s hard cap: main() never waits on the network before runApp.
     await Supabase.initialize(
       url: AppConfig.supabaseUrl,
       publishableKey: AppConfig.supabaseAnonKey,
+    ).timeout(
+      const Duration(seconds: 15),
+      onTimeout: () => throw TimeoutException('Supabase init timed out'),
     );
   }
 
@@ -25,7 +62,7 @@ class SupabaseService {  static SupabaseClient get client => Supabase.instance.c
   /// Balance from the server (SUM of the ledger). Never computed locally
   /// from anything the app could edit.
   static Future<int> getBalance() async {
-    final res = await client.functions.invoke('get-balance');
+    final res = await _invoke('get-balance');
     if (res.status != 200) {
       throw Exception('get-balance failed: ${res.status}');
     }
@@ -40,12 +77,12 @@ class SupabaseService {  static SupabaseClient get client => Supabase.instance.c
   static Future<List<Map<String, dynamic>>> getLedger() async {
     final user = currentUser;
     if (user == null) throw Exception('not signed in');
-    final rows = await client
+    final rows = await _guard(() => client
         .from('ledger')
         .select()
         .eq('user_id', user.id)
         .order('created_at', ascending: false)
-        .limit(100);
+        .limit(100));
     return (rows as List).cast<Map<String, dynamic>>();
   }
 
@@ -53,12 +90,12 @@ class SupabaseService {  static SupabaseClient get client => Supabase.instance.c
   static Future<List<Map<String, dynamic>>> getWithdrawals() async {
     final user = currentUser;
     if (user == null) throw Exception('not signed in');
-    final rows = await client
+    final rows = await _guard(() => client
         .from('withdrawals')
         .select()
         .eq('user_id', user.id)
         .order('created_at', ascending: false)
-        .limit(50);
+        .limit(50));
     return (rows as List).cast<Map<String, dynamic>>();
   }
 
@@ -70,7 +107,7 @@ class SupabaseService {  static SupabaseClient get client => Supabase.instance.c
     required String rail,
     required String accountNumber,
   }) async {
-    final res = await client.functions.invoke(
+    final res = await _invoke(
       'request-withdrawal',
       body: {
         'amount_coins': amountCoins,
@@ -90,7 +127,7 @@ class SupabaseService {  static SupabaseClient get client => Supabase.instance.c
   /// privacy-conscious history (masked ids only). The code is auto-minted
   /// server-side on first call; the app never generates one itself.
   static Future<Map<String, dynamic>> getReferral() async {
-    final res = await client.functions.invoke('get-referral');
+    final res = await _invoke('get-referral');
     if (res.status != 200) {
       throw Exception('get-referral failed: ${res.status}');
     }
@@ -103,7 +140,7 @@ class SupabaseService {  static SupabaseClient get client => Supabase.instance.c
   /// duplicates, rate limits) is enforced by the `apply-referral` Edge
   /// Function; the app only surfaces the server's verdict.
   static Future<Map<String, dynamic>> applyReferral(String code) async {
-    final res = await client.functions.invoke(
+    final res = await _invoke(
       'apply-referral',
       body: {'code': code},
     );
@@ -122,7 +159,7 @@ class SupabaseService {  static SupabaseClient get client => Supabase.instance.c
   /// the update check silently instead of showing a fake update.
   static Future<Map<String, dynamic>?> getLatestVersion() async {
     try {
-      final res = await client.functions.invoke('version-check');
+      final res = await _invoke('version-check');
       if (res.status != 200) return null;
       final data = res.data;
       if (data is Map<String, dynamic>) return data;
@@ -139,7 +176,7 @@ class SupabaseService {  static SupabaseClient get client => Supabase.instance.c
   /// coins server-side. Returns the coins credited and remaining claims
   /// for today. Rewards are coins (virtual currency), never cash.
   static Future<Map<String, dynamic>> claimUnityReward() async {
-    final res = await client.functions.invoke('claim-unity-reward');
+    final res = await _invoke('claim-unity-reward');
     final data = res.data;
     if (res.status != 200) {
       final message =
@@ -157,7 +194,7 @@ class SupabaseService {  static SupabaseClient get client => Supabase.instance.c
   /// daily check-in. Returns current streak, milestone bonus (if any),
   /// and the next milestone.
   static Future<Map<String, dynamic>> claimStreak() async {
-    final res = await client.functions.invoke('claim-streak');
+    final res = await _invoke('claim-streak');
     final data = res.data;
     if (res.status != 200) {
       final message =
@@ -178,11 +215,11 @@ class SupabaseService {  static SupabaseClient get client => Supabase.instance.c
     final user = currentUser;
     if (user == null) return null;
     try {
-      final row = await client
+      final row = await _guard(() => client
           .from('streaks')
           .select()
           .eq('user_id', user.id)
-          .maybeSingle();
+          .maybeSingle());
       if (row == null) return null;
       return (row as Map).cast<String, dynamic>();
     } catch (_) {
@@ -195,7 +232,7 @@ class SupabaseService {  static SupabaseClient get client => Supabase.instance.c
   /// The `claim-spin` Edge Function picks a weighted-random reward
   /// server-side. Returns reward_coins and spins_remaining.
   static Future<Map<String, dynamic>> claimSpin() async {
-    final res = await client.functions.invoke('claim-spin');
+    final res = await _invoke('claim-spin');
     final data = res.data;
     if (res.status != 200) {
       final message =
@@ -213,7 +250,7 @@ class SupabaseService {  static SupabaseClient get client => Supabase.instance.c
   /// the completion bonus when all tasks are done. Valid tasks: profile,
   /// checkin, quiz, spin, referral.
   static Future<Map<String, dynamic>> claimOnboarding(String task) async {
-    final res = await client.functions.invoke(
+    final res = await _invoke(
       'claim-onboarding',
       body: {'task': task},
     );
@@ -234,10 +271,10 @@ class SupabaseService {  static SupabaseClient get client => Supabase.instance.c
     final user = currentUser;
     if (user == null) return [];
     try {
-      final rows = await client
+      final rows = await _guard(() => client
           .from('onboarding_tasks')
           .select('task_key')
-          .eq('user_id', user.id);
+          .eq('user_id', user.id));
       return (rows as List)
           .map((r) => (r as Map)['task_key'] as String)
           .toList();
@@ -251,7 +288,7 @@ class SupabaseService {  static SupabaseClient get client => Supabase.instance.c
   /// The `check-referral-milestone` Edge Function counts approved referrals
   /// and pays tier bonuses at 5/10/25. Idempotent — safe to call often.
   static Future<Map<String, dynamic>> checkReferralMilestone() async {
-    final res = await client.functions.invoke('check-referral-milestone');
+    final res = await _invoke('check-referral-milestone');
     final data = res.data;
     if (res.status != 200) {
       final message =
@@ -267,7 +304,7 @@ class SupabaseService {  static SupabaseClient get client => Supabase.instance.c
   /// The `get-leaderboard` Edge Function returns masked entries plus the
   /// caller's own rank. Read-only.
   static Future<Map<String, dynamic>> getLeaderboard() async {
-    final res = await client.functions.invoke('get-leaderboard');
+    final res = await _invoke('get-leaderboard');
     final data = res.data;
     if (res.status != 200) {
       final message =
@@ -285,7 +322,7 @@ class SupabaseService {  static SupabaseClient get client => Supabase.instance.c
   static Future<Map<String, dynamic>?> registerDevice(
       String deviceHash, String deviceModel) async {
     try {
-      final res = await client.functions.invoke(
+      final res = await _invoke(
         'register-device',
         body: {'device_hash': deviceHash, 'device_model': deviceModel},
       );
@@ -307,7 +344,7 @@ class SupabaseService {  static SupabaseClient get client => Supabase.instance.c
     int limit = 50,
     int offset = 0,
   }) async {
-    final res = await client.functions.invoke(
+    final res = await _invoke(
       'list-referrals',
       method: HttpMethod.get,
       queryParameters: {
@@ -322,7 +359,7 @@ class SupabaseService {  static SupabaseClient get client => Supabase.instance.c
   /// ADMIN — referral aggregate stats (read-only). See [listReferrals] for
   /// the authorization behaviour.
   static Future<Map<String, dynamic>> referralStats() async {
-    final res = await client.functions.invoke(
+    final res = await _invoke(
       'referral-stats',
       method: HttpMethod.get,
     );
@@ -343,7 +380,7 @@ class SupabaseService {  static SupabaseClient get client => Supabase.instance.c
     };
     if (userId != null && userId.isNotEmpty) params['user_id'] = userId;
     if (type != null && type.isNotEmpty) params['type'] = type;
-    final res = await client.functions.invoke(
+    final res = await _invoke(
       'list-ledger',
       method: HttpMethod.get,
       queryParameters: params,
@@ -366,7 +403,7 @@ class SupabaseService {  static SupabaseClient get client => Supabase.instance.c
     if (reason != null && reason.trim().isNotEmpty) {
       body['reason'] = reason.trim();
     }
-    final res = await client.functions.invoke('review-referral', body: body);
+    final res = await _invoke('review-referral', body: body);
     return _adminResult(res, 'review-referral');
   }
 

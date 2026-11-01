@@ -21,30 +21,55 @@ Future<void> main() async {
   final saved = prefs.getString('language');
   if (saved == 'ur') appLocale.value = const Locale('ur');
 
-  var initFailed = false;
-  if (AppConfig.isConfigured) {
-    try {
-      await SupabaseService.init();
-    } catch (_) {
-      initFailed = true;
-    }
-    // Unity Ads init is best-effort and never blocks startup: the Offers
-    // tab re-tries a late init and explains when ads are unavailable.
-    // ignore: unawaited_futures
-    UnityAdsService.init();
-  }
-
-  runApp(TjEarnApp(
-    configured: AppConfig.isConfigured && !initFailed,
-    prefs: prefs,
-  ));
+  // ROOT-CAUSE FIX (Jaani, 2 Nov 2026): runApp is called IMMEDIATELY.
+  // Nothing network-related runs before the first frame anymore — the
+  // old code awaited SupabaseService.init() here, and a stalled network
+  // hung the app on a black screen until Android raised ANR. Supabase
+  // init now happens inside _BootGate with a hard 15s timeout.
+  runApp(TjEarnApp(prefs: prefs));
 }
 
-class TjEarnApp extends StatelessWidget {
-  final bool configured;
+class TjEarnApp extends StatefulWidget {
   final SharedPreferences prefs;
 
-  const TjEarnApp({super.key, required this.configured, required this.prefs});
+  const TjEarnApp({super.key, required this.prefs});
+
+  @override
+  State<TjEarnApp> createState() => _TjEarnAppState();
+}
+
+class _TjEarnAppState extends State<TjEarnApp> {
+  late Future<bool> _boot;
+
+  @override
+  void initState() {
+    super.initState();
+    _boot = _bootApp();
+  }
+
+  /// Boots the backend connection. Returns true when Supabase is
+  /// configured AND initialized. Never throws and never hangs:
+  /// [SupabaseService.init] has a 15s hard timeout.
+  Future<bool> _bootApp() async {
+    if (!AppConfig.isConfigured) return false;
+    try {
+      await SupabaseService.init();
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  void _retryBoot() {
+    setState(() {
+      _boot = _bootApp();
+    });
+  }
+
+  Future<void> _changeLocale(Locale locale) async {
+    appLocale.value = locale;
+    await widget.prefs.setString('language', locale.languageCode);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -65,44 +90,65 @@ class TjEarnApp extends StatelessWidget {
             colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
             useMaterial3: true,
           ),
-          home: configured
-              ? AuthGate(onLocaleChanged: _changeLocale)
-              : const ConfigErrorScreen(),
+          home: FutureBuilder<bool>(
+            future: _boot,
+            builder: (context, snapshot) {
+              if (!snapshot.hasData) {
+                // Brief local-only loading; never a network wait.
+                return const Scaffold(
+                  body: Center(child: CircularProgressIndicator()),
+                );
+              }
+              if (snapshot.data == true) {
+                // Unity Ads init is best-effort and never blocks startup:
+                // the Watch Ad screen re-tries a late init and explains
+                // when ads are unavailable.
+                // ignore: unawaited_futures
+                UnityAdsService.init();
+                return AuthGate(onLocaleChanged: _changeLocale);
+              }
+              return ConfigErrorScreen(onRetry: _retryBoot);
+            },
+          ),
         );
       },
     );
   }
-
-  Future<void> _changeLocale(Locale locale) async {
-    appLocale.value = locale;
-    await prefs.setString('language', locale.languageCode);
-  }
 }
 
-/// Shown when Supabase is not configured (or init failed). The app never
-/// shows a fake balance or a fake logged-in state in this condition.
+/// Shown when Supabase is not configured (or init failed / timed out).
+/// The app never shows a fake balance or a fake logged-in state in this
+/// condition. A retry button re-runs the bounded boot.
 class ConfigErrorScreen extends StatelessWidget {
-  const ConfigErrorScreen({super.key});
+  final VoidCallback onRetry;
+
+  const ConfigErrorScreen({super.key, required this.onRetry});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('TJ Earn')),
-      body: const Padding(
-        padding: EdgeInsets.all(24),
+      body: Padding(
+        padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
-              'App not configured',
+            const Text(
+              'Connection failed',
               style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
             ),
-            SizedBox(height: 12),
-            Text(
-              'Supabase is not configured for this build. Set SUPABASE_URL '
-              'and SUPABASE_ANON_KEY with --dart-define and rebuild. '
-              'No balance is shown until then.',
+            const SizedBox(height: 12),
+            const Text(
+              'Could not reach the TJ Earn server. Check your internet '
+              'connection and try again. No balance is shown until the '
+              'connection works.',
+            ),
+            const SizedBox(height: 24),
+            FilledButton.icon(
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Retry'),
             ),
           ],
         ),

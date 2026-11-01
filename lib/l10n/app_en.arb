@@ -5,6 +5,8 @@
   "appTitle": "TJ Earn",
   "backToLogin": "Send reset link",
   "balance": "Balance",
+  "about": "About",
+  "retry": "Retry",
   "balanceLoadFailed": "Could not load balance.",
   "coins": "coins",
   "configErrorBody": "Supabase is not configured for this build. Set SUPABASE_URL and SUPABASE_ANON_KEY with --dart-define and rebuild. No balance is shown until then.",

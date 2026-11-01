@@ -102,7 +102,21 @@ class _HomeTabState extends State<HomeTab> {
                     future: _balance,
                     builder: (context, snapshot) {
                       if (snapshot.hasError) {
-                        return Text(t.balanceLoadFailed);
+                        // Timed-out/failed load: show the error with a
+                        // retry instead of spinning forever.
+                        return Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(t.balanceLoadFailed),
+                            const SizedBox(height: 4),
+                            TextButton(
+                              onPressed: () => setState(() {
+                                _balance = SupabaseService.getBalance();
+                              }),
+                              child: Text(t.retry),
+                            ),
+                          ],
+                        );
                       }
                       if (!snapshot.hasData) {
                         return const CircularProgressIndicator();
