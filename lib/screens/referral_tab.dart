@@ -482,6 +482,12 @@ class _MilestoneCardState extends State<_MilestoneCard> {
     final t = AppLocalizations.of(context)!;
     final next = _milestone?['next_milestone'] as Map<String, dynamic>?;
     final bonus = _milestone?['bonus_coins'] as int? ?? 0;
+    // Tier progress: the server reports how many MORE referrals the next
+    // tier needs, so the tier target is approved + remaining. Read-only.
+    final int approvedCount = widget.approved;
+    final int remaining =
+        next != null ? (next['remaining'] as int?) ?? 0 : 0;
+    final int tierTarget = approvedCount + remaining;
 
     return Card(
       color: Colors.amber.shade50,
@@ -515,14 +521,27 @@ class _MilestoneCardState extends State<_MilestoneCard> {
                   ),
                 ),
               ),
-            if (next != null)
+            if (next != null) ...[
               Text(
                 t.referralMilestoneNext(
                   (next['remaining'] as int).toString(),
                   (next['bonus'] as int).toString(),
                 ),
-              )
-            else
+              ),
+              // Visual progress toward the next milestone tier
+              const SizedBox(height: 8),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: LinearProgressIndicator(
+                  value: tierTarget > 0
+                      ? approvedCount / tierTarget
+                      : 0.0,
+                  minHeight: 8,
+                  backgroundColor: Colors.amber.shade100,
+                  color: Colors.amber.shade700,
+                ),
+              ),
+            ] else
               Text(
                 t.referralMilestoneReached(''),
                 style: Theme.of(context).textTheme.bodySmall,

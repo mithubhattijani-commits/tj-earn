@@ -82,6 +82,17 @@ class _OnboardingChecklistState extends State<OnboardingChecklist> {
                     fontWeight: FontWeight.bold,
                   ),
             ),
+            const SizedBox(height: 8),
+            // Animated progress bar toward the onboarding bonus
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                value: _completed.length / tasks.length,
+                minHeight: 8,
+                backgroundColor:
+                    Theme.of(context).colorScheme.surfaceContainerHighest,
+              ),
+            ),
             const SizedBox(height: 12),
             ...tasks.map((task) {
               final isDone = _completed.contains(task.$1);
