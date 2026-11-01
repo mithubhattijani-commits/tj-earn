@@ -49,7 +49,7 @@ class _WithdrawTabState extends State<WithdrawTab> {
     }
   }
 
-  String _errorText(AppLocalizations t, String key) {
+  Future<void> _submit() async {
     final t = AppLocalizations.of(context)!;
     setState(() {
       _busy = true;
