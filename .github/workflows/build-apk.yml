@@ -56,6 +56,16 @@ jobs:
         run: |
           ls -la build/app/outputs/flutter-apk/app-release.apk
           unzip -t build/app/outputs/flutter-apk/app-release.apk | tail -3
+          APK=build/app/outputs/flutter-apk/app-release.apk
+          AAPT2=$(ls "$ANDROID_SDK_ROOT"/build-tools/*/aapt2 | head -1)
+          APKSIGNER=$(ls "$ANDROID_SDK_ROOT"/build-tools/*/apksigner | head -1)
+          "$AAPT2" dump badging "$APK" | grep -F "package: name='com.tjearn.app'"
+          "$AAPT2" dump badging "$APK" | grep -F "versionCode='3'"
+          "$AAPT2" dump badging "$APK" | grep -F "versionName='1.0.2'"
+          "$APKSIGNER" verify --print-certs "$APK" | tee certs.txt
+          ACTUAL_DIGEST=$(grep "Signer #1 certificate SHA-256 digest" certs.txt | awk '{print $NF}' | tr -d ':' | tr '[:upper:]' '[:lower:]')
+          if [ "$ACTUAL_DIGEST" != "b58d8a8810080c111f11f7a81dd36db0f2587d1d6a4f7752632ef82a295ca7df" ]; then echo "SIGNER MISMATCH: got $ACTUAL_DIGEST"; exit 1; fi
+          echo "VERIFY OK: signer matches TJ Earn day-1 key"
 
       - name: Upload APK to Release
         env:
