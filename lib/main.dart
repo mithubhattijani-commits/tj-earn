@@ -101,8 +101,14 @@ class _TjEarnAppState extends State<TjEarnApp> {
                 // Unity Ads init is best-effort and never blocks startup:
                 // the Watch Ad screen re-tries a late init and explains
                 // when ads are unavailable.
+                // Dual-ad system (Jaani, 2 Nov 2026): after init, show the
+                // App Open ad once per cold start (fire-and-forget, never
+                // blocks the UI).
                 // ignore: unawaited_futures
-                UnityAdsService.init();
+                UnityAdsService.init().then((_) {
+                  // ignore: unawaited_futures
+                  UnityAdsService.showAppOpenAd();
+                });
                 return AuthGate(onLocaleChanged: _changeLocale);
               }
               return ConfigErrorScreen(onRetry: _retryBoot);
