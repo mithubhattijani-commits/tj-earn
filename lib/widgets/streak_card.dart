@@ -48,10 +48,6 @@ class _StreakCardState extends State<StreakCard> {
     try {
       final result = await SupabaseService.claimStreak();
       if (!mounted) return;
-      // Dual-ad system (Jaani, 2 Nov 2026): coins are already granted
-      // above; show an interstitial fire-and-forget (never blocks).
-      // ignore: unawaited_futures
-      UnityAdsService.showInterstitialAd();
       final bonus = result['bonus_coins'] as int? ?? 0;
       setState(() {
         _message = bonus > 0
@@ -59,6 +55,10 @@ class _StreakCardState extends State<StreakCard> {
             : t.streakKeepGoing;
       });
       _load();
+      // Dual-ad system (Jaani, 2 Nov 2026): interstitial AFTER coins are
+      // granted — fire-and-forget, never blocks.
+      // ignore: unawaited_futures
+      UnityAdsService.showClaimInterstitial();
     } catch (e) {
       if (!mounted) return;
       setState(() {

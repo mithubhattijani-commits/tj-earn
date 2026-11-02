@@ -70,10 +70,6 @@ class _SpinWheelState extends State<SpinWheel>
     try {
       final result = await SupabaseService.claimSpin();
       final coins = result['reward_coins'] as int? ?? 0;
-      // Dual-ad system (Jaani, 2 Nov 2026): coins are already granted
-      // above; show an interstitial fire-and-forget (never blocks).
-      // ignore: unawaited_futures
-      UnityAdsService.showInterstitialAd();
 
       if (!mounted) return;
 
@@ -106,6 +102,10 @@ class _SpinWheelState extends State<SpinWheel>
         // Flash the winning segment, then clear the highlight.
         _wonIndex = winIndex;
       });
+      // Dual-ad system (Jaani, 2 Nov 2026): interstitial AFTER coins are
+      // granted — fire-and-forget, never blocks.
+      // ignore: unawaited_futures
+      UnityAdsService.showClaimInterstitial();
       Future.delayed(const Duration(seconds: 3), () {
         if (mounted) setState(() => _wonIndex = null);
       });

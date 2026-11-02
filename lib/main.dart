@@ -102,8 +102,7 @@ class _TjEarnAppState extends State<TjEarnApp> {
                 // the Watch Ad screen re-tries a late init and explains
                 // when ads are unavailable.
                 // Dual-ad system (Jaani, 2 Nov 2026): after init, show the
-                // App Open ad once per cold start (fire-and-forget, never
-                // blocks the UI).
+                // App Open ad once per cold start (fire-and-forget, 8s max).
                 // ignore: unawaited_futures
                 UnityAdsService.init().then((_) {
                   // ignore: unawaited_futures
