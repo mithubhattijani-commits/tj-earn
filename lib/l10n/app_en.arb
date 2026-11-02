@@ -188,5 +188,9 @@
   "noInternetForUpdate": "No internet connection — turn on internet to check for updates",
   "updateInfoNotFound": "Update info not found — try again later",
   "helpSupport": "Help & Support",
-  "helpSupportName": "Jaani Bhatti — 03090808180"
+  "helpSupportName": "Jaani Bhatti — 03090808180",
+  "checkForUpdate": "Check for Update",
+  "@checkForUpdate": {
+    "description": "Button to manually check for app updates"
+  }
 }

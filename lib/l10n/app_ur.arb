@@ -188,5 +188,9 @@
   "noInternetForUpdate": "انٹرنیٹ کنکشن نہیں ہے — چیک کرنے کے لیے انٹرنیٹ آن کریں",
   "updateInfoNotFound": "اپ ڈیٹ معلومات نہیں ملیں — بعد میں کوشش کریں",
   "helpSupport": "مدد اور سپورٹ",
-  "helpSupportName": "Jaani Bhatti — 03090808180"
+  "helpSupportName": "Jaani Bhatti — 03090808180",
+  "checkForUpdate": "اپ ڈیٹ چیک کریں",
+  "@checkForUpdate": {
+    "description": "Button to manually check for app updates"
+  }
 }

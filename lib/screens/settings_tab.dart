@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'admin_screen.dart';
+import '../services/updater_service.dart';
 
 /// Settings: language switch (persisted) + logout.
 ///
@@ -48,6 +49,12 @@ class SettingsTab extends StatelessWidget {
           },
         ),
         const SizedBox(height: 24),
+        OutlinedButton.icon(
+          onPressed: () => UpdaterService.checkManually(context),
+          icon: const Icon(Icons.system_update_outlined),
+          label: Text(t.checkForUpdate),
+        ),
+        const SizedBox(height: 12),
         OutlinedButton.icon(
           onPressed: () => Navigator.of(context).push(
             MaterialPageRoute(builder: (_) => const AdminScreen()),
