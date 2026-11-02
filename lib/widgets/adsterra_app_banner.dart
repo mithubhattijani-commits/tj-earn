@@ -30,9 +30,16 @@ class _AdsterraAppBannerState extends State<AdsterraAppBanner> {
   WebViewController? _controller;
   bool _failed = false;
 
+  /// KILL-SWITCH (Jaani, 2 Nov 2026): banner OFF until ANR root cause proven fixed.
+  static const bool adsEnabled = false;
+
   @override
   void initState() {
     super.initState();
+    if (!adsEnabled) {
+      _failed = true;
+      return;
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Future.delayed(const Duration(seconds: 3), () {
         if (!mounted) return;

@@ -25,6 +25,11 @@ class UnityAdsService {
   /// Keep true while testing. Production builds set this to false.
   static const bool testMode = false;
 
+  /// MASTER AD KILL-SWITCH (Jaani, 2 Nov 2026): ALL Unity ads OFF.
+  /// v1.0.7 delayed init didn't stop ANR — ads fully disabled until root
+  /// cause is proven fixed. Set to true only on Jaani's explicit order.
+  static const bool adsEnabled = false;
+
   static bool _initialized = false;
   static bool _initFailed = false;
   static bool _initStarted = false;
@@ -39,6 +44,7 @@ class UnityAdsService {
   /// Initialize the Unity Ads SDK. Safe to call once at app startup;
   /// subsequent calls are no-ops. Never throws.
   static Future<void> init() async {
+    if (!adsEnabled) return;
     if (_initialized || _initFailed || _initStarted) return;
     _initStarted = true;
     try {
