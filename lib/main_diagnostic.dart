@@ -3,22 +3,26 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-/// DIAGNOSTIC BUILD v1.0.17 — Supabase init test (Jaani, 2 Nov 2026).
+/// DIAGNOSTIC BUILD v1.0.18 — Balance query test (Jaani, 2 Nov 2026).
 ///
 /// Purpose: isolate the startup ANR on Jaani's phone, one component at a time.
 ///
 /// v1.0.16 (no plugins, no network) worked fine -> phone + framework OK.
-/// v1.0.17 adds ONLY Supabase.initialize(), replicating the real app's
-/// exact pattern (15s timeout, same as SupabaseService.init on main).
+/// v1.0.17 (Supabase init only) worked fine -> init is safe.
+/// v1.0.18 adds ONLY the balance query, using the exact same pattern as
+/// the real app: SupabaseService.getBalance() -> _invoke('get-balance')
+/// -> client.functions.invoke with 15s hard timeout.
 ///
 /// How to read the result:
-///   * If THIS build ANRs -> Supabase.initialize() is the culprit
-///     (likely a native-side block during plugin init).
-///   * If it runs fine and shows "Supabase: OK" -> init is safe;
-///     next step adds actual queries.
+///   * If THIS build ANRs -> the balance network call is the culprit.
+///   * If it runs fine and shows "Balance: X coins" or "Balance: FAIL"
+///     -> balance query is safe; next step adds the next query.
 ///
-/// No queries, no auth, no other plugins. No network calls except what
-/// Supabase.initialize() itself does internally.
+/// Note: no auth in this diagnostic, so get-balance may return 401
+/// (JWT required). That is EXPECTED — the test is whether the call
+/// completes without hanging, not whether it succeeds.
+///
+/// No other queries, no other plugins.
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -40,12 +44,51 @@ void main() async {
         msg.length > 80 ? 'Supabase: FAIL (${msg.substring(0, 80)}...)' : 'Supabase: FAIL ($msg)';
   }
 
-  runApp(DiagnosticApp(supabaseStatus: supabaseStatus));
+  // v1.0.18: add ONLY the balance query.
+  // Exact pattern from SupabaseService.getBalance() on main:
+  // _invoke('get-balance') -> client.functions.invoke with 15s timeout.
+  String balanceStatus;
+  if (!supabaseStatus.contains('OK')) {
+    balanceStatus = 'Balance: SKIPPED (Supabase init failed)';
+  } else {
+    try {
+      final res = await Supabase.instance.client.functions
+          .invoke('get-balance')
+          .timeout(
+            const Duration(seconds: 15),
+            onTimeout: () => throw TimeoutException('get-balance timed out'),
+          );
+      if (res.status != 200) {
+        balanceStatus = 'Balance: FAIL (HTTP ${res.status})';
+      } else {
+        final data = res.data;
+        if (data is Map && data['balance_coins'] is int) {
+          balanceStatus = 'Balance: ${data['balance_coins']} coins';
+        } else {
+          balanceStatus = 'Balance: FAIL (unexpected response)';
+        }
+      }
+    } catch (e) {
+      final String msg = e.toString().split('\n').first;
+      balanceStatus =
+          msg.length > 80 ? 'Balance: FAIL (${msg.substring(0, 80)}...)' : 'Balance: FAIL ($msg)';
+    }
+  }
+
+  runApp(DiagnosticApp(
+    supabaseStatus: supabaseStatus,
+    balanceStatus: balanceStatus,
+  ));
 }
 
 class DiagnosticApp extends StatelessWidget {
   final String supabaseStatus;
-  const DiagnosticApp({super.key, required this.supabaseStatus});
+  final String balanceStatus;
+  const DiagnosticApp({
+    super.key,
+    required this.supabaseStatus,
+    required this.balanceStatus,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -55,14 +98,22 @@ class DiagnosticApp extends StatelessWidget {
       theme: ThemeData.dark().copyWith(
         scaffoldBackgroundColor: const Color(0xFF111111),
       ),
-      home: DiagnosticHome(supabaseStatus: supabaseStatus),
+      home: DiagnosticHome(
+        supabaseStatus: supabaseStatus,
+        balanceStatus: balanceStatus,
+      ),
     );
   }
 }
 
 class DiagnosticHome extends StatefulWidget {
   final String supabaseStatus;
-  const DiagnosticHome({super.key, required this.supabaseStatus});
+  final String balanceStatus;
+  const DiagnosticHome({
+    super.key,
+    required this.supabaseStatus,
+    required this.balanceStatus,
+  });
 
   @override
   State<DiagnosticHome> createState() => _DiagnosticHomeState();
@@ -121,6 +172,10 @@ class _DiagnosticHomeState extends State<DiagnosticHome> {
 
   Widget _homeBody() {
     final bool supabaseOk = widget.supabaseStatus.contains('OK');
+    final bool balanceOk =
+        widget.balanceStatus.startsWith('Balance: ') &&
+        !widget.balanceStatus.contains('FAIL') &&
+        !widget.balanceStatus.contains('SKIPPED');
     return ListView(
       padding: const EdgeInsets.all(16),
       children: <Widget>[
@@ -138,7 +193,7 @@ class _DiagnosticHomeState extends State<DiagnosticHome> {
             child: Column(
               children: <Widget>[
                 const Text(
-                  'DIAGNOSTIC BUILD 1.0.17',
+                  'DIAGNOSTIC BUILD 1.0.18',
                   style: TextStyle(
                     color: Color(0xFFD4AF37),
                     fontWeight: FontWeight.bold,
@@ -153,10 +208,20 @@ class _DiagnosticHomeState extends State<DiagnosticHome> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
+                const SizedBox(height: 4),
+                Text(
+                  widget.balanceStatus,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: balanceOk ? Colors.greenAccent : Colors.orangeAccent,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
                 const SizedBox(height: 8),
                 const Text(
-                  'Supabase init only. No queries, no other plugins.\n'
-                  'If this hangs, Supabase.initialize() is the cause.',
+                  'Balance query only (get-balance). No other queries,\n'
+                  'no other plugins. If this hangs, the balance\n'
+                  'network call is the cause.',
                   textAlign: TextAlign.center,
                   style: TextStyle(color: Colors.grey),
                 ),
