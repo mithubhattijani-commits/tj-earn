@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:tj_earn/l10n/app_localizations.dart';
+import 'package:url_launcher/url_launcher.dart';
 
+import '../services/remote_config_service.dart';
 import '../services/supabase_service.dart';
 import '../theme.dart';
 import '../widgets/adsterra_app_banner.dart';
@@ -16,6 +18,96 @@ import 'watch_ad_screen.dart';
 ///
 /// The balance shown here comes from the `get-balance` Edge Function
 /// (SUM of the ledger). Nothing on this screen can change it.
+/// Server-driven sponsored ad card (Jaani, 2 Nov 2026).
+///
+/// Visible only when the Remote Config enables it with a non-empty title
+/// and action URL. Tap opens the action URL in the external browser;
+/// the tap never auto-fires and the card hides gracefully if the image
+/// fails to load. Renders nothing (zero height) when disabled.
+class SponsoredAdCard extends StatelessWidget {
+  const SponsoredAdCard({super.key});
+
+  Future<void> _openAd(String actionUrl) async {
+    try {
+      final Uri uri = Uri.parse(actionUrl.trim());
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (_) {
+      // Ad taps must never break the app.
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<RemoteConfig>(
+      valueListenable: RemoteConfigService.instance.notifier,
+      builder: (BuildContext context, RemoteConfig cfg, _) {
+        final SponsoredAdConfig ad = cfg.sponsoredAd;
+        if (!ad.show) {
+          return const SizedBox.shrink();
+        }
+        final String imageUrl = ad.imageUrl.trim();
+        return Column(
+          children: [
+            Card(
+              child: InkWell(
+                borderRadius: BorderRadius.circular(12),
+                onTap: () => _openAd(ad.actionUrl),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (imageUrl.isNotEmpty)
+                      ClipRRect(
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(12),
+                        ),
+                        child: Image.network(
+                          imageUrl,
+                          height: 140,
+                          fit: BoxFit.cover,
+                          errorBuilder: (
+                            BuildContext context,
+                            Object error,
+                            StackTrace? stackTrace,
+                          ) {
+                            return const SizedBox.shrink();
+                          },
+                        ),
+                      ),
+                    Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.campaign,
+                            color: TjEarnTheme.gold,
+                            size: 24,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              ad.title,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleSmall
+                                  ?.copyWith(color: TjEarnTheme.gold),
+                            ),
+                          ),
+                          const Icon(Icons.open_in_new, size: 18),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+        );
+      },
+    );
+  }
+}
+
 class HomeTab extends StatefulWidget {
   final void Function(int tab) onNavigate;
 
@@ -170,6 +262,9 @@ class _HomeTabState extends State<HomeTab> {
           // Daily streak card (Swagbucks-style retention)
           const StreakCard(),
           const SizedBox(height: 16),
+          // Server-driven sponsored ad (Remote Config). Zero height when
+          // the server disables it — no layout shift, no placeholder.
+          const SponsoredAdCard(),
           // Rewards — dedicated screens for each engagement feature
           Text(t.rewardsSection,
               style: Theme.of(context).textTheme.titleMedium),

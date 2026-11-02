@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:tj_earn/l10n/app_localizations.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -9,6 +11,7 @@ import 'screens/auth_screen.dart';
 import 'screens/main_shell.dart';
 import 'services/admin_status.dart';
 import 'services/device_service.dart';
+import 'services/remote_config_service.dart';
 import 'services/supabase_service.dart';
 import 'services/unity_ads_service.dart';
 import 'theme.dart';
@@ -27,6 +30,13 @@ Future<void> main() async {
   // old code awaited SupabaseService.init() here, and a stalled network
   // hung the app on a black screen until Android raised ANR. Supabase
   // init now happens inside _BootGate with a hard 15s timeout.
+
+  // Remote Config (Jaani, 2 Nov 2026): fire-and-forget, NOT awaited.
+  // init() loads the local cache (fast) and refreshes from the network
+  // in the background with an 8s timeout — nothing here may block the
+  // first frame (APP ROBUSTNESS RULE).
+  unawaited(RemoteConfigService.instance.init());
+
   runApp(TjEarnApp(prefs: prefs));
 }
 
