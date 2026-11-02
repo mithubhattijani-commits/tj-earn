@@ -120,22 +120,83 @@ class HomeTab extends StatefulWidget {
 }
 
 class _HomeTabState extends State<HomeTab> {
-  late Future<int> _balance;
+  int? _coins;
+  bool _loadFailed = false;
 
   @override
   void initState() {
     super.initState();
-    _balance = _bundleBalance();
+    // Cache-first (Jaani, 2 Nov 2026 — PERMANENT hang fix): the last-known
+    // balance renders INSTANTLY from local cache; a single background
+    // refresh updates it silently. initState never awaits the network.
+    _coins = StartupBundleService.balanceCoins;
+    StartupBundleService.refreshInBackground();
+    StartupBundleService.refreshDone.addListener(_onRefresh);
   }
 
-  /// Balance from the startup bundle (Jaani, 2 Nov 2026): one shared
-  /// server call instead of a dedicated balance request.
-  Future<int> _bundleBalance() async {
-    final bundle = await StartupBundleService.loadBundle();
-    final coins = bundle?['balance_coins'];
-    if (coins is int) return coins;
-    if (coins is num) return coins.toInt();
-    throw Exception('balance unavailable');
+  /// Re-read the sync getters on every completed refresh attempt
+  /// (success or failure).
+  void _onRefresh() {
+    if (!mounted) return;
+    final coins = StartupBundleService.balanceCoins;
+    if (coins != _coins || (coins == null) != _loadFailed) {
+      setState(() {
+        _coins = coins;
+        // No usable balance after a completed attempt = failure state.
+        _loadFailed = coins == null;
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    StartupBundleService.refreshDone.removeListener(_onRefresh);
+    super.dispose();
+  }
+
+  /// Balance card body: cached coins render instantly; spinner only on
+  /// the very first run with no cache; error + retry when the server is
+  /// unreachable.
+  Widget _buildBalanceBody() {
+    final t = AppLocalizations.of(context)!;
+    if (_loadFailed) {
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(t.balanceLoadFailed),
+          const SizedBox(height: 4),
+          TextButton(
+            onPressed: () => StartupBundleService.refreshNow(),
+            child: Text(t.retry),
+          ),
+        ],
+      );
+    }
+    final coins = _coins;
+    if (coins == null) {
+      // First-ever run, cache empty, refresh still in flight.
+      return const CircularProgressIndicator();
+    }
+    return Column(
+      children: [
+        Text(
+          '$coins',
+          style: Theme.of(context).textTheme.displayMedium?.copyWith(
+                color: TjEarnTheme.gold,
+                fontWeight: FontWeight.bold,
+              ),
+        ),
+        Text(t.coins),
+        const SizedBox(height: 4),
+        // Coins stay primary; the ≈Rs equivalent is
+        // secondary (1 coin = Rs 0.01). Restored per
+        // Jaani, 29 Oct 2026 ("Rs rehny do").
+        Text(
+          t.balanceRsApprox(_rsValue(coins)),
+          style: Theme.of(context).textTheme.bodyMedium,
+        ),
+      ],
+    );
   }
 
   /// Rs equivalent of a coin balance (1 coin = Rs 0.01), formatted
@@ -214,56 +275,7 @@ class _HomeTabState extends State<HomeTab> {
                   Text(t.balance,
                       style: Theme.of(context).textTheme.titleMedium),
                   const SizedBox(height: 8),
-                  FutureBuilder<int>(
-                    future: _balance,
-                    builder: (context, snapshot) {
-                      if (snapshot.hasError) {
-                        // Timed-out/failed load: show the error with a
-                        // retry instead of spinning forever.
-                        return Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(t.balanceLoadFailed),
-                            const SizedBox(height: 4),
-                            TextButton(
-                              onPressed: () => setState(() {
-                                StartupBundleService.reset();
-                                _balance = _bundleBalance();
-                              }),
-                              child: Text(t.retry),
-                            ),
-                          ],
-                        );
-                      }
-                      if (!snapshot.hasData) {
-                        return const CircularProgressIndicator();
-                      }
-                      final coins = snapshot.data!;
-                      return Column(
-                        children: [
-                          Text(
-                            '$coins',
-                            style: Theme.of(context)
-                                .textTheme
-                                .displayMedium
-                                ?.copyWith(
-                                  color: TjEarnTheme.gold,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                          ),
-                          Text(t.coins),
-                          const SizedBox(height: 4),
-                          // Coins stay primary; the ≈Rs equivalent is
-                          // secondary (1 coin = Rs 0.01). Restored per
-                          // Jaani, 29 Oct 2026 ("Rs rehny do").
-                          Text(
-                            t.balanceRsApprox(_rsValue(coins)),
-                            style: Theme.of(context).textTheme.bodyMedium,
-                          ),
-                        ],
-                      );
-                    },
-                  ),
+                  _buildBalanceBody(),
                 ],
               ),
             ),

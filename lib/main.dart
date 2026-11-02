@@ -13,7 +13,6 @@ import 'services/admin_status.dart';
 import 'services/startup_bundle_service.dart';
 import 'services/device_service.dart';
 import 'services/remote_config_service.dart';
-import 'services/startup_queue.dart';
 import 'services/supabase_service.dart';
 import 'services/unity_ads_service.dart';
 import 'theme.dart';
@@ -38,6 +37,12 @@ Future<void> main() async {
   // in the background with an 8s timeout — nothing here may block the
   // first frame (APP ROBUSTNESS RULE).
   unawaited(RemoteConfigService.instance.init());
+
+  // Cache-first startup (Jaani, 2 Nov 2026 — PERMANENT hang fix): load
+  // the last-known balance/streak/onboarding from local disk BEFORE the
+  // first frame, so every card renders INSTANTLY from cache. A single
+  // background refresh updates the data silently after login.
+  await StartupBundleService.initCache();
 
   runApp(TjEarnApp(prefs: prefs));
 }
@@ -203,10 +208,11 @@ class AuthGate extends StatelessWidget {
           StartupBundleService.reset();
           return const AuthScreen();
         }
-        // Bundled startup (Jaani, 2 Nov 2026): ONE call fetches balance,
-        // streak, onboarding, and the admin flag — replaces 4 separate
-        // calls that hung the app on slow connections.
-        StartupQueue.instance.add(() => StartupBundleService.loadBundle());
+        // Cache-first startup (Jaani, 2 Nov 2026 — PERMANENT hang fix):
+        // ONE background call refreshes balance, streak, onboarding,
+        // and the admin flag. The UI already rendered from local cache,
+        // so this never blocks — widgets update via refreshDone.
+        StartupBundleService.refreshInBackground();
         // Register device for anti-fraud (silent, never blocks).
         // DeviceService.register runs fully in background (Jaani, 2 Nov 2026):
     // it never touches UI, so it doesn't need the queue — fire-and-forget.

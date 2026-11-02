@@ -22,38 +22,52 @@ class StreakCard extends StatefulWidget {
 
 class _StreakCardState extends State<StreakCard> {
   Map<String, dynamic>? _streak;
-  bool _loading = true;
+  bool _settled = false;
   String? _message;
 
   @override
   void initState() {
     super.initState();
-    // Startup bundle (Jaani, 2 Nov 2026): reads the shared bundle —
-    // no separate server call.
-    _load();
+    // Cache-first (Jaani, 2 Nov 2026 — PERMANENT hang fix): the last-known
+    // streak renders INSTANTLY from local cache; a background refresh
+    // updates it silently. initState never awaits the network.
+    _streak = StartupBundleService.streak;
+    _settled = StartupBundleService.hasCache;
+    StartupBundleService.refreshInBackground();
+    StartupBundleService.refreshDone.addListener(_onRefresh);
   }
 
-  Future<void> _load() async {
-    try {
-      // Use cached bundle first (Jaani, 2 Nov 2026 fix): if Balance already
-      // loaded the bundle, read it synchronously — never hang on a future.
-      var cached = StartupBundleService.cached;
-      if (cached == null) {
-        // Fallback: await with 10s timeout so a stuck future can't hang UI.
-        cached = await StartupBundleService.loadBundle().timeout(
-          const Duration(seconds: 10),
-          onTimeout: () => null,
-        );
-      }
-      if (mounted) {
-        setState(() {
-          final s = cached?['streak'];
-          _streak = s is Map ? s.cast<String, dynamic>() : null;
-          _loading = false;
-        });
-      }
-    } catch (_) {
-      if (mounted) setState(() => _loading = false);
+  /// Re-read the streak slice on every completed refresh attempt.
+  void _onRefresh() {
+    if (!mounted) return;
+    final s = StartupBundleService.streak;
+    final changed = (s == null) != (_streak == null) ||
+        s?['current_streak'] != _streak?['current_streak'] ||
+        !_settled;
+    if (changed) {
+      setState(() {
+        _streak = s;
+        // A completed attempt with no streak row = genuine zero state
+        // (new user), not a spinner — never hang.
+        _settled = true;
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    StartupBundleService.refreshDone.removeListener(_onRefresh);
+    super.dispose();
+  }
+
+  void _load() {
+    // Manual reload (after claiming): re-read the cache; the claim
+    // endpoints return fresh state via their own calls.
+    if (mounted) {
+      setState(() {
+        _streak = StartupBundleService.streak;
+        _settled = true;
+      });
     }
   }
 
@@ -84,7 +98,8 @@ class _StreakCardState extends State<StreakCard> {
   @override
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context)!;
-    if (_loading) {
+    if (!_settled) {
+      // First-ever run, cache empty, refresh still in flight.
       return const Card(
         child: Padding(
           padding: EdgeInsets.all(20),

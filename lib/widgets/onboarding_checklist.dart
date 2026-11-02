@@ -18,37 +18,43 @@ class OnboardingChecklist extends StatefulWidget {
 
 class _OnboardingChecklistState extends State<OnboardingChecklist> {
   List<String> _completed = [];
-  bool _loading = true;
+  bool _settled = false;
   bool _allDone = false;
 
   @override
   void initState() {
     super.initState();
-    // Startup bundle (Jaani, 2 Nov 2026): reads the shared bundle —
-    // no separate server call.
-    _load();
+    // Cache-first (Jaani, 2 Nov 2026 — PERMANENT hang fix): the last-known
+    // checklist renders INSTANTLY from local cache; a background refresh
+    // updates it silently. initState never awaits the network.
+    _completed = StartupBundleService.onboardingCompleted;
+    _allDone = _completed.length >= 5;
+    _settled = StartupBundleService.hasCache;
+    StartupBundleService.refreshInBackground();
+    StartupBundleService.refreshDone.addListener(_onRefresh);
   }
 
-  Future<void> _load() async {
-    try {
-      await StartupBundleService.loadBundle().timeout(const Duration(seconds: 10), onTimeout: () => null);
-      if (mounted) {
-        final completed = StartupBundleService.onboardingCompleted;
-        setState(() {
-          _completed = completed;
-          _loading = false;
-          _allDone = completed.length >= 5;
-        });
-      }
-    } catch (_) {
-      if (mounted) setState(() => _loading = false);
-    }
+  /// Re-read the onboarding slice on every completed refresh attempt.
+  void _onRefresh() {
+    if (!mounted) return;
+    final completed = StartupBundleService.onboardingCompleted;
+    setState(() {
+      _completed = completed;
+      _settled = true;
+      _allDone = completed.length >= 5;
+    });
+  }
+
+  @override
+  void dispose() {
+    StartupBundleService.refreshDone.removeListener(_onRefresh);
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context)!;
-    if (_loading || _allDone) return const SizedBox.shrink();
+    if (!_settled || _allDone) return const SizedBox.shrink();
 
     final tasks = [
       ('profile', t.onboardingProfile, Icons.person),
