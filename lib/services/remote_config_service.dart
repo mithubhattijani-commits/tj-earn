@@ -1,11 +1,11 @@
-/// Remote Config — server-driven in-app content (v1).
-///
-/// Fail-soft: network -> cache -> bundled defaults. Never blocks startup,
-/// never an infinite spinner, never a crash — on any failure the app just
-/// uses what it has (APP ROBUSTNESS RULE, Jaani 2 Nov 2026).
-///
-/// Config URL (live): https://nigraantv.xyz/apps/config/tj-earn.json
-/// Operator workflow: see ~/workspace/app-remote-config/REMOTE-CONFIG.md
+// Remote Config — server-driven in-app content (v1).
+//
+// Fail-soft: network -> cache -> bundled defaults. Never blocks startup,
+// never an infinite spinner, never a crash — on any failure the app just
+// uses what it has (APP ROBUSTNESS RULE, Jaani 2 Nov 2026).
+//
+// Config URL (live): https://nigraantv.xyz/apps/config/tj-earn.json
+// Operator workflow: see ~/workspace/app-remote-config/REMOTE-CONFIG.md
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
