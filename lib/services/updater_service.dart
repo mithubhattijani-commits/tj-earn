@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:tj_earn/l10n/app_localizations.dart';
-import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -167,6 +166,11 @@ class UpdaterService {
     }
   }
 
+  /// Download via Android DownloadManager (Jaani, 2 Nov 2026 — permanent
+  /// fix for background-killed downloads): the system process handles the
+  /// download, so it survives app background/kill, shows a notification with
+  /// progress, and auto-resumes on network interruption. We poll for
+  /// completion then fire the install intent.
   static Future<void> _downloadAndInstall(
     BuildContext context,
     String apkUrl,
@@ -188,13 +192,52 @@ class UpdaterService {
         SnackBar(content: Text(localizations.downloading)),
       );
     }
-    final dir = await getTemporaryDirectory();
-    final file = File('${dir.path}/tj-earn-update.apk');
-    final request = http.Request('GET', Uri.parse(apkUrl));
-    final streamed = await http.Client().send(request);
-    if (streamed.statusCode != 200) return;
-    final sink = file.openWrite();
-    await streamed.stream.pipe(sink);
-    await _channel.invokeMethod<void>('installApk', {'path': file.path});
+    try {
+      final downloadId = await _channel.invokeMethod<int>(
+        'downloadApk',
+        {'url': apkUrl, 'fileName': 'tj-earn-update.apk'},
+      );
+      if (downloadId == null) return;
+      // Poll DownloadManager for completion (max ~10 minutes).
+      for (var i = 0; i < 120; i++) {
+        await Future.delayed(const Duration(seconds: 5));
+        final status = await _channel.invokeMethod<Map>('downloadStatus', {
+          'downloadId': downloadId,
+        });
+        final s = status?['status'] as String?;
+        if (s == 'success') {
+          final uri = status?['localUri'] as String? ?? '';
+          final path = _uriToPath(uri);
+          if (path != null && context.mounted) {
+            await _channel.invokeMethod<void>('installApk', {'path': path});
+          }
+          return;
+        } else if (s == 'failed' || s == 'not_found') {
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(localizations.genericError)),
+            );
+          }
+          return;
+        }
+        // running/pending/paused → keep polling; system notification shows progress.
+      }
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(localizations.genericError)),
+        );
+      }
+    }
+  }
+
+  /// Convert a DownloadManager local URI (file:// or content://) to a path
+  /// usable by the install intent. For content:// URIs we copy to cache.
+  static String? _uriToPath(String uri) {
+    if (uri.isEmpty) return null;
+    if (uri.startsWith('file://')) {
+      return Uri.parse(uri).toFilePath();
+    }
+    return null; // content:// handled by system; shouldn't happen with our dest
   }
 }

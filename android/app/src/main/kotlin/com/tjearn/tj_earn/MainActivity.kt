@@ -1,8 +1,11 @@
 package com.tjearn.tj_earn
 
+import android.app.DownloadManager
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
+import android.os.Environment
 import android.provider.Settings
 import androidx.core.content.FileProvider
 import io.flutter.embedding.android.FlutterActivity
@@ -18,6 +21,12 @@ import java.io.File
  * - installApk(path): fires ACTION_INSTALL_PACKAGE for a downloaded APK
  *   through FileProvider, so Android treats it as an update (same package,
  *   same key, higher versionCode) and keeps the app's data.
+ * - downloadApk(url, fileName): enqueues via Android DownloadManager (system
+ *   process — survives app background/kill, shows notification, auto-resumes).
+ *   Returns the system download ID.
+ * - downloadStatus(downloadId): polls DownloadManager for status/progress.
+ *   Returns map: {status: "running"|"success"|"failed"|"pending"|"paused",
+ *   bytesDownloaded, bytesTotal, localUri}.
  */
 class MainActivity : FlutterActivity() {
     private val channelName = "tj_earn/updater"
@@ -62,6 +71,81 @@ class MainActivity : FlutterActivity() {
                         }
                         startActivity(intent)
                         result.success(null)
+                    }
+                    "downloadApk" -> {
+                        val url = call.argument<String>("url")
+                        val fileName = call.argument<String>("fileName") ?: "tj-earn-update.apk"
+                        if (url == null) {
+                            result.error("NO_URL", "Missing download URL", null)
+                            return@setMethodCallHandler
+                        }
+                        try {
+                            val dm = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+                            val request = DownloadManager.Request(Uri.parse(url)).apply {
+                                setTitle("TJ Earn Update")
+                                setDescription("Downloading update...")
+                                setNotificationVisibility(
+                                    DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED
+                                )
+                                setDestinationInExternalFilesDir(
+                                    this@MainActivity,
+                                    Environment.DIRECTORY_DOWNLOADS,
+                                    fileName,
+                                )
+                                setAllowedOverMetered(true)
+                                setAllowedOverRoaming(false)
+                            }
+                            val downloadId = dm.enqueue(request)
+                            result.success(downloadId)
+                        } catch (e: Exception) {
+                            result.error("DOWNLOAD_FAILED", e.message, null)
+                        }
+                    }
+                    "downloadStatus" -> {
+                        val downloadId = call.argument<Long>("downloadId")
+                            ?: call.argument<Int>("downloadId")?.toLong()
+                        if (downloadId == null) {
+                            result.error("NO_ID", "Missing download ID", null)
+                            return@setMethodCallHandler
+                        }
+                        try {
+                            val dm = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+                            val query = DownloadManager.Query().setFilterById(downloadId)
+                            val cursor = dm.query(query)
+                            if (cursor.moveToFirst()) {
+                                val statusIdx = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS)
+                                val downloadedIdx = cursor.getColumnIndex(
+                                    DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR
+                                )
+                                val totalIdx = cursor.getColumnIndex(
+                                    DownloadManager.COLUMN_TOTAL_SIZE_BYTES
+                                )
+                                val uriIdx = cursor.getColumnIndex(
+                                    DownloadManager.COLUMN_LOCAL_URI
+                                )
+                                val status = when (cursor.getInt(statusIdx)) {
+                                    DownloadManager.STATUS_SUCCESSFUL -> "success"
+                                    DownloadManager.STATUS_FAILED -> "failed"
+                                    DownloadManager.STATUS_RUNNING -> "running"
+                                    DownloadManager.STATUS_PENDING -> "pending"
+                                    DownloadManager.STATUS_PAUSED -> "paused"
+                                    else -> "unknown"
+                                }
+                                val map = mapOf(
+                                    "status" to status,
+                                    "bytesDownloaded" to cursor.getLong(downloadedIdx),
+                                    "bytesTotal" to cursor.getLong(totalIdx),
+                                    "localUri" to (cursor.getString(uriIdx) ?: ""),
+                                )
+                                cursor.close()
+                                result.success(map)
+                            } else {
+                                cursor.close()
+                                result.success(mapOf("status" to "not_found"))
+                            }
+                        } catch (e: Exception) {
+                            result.error("QUERY_FAILED", e.message, null)
+                        }
                     }
                     else -> result.notImplemented()
                 }
