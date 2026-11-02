@@ -205,7 +205,9 @@ class AuthGate extends StatelessWidget {
         // one-by-one, gradually — never all at once.
         StartupQueue.instance.add(AdminStatus.probe);
         // Register device for anti-fraud (silent, never blocks).
-        StartupQueue.instance.add(DeviceService.register);
+        // DeviceService.register runs fully in background (Jaani, 2 Nov 2026):
+    // it never touches UI, so it doesn't need the queue — fire-and-forget.
+    unawaited(DeviceService.register().catchError((_) {}));
         return MainShell(
           locale: appLocale.value,
           onLocaleChanged: onLocaleChanged,
