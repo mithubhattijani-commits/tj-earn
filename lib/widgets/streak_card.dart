@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:tj_earn/l10n/app_localizations.dart';
 
 import '../services/supabase_service.dart';
+import '../services/unity_ads_service.dart';
 import '../theme.dart';
 
 /// Daily streak display card.
@@ -47,6 +48,10 @@ class _StreakCardState extends State<StreakCard> {
     try {
       final result = await SupabaseService.claimStreak();
       if (!mounted) return;
+      // Dual-ad system (Jaani, 2 Nov 2026): coins are already granted
+      // above; show an interstitial fire-and-forget (never blocks).
+      // ignore: unawaited_futures
+      UnityAdsService.showInterstitialAd();
       final bonus = result['bonus_coins'] as int? ?? 0;
       setState(() {
         _message = bonus > 0

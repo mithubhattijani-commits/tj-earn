@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:tj_earn/l10n/app_localizations.dart';
 
 import '../services/supabase_service.dart';
+import '../services/unity_ads_service.dart';
 import '../theme.dart';
 
 /// Daily spin wheel (Roz Dhan-style).
@@ -69,6 +70,10 @@ class _SpinWheelState extends State<SpinWheel>
     try {
       final result = await SupabaseService.claimSpin();
       final coins = result['reward_coins'] as int? ?? 0;
+      // Dual-ad system (Jaani, 2 Nov 2026): coins are already granted
+      // above; show an interstitial fire-and-forget (never blocks).
+      // ignore: unawaited_futures
+      UnityAdsService.showInterstitialAd();
 
       if (!mounted) return;
 
