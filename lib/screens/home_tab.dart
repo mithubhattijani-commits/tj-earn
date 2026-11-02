@@ -6,6 +6,7 @@ import '../theme.dart';
 import '../widgets/onboarding_checklist.dart';
 import '../widgets/streak_card.dart';
 import 'leaderboard_screen.dart';
+import '../widgets/ad_banner_webview.dart';
 import 'onboarding_screen.dart';
 import 'spin_screen.dart';
 import 'streak_screen.dart';
@@ -163,6 +164,10 @@ class _HomeTabState extends State<HomeTab> {
             ),
           ),
           const SizedBox(height: 16),
+          // Dual-ad system (Jaani, 2 Nov 2026): in-app Adsterra banner.
+          // Loads https://nigraantv.xyz/earn/app-banner/ for a real
+          // Adsterra impression on every visit. Hidden on error/offline.
+          const AdBannerWebView(),
           // Onboarding checklist for new users (hidden when complete)
           const OnboardingChecklist(),
           const SizedBox(height: 16),
