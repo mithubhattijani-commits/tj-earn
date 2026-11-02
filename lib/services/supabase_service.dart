@@ -74,6 +74,20 @@ class SupabaseService {  static SupabaseClient get client => Supabase.instance.c
   }
 
   /// Own ledger rows, newest first. RLS restricts this to the caller's rows.
+  /// Bundled startup data (Jaani, 2 Nov 2026): ONE call returns balance,
+  /// streak, onboarding progress, and the admin flag — replaces 4 separate
+  /// calls that piled up on slow connections (ANR). Prefer
+  /// [StartupBundleService.loadBundle] (cached) over calling this directly.
+  static Future<Map<String, dynamic>> getStartupBundle() async {
+    final res = await _invoke('get-startup-bundle');
+    if (res.status != 200) {
+      throw Exception('get-startup-bundle failed: ${res.status}');
+    }
+    final data = res.data;
+    if (data is Map<String, dynamic>) return data;
+    throw Exception('get-startup-bundle returned an unexpected response');
+  }
+
   static Future<List<Map<String, dynamic>>> getLedger() async {
     final user = currentUser;
     if (user == null) throw Exception('not signed in');

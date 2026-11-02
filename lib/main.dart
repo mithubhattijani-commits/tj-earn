@@ -10,6 +10,7 @@ import 'config.dart';
 import 'screens/auth_screen.dart';
 import 'screens/main_shell.dart';
 import 'services/admin_status.dart';
+import 'services/startup_bundle_service.dart';
 import 'services/device_service.dart';
 import 'services/remote_config_service.dart';
 import 'services/startup_queue.dart';
@@ -199,11 +200,13 @@ class AuthGate extends StatelessWidget {
             Supabase.instance.client.auth.currentSession;
         if (session == null) {
           AdminStatus.reset();
+          StartupBundleService.reset();
           return const AuthScreen();
         }
-        // Startup queue (Jaani, 2 Nov 2026): post-login server calls run
-        // one-by-one, gradually — never all at once.
-        StartupQueue.instance.add(AdminStatus.probe);
+        // Bundled startup (Jaani, 2 Nov 2026): ONE call fetches balance,
+        // streak, onboarding, and the admin flag — replaces 4 separate
+        // calls that hung the app on slow connections.
+        StartupQueue.instance.add(() => StartupBundleService.loadBundle());
         // Register device for anti-fraud (silent, never blocks).
         // DeviceService.register runs fully in background (Jaani, 2 Nov 2026):
     // it never touches UI, so it doesn't need the queue — fire-and-forget.

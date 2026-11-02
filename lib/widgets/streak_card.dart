@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../services/startup_queue.dart';
+import '../services/startup_bundle_service.dart';
 import 'package:intl/intl.dart';
 import 'package:tj_earn/l10n/app_localizations.dart';
 
@@ -28,16 +28,18 @@ class _StreakCardState extends State<StreakCard> {
   @override
   void initState() {
     super.initState();
-    // Startup queue (Jaani, 2 Nov 2026): loads one-by-one, gradually.
-    StartupQueue.instance.add(() => _load());
+    // Startup bundle (Jaani, 2 Nov 2026): reads the shared bundle —
+    // no separate server call.
+    _load();
   }
 
   Future<void> _load() async {
     try {
-      final streak = await SupabaseService.getStreak();
+      final bundle = await StartupBundleService.loadBundle();
       if (mounted) {
         setState(() {
-          _streak = streak;
+          final s = bundle?['streak'];
+          _streak = s is Map ? s.cast<String, dynamic>() : null;
           _loading = false;
         });
       }

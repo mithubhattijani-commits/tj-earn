@@ -5,8 +5,7 @@ import 'package:tj_earn/l10n/app_localizations.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../services/remote_config_service.dart';
-import '../services/startup_queue.dart';
-import '../services/supabase_service.dart';
+import '../services/startup_bundle_service.dart';
 import '../theme.dart';
 import '../widgets/adsterra_app_banner.dart';
 import '../widgets/onboarding_checklist.dart';
@@ -126,21 +125,17 @@ class _HomeTabState extends State<HomeTab> {
   @override
   void initState() {
     super.initState();
-    _balance = _queuedBalance();
+    _balance = _bundleBalance();
   }
 
-  /// Balance loads FIRST in the startup queue (Jaani, 2 Nov 2026): the
-  /// home screen's server calls run one-by-one instead of all at once.
-  Future<int> _queuedBalance() {
-    final Completer<int> completer = Completer<int>();
-    StartupQueue.instance.addFirst(() async {
-      try {
-        completer.complete(await SupabaseService.getBalance());
-      } catch (e) {
-        completer.completeError(e);
-      }
-    });
-    return completer.future;
+  /// Balance from the startup bundle (Jaani, 2 Nov 2026): one shared
+  /// server call instead of a dedicated balance request.
+  Future<int> _bundleBalance() async {
+    final bundle = await StartupBundleService.loadBundle();
+    final coins = bundle?['balance_coins'];
+    if (coins is int) return coins;
+    if (coins is num) return coins.toInt();
+    throw Exception('balance unavailable');
   }
 
   /// Rs equivalent of a coin balance (1 coin = Rs 0.01), formatted
@@ -232,7 +227,8 @@ class _HomeTabState extends State<HomeTab> {
                             const SizedBox(height: 4),
                             TextButton(
                               onPressed: () => setState(() {
-                                _balance = _queuedBalance();
+                                StartupBundleService.reset();
+                                _balance = _bundleBalance();
                               }),
                               child: Text(t.retry),
                             ),
