@@ -164,6 +164,12 @@ abstract class AppLocalizations {
   /// **'Downloading update…'**
   String get downloading;
 
+  /// No description provided for @downloadStalled.
+  ///
+  /// In en, this message translates to:
+  /// **'Stalled — check your connection'**
+  String get downloadStalled;
+
   /// No description provided for @email.
   ///
   /// In en, this message translates to:

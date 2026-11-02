@@ -16,6 +16,87 @@ import 'validation.dart';
 /// (com.tjearn.app) + same signing key + a higher versionCode means Android
 /// treats it as an update, never a reinstall. Play Store installs are
 /// updated by Play itself and never reach this path in practice.
+/// Live download-progress state (Jaani, 2 Nov 2026): the update download
+/// must show visible progress in the app — percent + MB downloaded/total —
+/// so the user never stares at a stuck screen wondering if it is downloading.
+class _DownloadProgress {
+  final int downloaded;
+  final int total;
+  final bool stalled;
+
+  const _DownloadProgress({
+    required this.downloaded,
+    required this.total,
+    required this.stalled,
+  });
+}
+
+/// Non-blocking download progress banner (Jaani, 2 Nov 2026): sits at the
+/// bottom of the screen while the APK downloads in the background — the
+/// app is never locked behind a modal dialog.
+class _DownloadProgressBanner extends StatelessWidget {
+  final ValueNotifier<_DownloadProgress> progress;
+  final AppLocalizations localizations;
+
+  const _DownloadProgressBanner({
+    required this.progress,
+    required this.localizations,
+  });
+
+  static String _mb(int bytes) {
+    final double mb = bytes / 1048576.0;
+    return mb.toStringAsFixed(1);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      left: 16.0,
+      right: 16.0,
+      bottom: 32.0,
+      child: Material(
+        elevation: 8.0,
+        borderRadius: BorderRadius.circular(12.0),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: ValueListenableBuilder<_DownloadProgress>(
+            valueListenable: progress,
+            builder: (BuildContext ctx, _DownloadProgress p, Widget? _) {
+              final int rawPct =
+                  p.total > 0 ? ((p.downloaded / p.total) * 100).round() : 0;
+              final int pct = rawPct < 0 ? 0 : (rawPct > 100 ? 100 : rawPct);
+              final double? barValue =
+                  p.total > 0 ? p.downloaded / p.total : null;
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    localizations.downloading,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8.0),
+                  LinearProgressIndicator(value: barValue),
+                  const SizedBox(height: 8.0),
+                  Text('${_mb(p.downloaded)} / ${_mb(p.total)} MB \u2022 $pct%'),
+                  if (p.stalled)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4.0),
+                      child: Text(
+                        localizations.downloadStalled,
+                        style: const TextStyle(color: Colors.orange),
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class UpdaterService {
   static const _channel = MethodChannel('tj_earn/updater');
 
@@ -186,10 +267,23 @@ class UpdaterService {
       }
       return;
     }
+    final ValueNotifier<_DownloadProgress> progress =
+        ValueNotifier<_DownloadProgress>(
+      const _DownloadProgress(downloaded: 0, total: 0, stalled: false),
+    );
+    OverlayEntry? banner;
     if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(localizations.downloading)),
-      );
+      final OverlayState? overlay =
+          Navigator.of(context, rootNavigator: true).overlay;
+      if (overlay != null) {
+        banner = OverlayEntry(
+          builder: (BuildContext ctx) => _DownloadProgressBanner(
+            progress: progress,
+            localizations: localizations,
+          ),
+        );
+        overlay.insert(banner);
+      }
     }
     try {
       final downloadId = await _channel.invokeMethod<int>(
@@ -197,13 +291,29 @@ class UpdaterService {
         {'url': apkUrl, 'fileName': 'tj-earn-update.apk'},
       );
       if (downloadId == null) return;
+      int lastBytes = 0;
+      DateTime lastChange = DateTime.now();
       // Poll DownloadManager for completion (max ~10 minutes).
-      for (var i = 0; i < 120; i++) {
-        await Future.delayed(const Duration(seconds: 5));
+      for (var i = 0; i < 300; i++) {
+        await Future.delayed(const Duration(seconds: 2));
         final status = await _channel.invokeMethod<Map>('downloadStatus', {
           'downloadId': downloadId,
         });
         final s = status?['status'] as String?;
+        final int downloaded = (status?['bytesDownloaded'] as int?) ?? 0;
+        final int total = (status?['bytesTotal'] as int?) ?? 0;
+        final DateTime now = DateTime.now();
+        if (downloaded > lastBytes) {
+          lastBytes = downloaded;
+          lastChange = now;
+        }
+        final bool stalled = (s == 'running' || s == 'pending') &&
+            now.difference(lastChange).inSeconds >= 60;
+        progress.value = _DownloadProgress(
+          downloaded: downloaded,
+          total: total,
+          stalled: stalled,
+        );
         if (s == 'success') {
           final uri = status?['localUri'] as String? ?? '';
           final path = _uriToPath(uri);
@@ -219,7 +329,7 @@ class UpdaterService {
           }
           return;
         }
-        // running/pending/paused → keep polling; system notification shows progress.
+        // running/pending/paused -> keep polling; banner shows live progress.
       }
     } catch (_) {
       if (context.mounted) {
@@ -227,6 +337,9 @@ class UpdaterService {
           SnackBar(content: Text(localizations.genericError)),
         );
       }
+    } finally {
+      banner?.remove();
+      progress.dispose();
     }
   }
 

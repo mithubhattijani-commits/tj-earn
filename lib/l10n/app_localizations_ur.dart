@@ -42,6 +42,8 @@ class AppLocalizationsUr extends AppLocalizations {
 
   @override
   String get downloading => 'اپ ڈیٹ ڈاؤن لوڈ ہو رہا ہے…';
+  @override
+  String get downloadStalled => 'ڈاؤن لوڈ رک گیا ہے — اپنا انٹرنیٹ چیک کریں';
 
   @override
   String get email => 'ای میل';

@@ -13,6 +13,7 @@
   "configErrorTitle": "ایپ کنفیگر نہیں ہے",
   "displayName": "نام",
   "downloading": "اپ ڈیٹ ڈاؤن لوڈ ہو رہا ہے…",
+  "downloadStalled": "ڈاؤن لوڈ رک گیا ہے — اپنا انٹرنیٹ چیک کریں",
   "email": "ای میل",
   "english": "انگریزی",
   "errAmountExceedsBalance": "رقم آپ کے بیلنس سے زیادہ ہے۔",

@@ -13,6 +13,7 @@
   "configErrorTitle": "App not configured",
   "displayName": "Display name",
   "downloading": "Downloading update…",
+  "downloadStalled": "Stalled — check your connection",
   "email": "Email",
   "english": "English",
   "errAmountExceedsBalance": "Amount is greater than your balance.",

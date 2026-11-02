@@ -42,6 +42,8 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get downloading => 'Downloading update…';
+  @override
+  String get downloadStalled => 'Stalled — check your connection';
 
   @override
   String get email => 'Email';
