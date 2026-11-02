@@ -1,30 +1,51 @@
-import 'package:flutter/material.dart';
+import 'dart:async';
 
-/// DIAGNOSTIC BUILD — "bilkul khali app" (Jaani, 2 Nov 2026).
+import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+/// DIAGNOSTIC BUILD v1.0.17 — Supabase init test (Jaani, 2 Nov 2026).
 ///
-/// Purpose: isolate the startup ANR on Jaani's phone.
+/// Purpose: isolate the startup ANR on Jaani's phone, one component at a time.
 ///
-/// This entry point:
-///   * calls runApp() SYNCHRONOUSLY — zero awaits before the first frame,
-///   * initializes NO plugins (no Supabase, Firebase, Unity Ads, AdMob,
-///     SharedPreferences, webview, device_info, url_launcher, share_plus),
-///   * makes NO network calls,
-///   * renders a static TJ Earn look-alike (dark + gold) with hardcoded
-///     dummy data.
+/// v1.0.16 (no plugins, no network) worked fine -> phone + framework OK.
+/// v1.0.17 adds ONLY Supabase.initialize(), replicating the real app's
+/// exact pattern (15s timeout, same as SupabaseService.init on main).
 ///
 /// How to read the result:
-///   * If THIS build ANRs on Jaani's phone -> the cause is the phone or the
-///     Flutter framework itself, not our code.
-///   * If it runs fine -> we add components back one by one to find the
-///     culprit.
+///   * If THIS build ANRs -> Supabase.initialize() is the culprit
+///     (likely a native-side block during plugin init).
+///   * If it runs fine and shows "Supabase: OK" -> init is safe;
+///     next step adds actual queries.
 ///
-/// This file intentionally imports ONLY package:flutter/material.dart.
-void main() {
-  runApp(const DiagnosticApp());
+/// No queries, no auth, no other plugins. No network calls except what
+/// Supabase.initialize() itself does internally.
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  String supabaseStatus;
+  try {
+    // Exact pattern from SupabaseService.init() on main:
+    // 15s hard cap so main() never waits forever.
+    await Supabase.initialize(
+      url: const String.fromEnvironment('SUPABASE_URL'),
+      publishableKey: const String.fromEnvironment('SUPABASE_ANON_KEY'),
+    ).timeout(
+      const Duration(seconds: 15),
+      onTimeout: () => throw TimeoutException('Supabase init timed out'),
+    );
+    supabaseStatus = 'Supabase: OK (initialized)';
+  } catch (e) {
+    final String msg = e.toString().split('\n').first;
+    supabaseStatus =
+        msg.length > 80 ? 'Supabase: FAIL (${msg.substring(0, 80)}...)' : 'Supabase: FAIL ($msg)';
+  }
+
+  runApp(DiagnosticApp(supabaseStatus: supabaseStatus));
 }
 
 class DiagnosticApp extends StatelessWidget {
-  const DiagnosticApp({super.key});
+  final String supabaseStatus;
+  const DiagnosticApp({super.key, required this.supabaseStatus});
 
   @override
   Widget build(BuildContext context) {
@@ -34,13 +55,14 @@ class DiagnosticApp extends StatelessWidget {
       theme: ThemeData.dark().copyWith(
         scaffoldBackgroundColor: const Color(0xFF111111),
       ),
-      home: const DiagnosticHome(),
+      home: DiagnosticHome(supabaseStatus: supabaseStatus),
     );
   }
 }
 
 class DiagnosticHome extends StatefulWidget {
-  const DiagnosticHome({super.key});
+  final String supabaseStatus;
+  const DiagnosticHome({super.key, required this.supabaseStatus});
 
   @override
   State<DiagnosticHome> createState() => _DiagnosticHomeState();
@@ -69,7 +91,7 @@ class _DiagnosticHomeState extends State<DiagnosticHome> {
 
   void _diagSnack(String what) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$what — diagnostic mode, no backend')),
+      SnackBar(content: Text('$what — diagnostic mode, no backend calls')),
     );
   }
 
@@ -98,6 +120,7 @@ class _DiagnosticHomeState extends State<DiagnosticHome> {
   }
 
   Widget _homeBody() {
+    final bool supabaseOk = widget.supabaseStatus.contains('OK');
     return ListView(
       padding: const EdgeInsets.all(16),
       children: <Widget>[
@@ -115,16 +138,25 @@ class _DiagnosticHomeState extends State<DiagnosticHome> {
             child: Column(
               children: <Widget>[
                 const Text(
-                  'DIAGNOSTIC BUILD 1.0.16',
+                  'DIAGNOSTIC BUILD 1.0.17',
                   style: TextStyle(
                     color: Color(0xFFD4AF37),
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 const SizedBox(height: 8),
+                Text(
+                  widget.supabaseStatus,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: supabaseOk ? Colors.greenAccent : Colors.redAccent,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
                 const Text(
-                  'No plugins. No network. Static UI only.\n'
-                  'If this hangs, the phone/framework is the cause.',
+                  'Supabase init only. No queries, no other plugins.\n'
+                  'If this hangs, Supabase.initialize() is the cause.',
                   textAlign: TextAlign.center,
                   style: TextStyle(color: Colors.grey),
                 ),
@@ -252,7 +284,7 @@ class _DiagnosticHomeState extends State<DiagnosticHome> {
   Widget _placeholderBody(String label) {
     return Center(
       child: Text(
-        '$label\n(diagnostic mode \u2014 no backend)',
+        '$label\n(diagnostic mode \u2014 no backend calls)',
         textAlign: TextAlign.center,
         style: const TextStyle(color: Colors.grey, fontSize: 16),
       ),
