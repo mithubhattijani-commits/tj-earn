@@ -477,6 +477,13 @@ class AppLocalizationsUr extends AppLocalizations {
   String streakNext(Object days) => 'اگلا بونس $days دن پر';
 
   @override
+  String streakAtRisk(Object days) =>
+      'آپ کی $days دن کی اسٹریک خطرے میں ہے! اسے جاری رکھنے کے لیے آج چیک اِن کریں۔';
+
+  @override
+  String get streakCheckedInToday => 'آج چیک اِن ہو گیا ہے۔ کل دوبارہ آئیں!';
+
+  @override
   String get spinTitle => 'روزانہ اسپن';
 
   @override

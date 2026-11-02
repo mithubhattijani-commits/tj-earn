@@ -62,7 +62,7 @@ class _MainShellState extends State<MainShell> {
               HomeTab(onNavigate: (i) => setState(() => _index = i)),
               const ReferralTab(),
               const OffersTab(),
-              const WalletTab(),
+              WalletTab(onEarnTap: () => setState(() => _index = 2)),
               const WithdrawTab(),
               SettingsTab(
                 locale: widget.locale,

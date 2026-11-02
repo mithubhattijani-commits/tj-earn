@@ -158,6 +158,8 @@
   "streakKeepGoing": "Check in tomorrow to keep your streak!",
   "streakMilestone": "Streak milestone! +{coins} coins bonus!",
   "streakNext": "Next bonus at {days} days",
+  "streakAtRisk": "Your {days}-day streak is at risk! Check in today to keep it burning.",
+  "streakCheckedInToday": "Checked in today. Come back tomorrow!",
   "spinTitle": "Daily Spin",
   "spinSubtitle": "Spin the wheel once a day for free coins!",
   "spinButton": "Spin Now",

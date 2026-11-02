@@ -24,6 +24,9 @@ class _SpinWheelState extends State<SpinWheel>
   bool _spinning = false;
   String? _message;
   bool _isError = false;
+  // Winning segment highlighted briefly after the spin lands (UI only —
+  // the outcome is decided server-side by the claim-spin Edge Function).
+  int? _wonIndex;
 
   // Segment rewards (must match server config spin_rewards)
   final List<int> _segments = [1, 2, 3, 5, 10, 20];
@@ -95,6 +98,11 @@ class _SpinWheelState extends State<SpinWheel>
       setState(() {
         _message = t.spinWon(coins.toString());
         _spinning = false;
+        // Flash the winning segment, then clear the highlight.
+        _wonIndex = winIndex;
+      });
+      Future.delayed(const Duration(seconds: 3), () {
+        if (mounted) setState(() => _wonIndex = null);
       });
     } catch (e) {
       if (!mounted) return;
@@ -142,6 +150,7 @@ class _SpinWheelState extends State<SpinWheel>
                       painter: _WheelPainter(
                         segments: _segments,
                         colors: _colors,
+                        highlightIndex: _wonIndex,
                       ),
                       size: const Size(200, 200),
                     ),
@@ -185,8 +194,13 @@ class _SpinWheelState extends State<SpinWheel>
 class _WheelPainter extends CustomPainter {
   final List<int> segments;
   final List<Color> colors;
+  final int? highlightIndex;
 
-  _WheelPainter({required this.segments, required this.colors});
+  _WheelPainter({
+    required this.segments,
+    required this.colors,
+    this.highlightIndex,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -227,6 +241,32 @@ class _WheelPainter extends CustomPainter {
         center.dy + (radius * 0.65) * math.sin(angle) - textPainter.height / 2,
       );
       textPainter.paint(canvas, textOffset);
+
+      // Winning segment flash (3s after the spin lands): gold glow fill
+      // plus a gold ring so the winning slice pops.
+      if (highlightIndex == i) {
+        final glow = Paint()
+          ..color = Colors.yellow.shade200.withValues(alpha: 0.45)
+          ..style = PaintingStyle.fill;
+        canvas.drawArc(
+          Rect.fromCircle(center: center, radius: radius),
+          i * segmentAngle - math.pi / 2,
+          segmentAngle,
+          true,
+          glow,
+        );
+        final ring = Paint()
+          ..color = TjEarnTheme.gold
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 6;
+        canvas.drawArc(
+          Rect.fromCircle(center: center, radius: radius - 3),
+          i * segmentAngle - math.pi / 2,
+          segmentAngle,
+          true,
+          ring,
+        );
+      }
     }
 
     // Center hub
@@ -248,5 +288,6 @@ class _WheelPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  bool shouldRepaint(covariant _WheelPainter oldDelegate) =>
+      oldDelegate.highlightIndex != highlightIndex;
 }

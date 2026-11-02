@@ -478,6 +478,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String streakNext(Object days) => 'Next bonus at $days days';
 
   @override
+  String streakAtRisk(Object days) =>
+      'Your $days-day streak is at risk! Check in today to keep it burning.';
+
+  @override
+  String get streakCheckedInToday => 'Checked in today. Come back tomorrow!';
+
+  @override
   String get spinTitle => 'Daily Spin';
 
   @override

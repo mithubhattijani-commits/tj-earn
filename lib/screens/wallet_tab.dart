@@ -8,7 +8,11 @@ import '../services/supabase_service.dart';
 /// History can be filtered (all / credits / withdrawals) and supports
 /// pull-to-refresh. Read-only: no coin grants ever happen client-side.
 class WalletTab extends StatefulWidget {
-  const WalletTab({super.key});
+  /// Navigates to the Offers tab so the empty-state CTA can send new users
+  /// to earn. Null keeps the old plain empty state.
+  final void Function()? onEarnTap;
+
+  const WalletTab({super.key, this.onEarnTap});
 
   @override
   State<WalletTab> createState() => _WalletTabState();
@@ -115,7 +119,35 @@ class _WalletTabState extends State<WalletTab> {
                     children: [
                       Padding(
                         padding: const EdgeInsets.all(32),
-                        child: Center(child: Text(t.historyEmpty)),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.account_balance_wallet_outlined,
+                              size: 64,
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .primary,
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              t.historyEmpty,
+                              textAlign: TextAlign.center,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleSmall,
+                            ),
+                            if (widget.onEarnTap != null) ...[
+                              const SizedBox(height: 16),
+                              FilledButton.icon(
+                                onPressed: widget.onEarnTap,
+                                icon: const Icon(
+                                    Icons.card_giftcard),
+                                label: Text(t.goOffers),
+                              ),
+                            ],
+                          ],
+                        ),
                       ),
                     ],
                   );

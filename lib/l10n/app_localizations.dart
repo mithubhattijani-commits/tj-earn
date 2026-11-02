@@ -823,6 +823,8 @@ AppLocalizations lookupAppLocalizations(Locale locale) {
   String get streakKeepGoing;
   String streakMilestone(Object coins);
   String streakNext(Object days);
+  String streakAtRisk(Object days);
+  String get streakCheckedInToday;
   String get spinTitle;
   String get spinSubtitle;
   String get spinButton;

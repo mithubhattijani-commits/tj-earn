@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:tj_earn/l10n/app_localizations.dart';
 
 import '../services/supabase_service.dart';
+import '../theme.dart';
 
 /// Daily streak display card.
 ///
@@ -74,6 +75,18 @@ class _StreakCardState extends State<StreakCard> {
     }
 
     final current = _streak?['current_streak'] as int? ?? 0;
+    // Streak status banner (display-only): the streaks table exposes
+    // last_checkin_date to the owner via the streaks_select_own RLS policy.
+    // The server stores UTC dates (claim-streak uses toISOString()), so the
+    // comparison runs against the UTC calendar day to match the server's
+    // day boundary. Claiming still goes through claim-streak; this grants
+    // nothing.
+    final String? lastCheckin = _streak?['last_checkin_date'] as String?;
+    final DateTime nowUtc = DateTime.now().toUtc();
+    final String todayKey =
+        '${nowUtc.year}-${nowUtc.month.toString().padLeft(2, '0')}-${nowUtc.day.toString().padLeft(2, '0')}';
+    final bool claimedToday = lastCheckin == todayKey;
+    final bool showAtRisk = current > 0 && !claimedToday;
     final nextMilestone = [7, 14, 21, 30].firstWhere(
       (m) => m > current,
       orElse: () => 30,
@@ -132,6 +145,52 @@ class _StreakCardState extends State<StreakCard> {
               ),
               const SizedBox(height: 12),
               _WeekStrip(currentStreak: current),
+              // Streak status: at-risk warning until today's check-in, then
+              // a green confirmation. Pure display — no coin logic here.
+              if (showAtRisk || claimedToday) ...[
+                const SizedBox(height: 12),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 12, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: claimedToday
+                        ? Colors.green.shade900
+                        : Colors.orange.shade900,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: claimedToday
+                          ? Colors.green.shade600
+                          : TjEarnTheme.gold,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        claimedToday
+                            ? Icons.check_circle
+                            : Icons.warning_amber_rounded,
+                        size: 20,
+                        color: claimedToday
+                            ? Colors.green.shade300
+                            : TjEarnTheme.gold,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          claimedToday
+                              ? t.streakCheckedInToday
+                              : t.streakAtRisk(current.toString()),
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodySmall
+                              ?.copyWith(color: Colors.white),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               if (_message != null) ...[
                 const SizedBox(height: 8),
                 Text(
