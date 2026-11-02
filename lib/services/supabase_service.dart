@@ -35,7 +35,7 @@ class SupabaseService {  static SupabaseClient get client => Supabase.instance.c
     Map<String, String>? queryParameters,
   }) {
     return _guard(
-      () => _invoke(
+      () => client.functions.invoke(
         functionName,
         body: body,
         method: method,
