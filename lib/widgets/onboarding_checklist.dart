@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import '../services/startup_queue.dart';
 import 'package:tj_earn/l10n/app_localizations.dart';
 
 import '../services/supabase_service.dart';
@@ -23,7 +25,8 @@ class _OnboardingChecklistState extends State<OnboardingChecklist> {
   @override
   void initState() {
     super.initState();
-    _load();
+    // Startup queue (Jaani, 2 Nov 2026): loads one-by-one, gradually.
+    StartupQueue.instance.add(() => _load());
   }
 
   Future<void> _load() async {

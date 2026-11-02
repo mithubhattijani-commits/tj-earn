@@ -25,10 +25,10 @@ class UnityAdsService {
   /// Keep true while testing. Production builds set this to false.
   static const bool testMode = false;
 
-  /// MASTER AD KILL-SWITCH (Jaani, 2 Nov 2026): ALL Unity ads OFF.
-  /// v1.0.7 delayed init didn't stop ANR — ads fully disabled until root
-  /// cause is proven fixed. Set to true only on Jaani's explicit order.
-  static const bool adsEnabled = false;
+  /// ADS BACK ON (Jaani, 2 Nov 2026): the v1.0.9 diagnostic (ads fully
+  /// off) proved the ANR is NOT ad-related — kill-switch lifted on his
+  /// explicit order ("ads phir ON kar dein ge").
+  static const bool adsEnabled = true;
 
   static bool _initialized = false;
   static bool _initFailed = false;

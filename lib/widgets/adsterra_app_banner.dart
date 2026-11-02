@@ -30,8 +30,9 @@ class _AdsterraAppBannerState extends State<AdsterraAppBanner> {
   WebViewController? _controller;
   bool _failed = false;
 
-  /// KILL-SWITCH (Jaani, 2 Nov 2026): banner OFF until ANR root cause proven fixed.
-  static const bool adsEnabled = false;
+  /// ADS BACK ON (Jaani, 2 Nov 2026): v1.0.9 diagnostic proved the ANR
+  /// is NOT ad-related — kill-switch lifted on his explicit order.
+  static const bool adsEnabled = true;
 
   @override
   void initState() {

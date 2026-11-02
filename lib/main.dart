@@ -12,6 +12,7 @@ import 'screens/main_shell.dart';
 import 'services/admin_status.dart';
 import 'services/device_service.dart';
 import 'services/remote_config_service.dart';
+import 'services/startup_queue.dart';
 import 'services/supabase_service.dart';
 import 'services/unity_ads_service.dart';
 import 'theme.dart';
@@ -200,10 +201,11 @@ class AuthGate extends StatelessWidget {
           AdminStatus.reset();
           return const AuthScreen();
         }
-        AdminStatus.probe();
+        // Startup queue (Jaani, 2 Nov 2026): post-login server calls run
+        // one-by-one, gradually — never all at once.
+        StartupQueue.instance.add(AdminStatus.probe);
         // Register device for anti-fraud (silent, never blocks).
-        // ignore: unawaited_futures
-        DeviceService.register();
+        StartupQueue.instance.add(DeviceService.register);
         return MainShell(
           locale: appLocale.value,
           onLocaleChanged: onLocaleChanged,

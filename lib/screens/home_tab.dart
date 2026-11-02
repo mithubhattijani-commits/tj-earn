@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:tj_earn/l10n/app_localizations.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../services/remote_config_service.dart';
+import '../services/startup_queue.dart';
 import '../services/supabase_service.dart';
 import '../theme.dart';
 import '../widgets/adsterra_app_banner.dart';
@@ -123,7 +126,21 @@ class _HomeTabState extends State<HomeTab> {
   @override
   void initState() {
     super.initState();
-    _balance = SupabaseService.getBalance();
+    _balance = _queuedBalance();
+  }
+
+  /// Balance loads FIRST in the startup queue (Jaani, 2 Nov 2026): the
+  /// home screen's server calls run one-by-one instead of all at once.
+  Future<int> _queuedBalance() {
+    final Completer<int> completer = Completer<int>();
+    StartupQueue.instance.addFirst(() async {
+      try {
+        completer.complete(await SupabaseService.getBalance());
+      } catch (e) {
+        completer.completeError(e);
+      }
+    });
+    return completer.future;
   }
 
   /// Rs equivalent of a coin balance (1 coin = Rs 0.01), formatted
@@ -215,7 +232,7 @@ class _HomeTabState extends State<HomeTab> {
                             const SizedBox(height: 4),
                             TextButton(
                               onPressed: () => setState(() {
-                                _balance = SupabaseService.getBalance();
+                                _balance = _queuedBalance();
                               }),
                               child: Text(t.retry),
                             ),

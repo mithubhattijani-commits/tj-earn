@@ -14,10 +14,16 @@ import 'supabase_service.dart';
 ///
 /// Privacy: only the hash leaves the device, never the raw Android ID.
 class DeviceService {
+  static bool _inFlight = false;
+
   /// Registers the current device with the server.
   ///
   /// Call once per login/session. Failures are silent (never blocks login).
+  /// Guarded against concurrent calls so rebuilds can't pile duplicate
+  /// registrations into the startup queue.
   static Future<void> register() async {
+    if (_inFlight) return;
+    _inFlight = true;
     try {
       final deviceInfo = DeviceInfoPlugin();
       final android = await deviceInfo.androidInfo;
@@ -31,6 +37,8 @@ class DeviceService {
       await SupabaseService.registerDevice(hash, model);
     } catch (_) {
       // Silent: device registration must never block the user.
+    } finally {
+      _inFlight = false;
     }
   }
 }
