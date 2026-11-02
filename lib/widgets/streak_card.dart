@@ -35,10 +35,19 @@ class _StreakCardState extends State<StreakCard> {
 
   Future<void> _load() async {
     try {
-      final bundle = await StartupBundleService.loadBundle();
+      // Use cached bundle first (Jaani, 2 Nov 2026 fix): if Balance already
+      // loaded the bundle, read it synchronously — never hang on a future.
+      var cached = StartupBundleService.cached;
+      if (cached == null) {
+        // Fallback: await with 10s timeout so a stuck future can't hang UI.
+        cached = await StartupBundleService.loadBundle().timeout(
+          const Duration(seconds: 10),
+          onTimeout: () => null,
+        );
+      }
       if (mounted) {
         setState(() {
-          final s = bundle?['streak'];
+          final s = cached?['streak'];
           _streak = s is Map ? s.cast<String, dynamic>() : null;
           _loading = false;
         });

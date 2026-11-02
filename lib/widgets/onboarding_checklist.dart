@@ -31,7 +31,7 @@ class _OnboardingChecklistState extends State<OnboardingChecklist> {
 
   Future<void> _load() async {
     try {
-      await StartupBundleService.loadBundle();
+      await StartupBundleService.loadBundle().timeout(const Duration(seconds: 10), onTimeout: () => null);
       if (mounted) {
         final completed = StartupBundleService.onboardingCompleted;
         setState(() {
