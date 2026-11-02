@@ -124,6 +124,14 @@ class _ReferralTabState extends State<ReferralTab> {
             final history =
                 (info['history'] as List?)?.cast<Map<String, dynamic>>() ??
                     const <Map<String, dynamic>>[];
+            final team = (info['team'] as Map?)?.cast<String, dynamic>() ?? {};
+            final teamCoins =
+                (info['team_coins'] as Map?)?.cast<String, dynamic>() ?? {};
+            final pendingBonuses = (info['pending_bonuses'] as List?)
+                    ?.cast<Map<String, dynamic>>() ??
+                const <Map<String, dynamic>>[];
+            final pendingTotal =
+                (info['pending_total'] as num?)?.toInt() ?? 0;
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -131,6 +139,13 @@ class _ReferralTabState extends State<ReferralTab> {
                 const SizedBox(height: 16),
                 _statsRow(t, total, pending, approved),
                 const SizedBox(height: 16),
+                // My Team — multi-level downline (Jaani, 2 Nov 2026)
+                _teamCard(team, teamCoins),
+                const SizedBox(height: 16),
+                // Pending bonuses with CLAIM (Jaani, 2 Nov 2026 — claim model)
+                if (pendingBonuses.isNotEmpty)
+                  _pendingBonusesCard(pendingBonuses, pendingTotal),
+                if (pendingBonuses.isNotEmpty) const SizedBox(height: 16),
                 // Referral milestone tiers (Attapoll-style)
                 _MilestoneCard(approved: approved),
                 const SizedBox(height: 16),
@@ -250,6 +265,165 @@ class _ReferralTabState extends State<ReferralTab> {
         ),
       ),
     );
+  }
+
+  /// My Team card: downline counts + coins earned per level.
+  /// L1 = direct (200/bonus), L2 = 100, L3+ = 50 each. All async-loaded,
+  /// never blocks UI (data comes from the single get-referral call).
+  Widget _teamCard(
+      Map<String, dynamic> team, Map<String, dynamic> teamCoins) {
+    final l1 = (team['l1'] as num?)?.toInt() ?? 0;
+    final l2 = (team['l2'] as num?)?.toInt() ?? 0;
+    final l3p = (team['l3plus'] as num?)?.toInt() ?? 0;
+    final c1 = (teamCoins['l1'] as num?)?.toInt() ?? 0;
+    final c2 = (teamCoins['l2'] as num?)?.toInt() ?? 0;
+    final c3p = (teamCoins['l3plus'] as num?)?.toInt() ?? 0;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('My Team',
+                style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 12),
+            _teamRow('Level 1 — Direct', '$l1 members', '$c1 coins', '200/referral'),
+            const Divider(height: 20),
+            _teamRow('Level 2', '$l2 members', '$c2 coins', '100/referral'),
+            const Divider(height: 20),
+            _teamRow('Level 3+', '$l3p members', '$c3p coins', '50/referral'),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _teamRow(String title, String members, String coins, String rate) {
+    return Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+              Text(members, style: Theme.of(context).textTheme.bodySmall),
+            ],
+          ),
+        ),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Text(coins,
+                style: Theme.of(context)
+                    .textTheme
+                    .titleSmall
+                    ?.copyWith(color: Colors.amber[700])),
+            Text(rate, style: Theme.of(context).textTheme.bodySmall),
+          ],
+        ),
+      ],
+    );
+  }
+
+  /// Pending bonuses card with CLAIM ALL + per-bonus claim buttons.
+  /// (Jaani, 2 Nov 2026 — claim model for satisfaction + visibility.)
+  Widget _pendingBonusesCard(
+      List<Map<String, dynamic>> bonuses, int total) {
+    return Card(
+      color: Colors.amber[50],
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.card_giftcard, color: Colors.amber),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text('Bonuses to Claim',
+                      style: Theme.of(context).textTheme.titleMedium),
+                ),
+                Text('$total coins',
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleSmall
+                        ?.copyWith(color: Colors.amber[800])),
+              ],
+            ),
+            const SizedBox(height: 12),
+            for (final b in bonuses.take(5))
+              _bonusRow(b),
+            if (bonuses.length > 5)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text('+ ${bonuses.length - 5} more',
+                    style: Theme.of(context).textTheme.bodySmall,
+                    textAlign: TextAlign.center),
+              ),
+            const SizedBox(height: 12),
+            FilledButton.icon(
+              onPressed: _claiming ? null : () => _claimBonuses([]),
+              icon: _claiming
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Icon(Icons.redeem),
+              label: Text(_claiming ? 'Claiming...' : 'CLAIM ALL ($total)'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _bonusRow(Map<String, dynamic> b) {
+    final coins = (b['coins'] as num?)?.toInt() ?? 0;
+    final level = (b['level'] as num?)?.toInt() ?? 1;
+    final id = (b['id'] ?? '').toString();
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              'Level $level referral — $coins coins',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+          ),
+          TextButton(
+            onPressed: _claiming ? null : () => _claimBonuses([id]),
+            child: const Text('CLAIM'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  bool _claiming = false;
+
+  /// Claims bonuses (empty = all). Reloads on success. Never blocks UI.
+  Future<void> _claimBonuses(List<String> ids) async {
+    if (_claiming) return;
+    setState(() => _claiming = true);
+    try {
+      final res = await SupabaseService.claimReferralBonuses(ids);
+      final coins = (res['coins'] as num?)?.toInt() ?? 0;
+      final claimed = (res['claimed'] as num?)?.toInt() ?? 0;
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('$claimed bonus(es) claimed: +$coins coins!')),
+      );
+      _reload();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Claim failed: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _claiming = false);
+    }
   }
 
   Widget _howCard(AppLocalizations t) {

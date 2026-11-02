@@ -110,6 +110,89 @@ Deno.serve(async (req) => {
     };
   });
 
+  // TEAM LEVELS (Jaani, 2 Nov 2026): multi-level downline for "My Team".
+  // L1 = direct referrals, L2 = their referrals, L3+ = deeper (grouped).
+  // Single efficient walk: max 10 levels, grouped to avoid N+1.
+  const team: { l1: number; l2: number; l3plus: number } = { l1: 0, l2: 0, l3plus: 0 };
+  const teamCoins: { l1: number; l2: number; l3plus: number } = { l1: 0, l2: 0, l3plus: 0 };
+  try {
+    // L1: direct referrals
+    const { data: l1rows } = await service
+      .from('referrals')
+      .select('referred_id')
+      .eq('referrer_id', user.id)
+      .eq('status', 'approved');
+    const l1ids = ((l1rows ?? []) as Array<{ referred_id: string }>).map((r) => r.referred_id);
+    team.l1 = l1ids.length;
+
+    if (l1ids.length > 0) {
+      // L2: referrals of L1 members (single query with IN)
+      const { data: l2rows } = await service
+        .from('referrals')
+        .select('referred_id')
+        .in('referrer_id', l1ids)
+        .eq('status', 'approved');
+      const l2ids = ((l2rows ?? []) as Array<{ referred_id: string }>).map((r) => r.referred_id);
+      team.l2 = l2ids.length;
+
+      // L3+: walk deeper, grouped (cap 8 more levels = 10 total)
+      let currentIds = l2ids;
+      for (let d = 0; d < 8 && currentIds.length > 0; d++) {
+        const { data: deeper } = await service
+          .from('referrals')
+          .select('referred_id')
+          .in('referrer_id', currentIds)
+          .eq('status', 'approved');
+        const nextIds = ((deeper ?? []) as Array<{ referred_id: string }>).map((r) => r.referred_id);
+        team.l3plus += nextIds.length;
+        currentIds = nextIds;
+        if (nextIds.length === 0) break;
+      }
+    }
+
+    // Coins earned per level from ledger (single query, grouped client-side)
+    const { data: ledgerRows } = await service
+      .from('ledger')
+      .select('amount_coins,type')
+      .eq('user_id', user.id)
+      .in('type', ['referral', 'referral_l2', 'referral_l3plus']);
+    for (const row of (ledgerRows ?? []) as Array<{ amount_coins: number; type: string }>) {
+      const amt = Number(row.amount_coins) || 0;
+      if (row.type === 'referral') teamCoins.l1 += amt;
+      else if (row.type === 'referral_l2') teamCoins.l2 += amt;
+      else if (row.type === 'referral_l3plus') teamCoins.l3plus += amt;
+    }
+  } catch {
+    // Team data is supplementary — never fail the whole call.
+  }
+
+  // PENDING BONUSES (Jaani, 2 Nov 2026 — claim model): unclaimed bonuses
+  // with masked from_user for the "X registered under you" notification.
+  let pendingBonuses: Array<Record<string, unknown>> = [];
+  let pendingTotal = 0;
+  try {
+    const { data: pb } = await service
+      .from('pending_referral_bonuses')
+      .select('id,coins,level,from_user_id,created_at')
+      .eq('user_id', user.id)
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false })
+      .limit(50);
+    pendingBonuses = ((pb ?? []) as Array<Record<string, unknown>>).map((b) => ({
+      id: b['id'],
+      coins: b['coins'],
+      level: b['level'],
+      from_masked: maskId(String(b['from_user_id'] ?? '')),
+      created_at: b['created_at'],
+    }));
+    pendingTotal = pendingBonuses.reduce(
+      (s, b) => s + (Number(b['coins']) || 0),
+      0,
+    );
+  } catch {
+    // Pending list is supplementary.
+  }
+
   return json(
     {
       code,
@@ -118,6 +201,10 @@ Deno.serve(async (req) => {
       pending,
       approved,
       history,
+      team,
+      team_coins: teamCoins,
+      pending_bonuses: pendingBonuses,
+      pending_total: pendingTotal,
     },
     200,
   );

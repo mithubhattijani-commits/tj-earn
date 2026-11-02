@@ -154,6 +154,26 @@ class SupabaseService {  static SupabaseClient get client => Supabase.instance.c
     throw Exception('apply-referral returned an unexpected response');
   }
 
+  /// Claims pending referral bonuses (Jaani, 2 Nov 2026 — claim model).
+  /// Pass empty list (or omit) to claim ALL pending. Returns
+  /// {ok, claimed, coins}. Uses _guard timeout — never blocks UI.
+  static Future<Map<String, dynamic>> claimReferralBonuses([
+    List<String> ids = const [],
+  ]) async {
+    final res = await _invoke(
+      'claim-referral-bonuses',
+      body: {'ids': ids},
+    );
+    final data = res.data;
+    if (res.status != 200) {
+      final message =
+          data is Map && data['error'] is String ? data['error'] : 'failed';
+      throw Exception('claim-referral-bonuses failed: $message');
+    }
+    if (data is Map<String, dynamic>) return data;
+    throw Exception('claim-referral-bonuses returned an unexpected response');
+  }
+
   /// Latest published build from the public version-check function.
   /// Returns null when unconfigured or unreachable — the caller then skips
   /// the update check silently instead of showing a fake update.

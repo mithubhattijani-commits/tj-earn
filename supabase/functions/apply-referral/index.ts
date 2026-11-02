@@ -124,8 +124,10 @@ Deno.serve(async (req) => {
     return json({ error: 'could not record referral' }, 500);
   }
 
-  // IMMEDIATE CREDIT: read the owner-set reward and credit the referrer
-  // in the same call. The UNIQUE idempotency_key makes this exactly-once.
+  // CLAIM MODEL (Jaani, 2 Nov 2026): bonuses do NOT go directly to
+  // balance. They accumulate as PENDING; user taps CLAIM to receive.
+  // L1 = referral_reward_coins (200), created as pending record.
+  // The UNIQUE (referral_id, level, user_id) makes this exactly-once.
   const { data: rewardCfg } = await service
     .from('app_config')
     .select('value')
@@ -133,41 +135,109 @@ Deno.serve(async (req) => {
     .maybeSingle();
   const reward = Math.max(0, parseInt(String(rewardCfg?.value ?? '0'), 10) || 0);
   if (reward > 0) {
-    const { error: ledgerError } = await service.from('ledger').insert({
-      user_id: referrerId,
-      amount_coins: reward,
-      type: 'referral',
-      ref_id: inserted.id,
-      provider: 'tjearn',
-      idempotency_key: `referral:${inserted.id}`,
-    });
-    if (ledgerError) {
+    const { error: pendErr } = await service
+      .from('pending_referral_bonuses')
+      .insert({
+        user_id: referrerId,
+        from_user_id: user.id,
+        referral_id: inserted.id,
+        level: 1,
+        coins: reward,
+        status: 'pending',
+      });
+    if (pendErr) {
       const msg = String(
-        (ledgerError as { message?: unknown }).message ?? '',
+        (pendErr as { message?: unknown }).message ?? '',
       ).toLowerCase();
       const isReplay =
-        (ledgerError as { code?: unknown }).code === '23505' ||
+        (pendErr as { code?: unknown }).code === '23505' ||
         msg.includes('duplicate');
       if (!isReplay) {
-        // Credit failed but the referral row exists as approved; a retry
-        // of apply-referral hits the idempotent path. Surface the error
-        // honestly so the client can retry.
         await service.from('audit_logs').insert({
           actor: user.id,
-          action: 'referral_credit_failed',
+          action: 'referral_pending_failed',
           target: inserted.id,
           details: { referrer_id: referrerId, reward },
         });
-        return json({ error: 'could not credit reward' }, 500);
+        return json({ error: 'could not create pending bonus' }, 500);
       }
     }
+  }
+
+  // MULTI-LEVEL UPLINE REWARDS (Jaani, 2 Nov 2026): unlimited depth.
+  // L1 (direct referrer) already got `reward` (200) above.
+  // L2 gets 100, L3+ gets 50 each, walking up the referral chain.
+  // Cap at 50 levels to prevent infinite loops from data corruption.
+  // Each level uses its own idempotency_key for exactly-once credit.
+  const uplineRewards: Array<{ userId: string; coins: number; level: number }> = [];
+  try {
+    let currentId = referrerId;
+    const seen = new Set<string>([user.id, referrerId]);
+    for (let level = 2; level <= 50; level++) {
+      const { data: up } = await service
+        .from('referrals')
+        .select('referrer_id')
+        .eq('referred_id', currentId)
+        .eq('status', 'approved')
+        .maybeSingle();
+      const upId = up?.referrer_id as string | undefined;
+      if (!upId || seen.has(upId)) break;
+      seen.add(upId);
+      const coins = level === 2 ? 100 : 50;
+      uplineRewards.push({ userId: upId, coins, level });
+      currentId = upId;
+    }
+  } catch {
+    // Chain lookup failed — log but don't fail the whole referral.
+  }
+  for (const r of uplineRewards) {
+    try {
+      const { error: upErr } = await service
+        .from('pending_referral_bonuses')
+        .insert({
+          user_id: r.userId,
+          from_user_id: user.id,
+          referral_id: inserted.id,
+          level: r.level,
+          coins: r.coins,
+          status: 'pending',
+        });
+      if (upErr) {
+        const msg = String(
+          (upErr as { message?: unknown }).message ?? '',
+        ).toLowerCase();
+        const isReplay =
+          (upErr as { code?: unknown }).code === '23505' ||
+          msg.includes('duplicate');
+        if (!isReplay) {
+          await service.from('audit_logs').insert({
+            actor: 'system:auto-credit',
+            action: 'referral_upline_pending_failed',
+            target: inserted.id,
+            details: { user_id: r.userId, level: r.level, coins: r.coins },
+          });
+        }
+      }
+    } catch {
+      // Individual level failure shouldn't break other levels.
+    }
+  }
+  if (uplineRewards.length > 0) {
+    await service.from('audit_logs').insert({
+      actor: 'system:auto-credit',
+      action: 'referral_upline_pending_created',
+      target: inserted.id,
+      details: {
+        levels: uplineRewards.map((r) => ({ level: r.level, coins: r.coins })),
+      },
+    });
   }
 
   await service.from('audit_logs').insert({
     actor: user.id,
     action: 'referral_applied',
     target: inserted.id,
-    details: { referrer_id: referrerId, reward_coins: reward, auto_credited: true },
+    details: { referrer_id: referrerId, reward_coins: reward, auto_credited: true, upline_levels: uplineRewards.length },
   });
   await service.from('audit_logs').insert({
     actor: 'system:auto-credit',
