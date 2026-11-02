@@ -51,6 +51,7 @@ class TjEarnApp extends StatefulWidget {
 
 class _TjEarnAppState extends State<TjEarnApp> {
   late Future<bool> _boot;
+  static bool _appOpenAttempted = false;
 
   @override
   void initState() {
@@ -74,6 +75,28 @@ class _TjEarnAppState extends State<TjEarnApp> {
   void _retryBoot() {
     setState(() {
       _boot = _bootApp();
+    });
+  }
+
+  /// Dual-ad system, ANR-safe (Jaani, 2 Nov 2026): UnityAds.initialize()
+  /// executes natively on Android's main thread, and on a slow device the
+  /// first init can stall it long enough for Android to raise ANR — so init
+  /// + the App Open show happen exactly once per cold start, after the first
+  /// frame plus an idle delay, never inside build() (the old code also
+  /// re-ran on every rebuild, stacking duplicate ad shows). Fire-and-forget:
+  /// the Watch Ad screen re-tries a late init and explains when ads are
+  /// unavailable.
+  void _scheduleAppOpenAd() {
+    if (_appOpenAttempted) return;
+    _appOpenAttempted = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Future.delayed(const Duration(seconds: 3), () {
+        // ignore: unawaited_futures
+        UnityAdsService.init().then((_) {
+          // ignore: unawaited_futures
+          UnityAdsService.showAppOpenAd();
+        });
+      });
     });
   }
 
@@ -108,16 +131,7 @@ class _TjEarnAppState extends State<TjEarnApp> {
                 );
               }
               if (snapshot.data == true) {
-                // Unity Ads init is best-effort and never blocks startup:
-                // the Watch Ad screen re-tries a late init and explains
-                // when ads are unavailable.
-                // Dual-ad system (Jaani, 2 Nov 2026): after init, show the
-                // App Open ad once per cold start (fire-and-forget, 8s max).
-                // ignore: unawaited_futures
-                UnityAdsService.init().then((_) {
-                  // ignore: unawaited_futures
-                  UnityAdsService.showAppOpenAd();
-                });
+                _scheduleAppOpenAd();
                 return AuthGate(onLocaleChanged: _changeLocale);
               }
               return ConfigErrorScreen(onRetry: _retryBoot);
