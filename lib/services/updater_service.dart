@@ -4,54 +4,93 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:tj_earn/l10n/app_localizations.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:tj_earn/l10n/app_localizations.dart';
 
+import '../app_navigator.dart';
 import '../config.dart';
 import 'validation.dart';
 
 /// In-app updater for sideloaded (website APK) installs.
 ///
-/// Doner-style flow (Jaani, 3 Nov 2026 — "jesy Doner update hoti ha wesy"):
-/// the app fetches a small JSON manifest from the website
-/// (https://nigraantv.xyz/apps/tj-earn-version.json) and compares its
-/// versionCode with the installed one. When a newer version exists, the
-/// user is offered an update; the new APK downloads via Dart HttpClient
-/// (follows GitHub's 302 redirects — DownloadManager did not, Jaani 3 Nov
-/// 2026 fix) with a live progress banner, then the system install prompt
-/// fires. A sideloaded app can NEVER install silently — Android always
-/// requires the user's install tap.
+/// Flow: version-check -> dialog -> DownloadManager download ->
+/// platform install intent. The install keeps the app's data: same
+/// package (com.tjearn.app) + same signing key + a higher versionCode
+/// means Android treats it as an update, never a reinstall. Play Store
+/// installs are updated by Play itself and never reach this path in
+/// practice.
 ///
-/// Manifest format (same as Doner's):
-///   {"versionCode": 16, "versionName": "1.0.15",
-///    "url": "https://.../tj-earn-v1.0.15.apk", "notes": "What's new"}
-///
-/// The updater is inert until that manifest exists: a missing or
-/// unreachable manifest simply means "no update prompt, no error".
-///
-/// Launch check never nags: a version the user dismissed ("Later") is
-/// recorded under 'dismissed_update_code' and never prompts again on
-/// launch; a future newer version prompts again. The manual check shows
-/// its dialog regardless of dismissal.
-class _DownloadProgress {
+/// BACKGROUND-DOWNLOAD REWORK (Jaani, 3 Nov 2026): the download state
+/// is GLOBAL now — [UpdateDownloadState] (a singleton) holds the live
+/// progress notifier + download id, the progress banner is inserted
+/// through the global [appNavigatorKey]'s overlay (survives navigation),
+/// the in-flight download id is persisted in SharedPreferences so a
+/// cold start re-attaches the banner/polling, and the install prompt is
+/// shown through the global navigator even if the user left Settings.
+/// A manifest-registered [DownloadCompleteReceiver] (native) fires the
+/// install intent directly when the download finishes while the app is
+/// dead. DownloadManager (system process) handles the bytes in all
+/// cases: survives app background/kill, shows a notification with
+/// progress, auto-resumes on network interruption, follows redirects
+/// natively (this is why the MethodChannel path replaced the old
+/// HttpClient download — no 302 workarounds needed).
+class DownloadProgress {
   final int downloaded;
   final int total;
   final bool stalled;
 
-  const _DownloadProgress({
+  const DownloadProgress({
     required this.downloaded,
     required this.total,
     required this.stalled,
   });
 }
 
-/// Non-blocking download progress banner (Jaani, 2 Nov 2026): sits at the
-/// bottom of the screen while the APK downloads in the background — the
-/// app is never locked behind a modal dialog.
+/// Global update-download state (Jaani, 3 Nov 2026). Lives outside any
+/// widget so the download survives navigation and rebuilds.
+class UpdateDownloadState {
+  UpdateDownloadState._();
+
+  static final UpdateDownloadState instance = UpdateDownloadState._();
+
+  /// Live progress; the banner listens to this.
+  final ValueNotifier<DownloadProgress> progress =
+      ValueNotifier<DownloadProgress>(
+    const DownloadProgress(downloaded: 0, total: 0, stalled: false),
+  );
+
+  /// Android DownloadManager id of the in-flight download, null when
+  /// idle. Persisted in SharedPreferences for cold-start re-attach.
+  int? downloadId;
+
+  /// Version info of the in-flight download (for the install dialog).
+  int? versionCode;
+  String? versionName;
+  String? notes;
+
+  bool get isActive => downloadId != null;
+
+  void reset() {
+    downloadId = null;
+    versionCode = null;
+    versionName = null;
+    notes = null;
+    progress.value = const DownloadProgress(
+      downloaded: 0,
+      total: 0,
+      stalled: false,
+    );
+  }
+}
+
+/// Non-blocking download progress banner (Jaani, 2 Nov 2026): sits at
+/// the bottom of the screen while the APK downloads in the background —
+/// the app is never locked behind a modal dialog. Inserted through the
+/// global navigator's overlay, so it persists across screens.
 class _DownloadProgressBanner extends StatelessWidget {
-  final ValueNotifier<_DownloadProgress> progress;
-  final AppLocalizations localizations;
+  final ValueNotifier<DownloadProgress> progress;
+  final AppLocalizations? localizations;
 
   const _DownloadProgressBanner({
     required this.progress,
@@ -65,6 +104,10 @@ class _DownloadProgressBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = localizations;
+    final title = t?.downloading ?? 'Downloading update…';
+    final stalledText =
+        t?.downloadStalled ?? 'Stalled — check your connection';
     return Positioned(
       left: 16.0,
       right: 16.0,
@@ -74,9 +117,9 @@ class _DownloadProgressBanner extends StatelessWidget {
         borderRadius: BorderRadius.circular(12.0),
         child: Padding(
           padding: const EdgeInsets.all(16.0),
-          child: ValueListenableBuilder<_DownloadProgress>(
+          child: ValueListenableBuilder<DownloadProgress>(
             valueListenable: progress,
-            builder: (BuildContext ctx, _DownloadProgress p, Widget? _) {
+            builder: (BuildContext ctx, DownloadProgress p, Widget? _) {
               final int rawPct =
                   p.total > 0 ? ((p.downloaded / p.total) * 100).round() : 0;
               final int pct = rawPct < 0 ? 0 : (rawPct > 100 ? 100 : rawPct);
@@ -87,7 +130,7 @@ class _DownloadProgressBanner extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
                   Text(
-                    localizations.downloading,
+                    title,
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 8.0),
@@ -98,7 +141,7 @@ class _DownloadProgressBanner extends StatelessWidget {
                     Padding(
                       padding: const EdgeInsets.only(top: 4.0),
                       child: Text(
-                        localizations.downloadStalled,
+                        stalledText,
                         style: const TextStyle(color: Colors.orange),
                       ),
                     ),
@@ -115,9 +158,16 @@ class _DownloadProgressBanner extends StatelessWidget {
 class UpdaterService {
   static const _channel = MethodChannel('tj_earn/updater');
 
-  /// Website manifest (Doner-style). Published separately by the parent
-  /// with the stable APK download link; until it exists the checker
-  /// stays silent.
+  /// SharedPreferences keys for cold-start re-attach of an in-flight
+  /// DownloadManager download.
+  static const _prefsIdKey = 'tj_earn_update_download_id';
+  static const _prefsCodeKey = 'tj_earn_update_version_code';
+  static const _prefsNameKey = 'tj_earn_update_version_name';
+  static const _prefsNotesKey = 'tj_earn_update_notes';
+
+  /// Website manifest (Doner-style, Jaani 3 Nov 2026). Published by the
+  /// parent with the stable APK download link; the Supabase app_versions
+  /// table is stale and must NOT be used.
   static const String manifestUrl =
       'https://nigraantv.xyz/apps/tj-earn-version.json';
 
@@ -173,12 +223,46 @@ class UpdaterService {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setInt(_dismissedKey, versionCode);
     } catch (_) {
-      // Dismissal is best-effort; a missed write only re-prompts once.
+      // Best-effort.
     }
   }
 
-  /// Launch check: silent unless a newer, NOT-dismissed version exists.
-  /// Never throws and never blocks the UI — safe from addPostFrameCallback.
+  static OverlayEntry? _banner;
+  static bool _polling = false;
+
+  /// Cold-start re-attach (Jaani, 3 Nov 2026): called once after the
+  /// first frame. If a previous session left a download in-flight, the
+  /// banner + polling are restored; if it already finished, the install
+  /// prompt is shown. Never throws, never blocks startup.
+  static Future<void> restoreDownloadState() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final id = prefs.getInt(_prefsIdKey);
+      if (id == null) return;
+      final state = UpdateDownloadState.instance;
+      state.downloadId = id;
+      state.versionCode = prefs.getInt(_prefsCodeKey);
+      state.versionName = prefs.getString(_prefsNameKey);
+      state.notes = prefs.getString(_prefsNotesKey);
+      final st = await _downloadStatus(id);
+      final s = st['status'] as String?;
+      if (s == 'running' || s == 'pending' || s == 'paused') {
+        _showBanner();
+        unawaited(_pollLoop());
+        return;
+      }
+      if (s == 'success') {
+        await _onDownloadSuccess(st);
+        return;
+      }
+      // failed / not_found / unknown -> drop the stale record.
+      await _clearSavedState();
+      state.reset();
+    } catch (_) {
+      // Restore must never break startup.
+    }
+  }
+
   static Future<void> checkForUpdate(BuildContext context) async {
     if (!AppConfig.isConfigured) return;
     try {
@@ -216,7 +300,13 @@ class UpdaterService {
         ),
       );
       if (wantUpdate != true || !context.mounted) return;
-      await _downloadAndInstall(context, apkUrl);
+      await _downloadAndInstall(
+        context,
+        apkUrl,
+        versionCode: latestCode,
+        versionName: latest['versionName'] as String?,
+        notes: latest['notes'] as String?,
+      );
     } catch (_) {
       // Update checks must never break the app: fail silently.
     }
@@ -228,7 +318,6 @@ class UpdaterService {
   /// - "up to date" when already on the latest version
   /// - "no internet" when offline
   /// - "update info not found" when the manifest is unreachable
-  /// Shows the update dialog regardless of dismissal.
   static Future<void> checkManually(BuildContext context) async {
     if (!AppConfig.isConfigured) return;
     final localizations = AppLocalizations.of(context);
@@ -303,10 +392,7 @@ class UpdaterService {
         ),
         actions: [
           TextButton(
-            onPressed: () {
-              _recordDismissed(latestCode);
-              Navigator.of(ctx).pop(false);
-            },
+            onPressed: () => Navigator.of(ctx).pop(false),
             child: Text(localizations.updateLater),
           ),
           FilledButton(
@@ -317,14 +403,20 @@ class UpdaterService {
       ),
     );
     if (wantUpdate != true || !context.mounted) return;
-    await _downloadAndInstall(context, apkUrl);
+    await _downloadAndInstall(
+      context,
+      apkUrl,
+      versionCode: latestCode,
+      versionName: latest['versionName'] as String?,
+      notes: latest['notes'] as String?,
+    );
   }
 
   /// Quick connectivity probe used by [checkManually] to distinguish
   /// "no internet" from other failures.
   static Future<bool> _hasInternetConnection() async {
     try {
-      final result = await InternetAddress.lookup('nigraantv.xyz')
+      final result = await InternetAddress.lookup('znyaxxkhhopdqrvxhxmb.supabase.co')
           .timeout(const Duration(seconds: 5));
       return result.isNotEmpty && result.first.rawAddress.isNotEmpty;
     } catch (_) {
@@ -332,149 +424,311 @@ class UpdaterService {
     }
   }
 
-  /// Download via Android DownloadManager (Jaani, 2 Nov 2026 — permanent
-  /// fix for background-killed downloads): the system process handles the
-  /// download, so it survives app background/kill, shows a notification with
-  /// progress, and auto-resumes on network interruption. We poll for
-  /// completion then fire the install intent.
-  /// Downloads the APK via Dart HttpClient and fires the install prompt.
-  ///
-  /// FIX (Jaani, 3 Nov 2026 — "App k ander hi update hona chahiye"): the old
-  /// implementation used Android DownloadManager, which FAILS on GitHub
-  /// release URLs (302 redirect to objects.githubusercontent.com — the
-  /// manager does not follow it reliably, download ends "failed" and the UI
-  /// shows "something went wrong"). This version uses Dart's HttpClient
-  /// (same as Doner's working updater): HttpClient follows redirects
-  /// automatically, streams to a file in the app cache dir with live
-  /// progress, then fires the system install prompt via FileProvider.
-  /// The app is never locked behind a modal — the banner shows progress.
+  /// Download via Android DownloadManager (system process — survives app
+  /// background/kill, shows a notification with progress, auto-resumes
+  /// on network interruption, follows redirects natively). The banner
+  /// and poll loop are GLOBAL ([UpdateDownloadState]), so the user can
+  /// navigate away mid-download; the install prompt is shown through
+  /// the global navigator when the APK is ready.
   static Future<void> _downloadAndInstall(
     BuildContext context,
-    String apkUrl,
-  ) async {
-    final localizations = AppLocalizations.of(context)!;
-    final canInstall =
-        await _channel.invokeMethod<bool>('canInstallPackages') ?? false;
+    String apkUrl, {
+    int? versionCode,
+    String? versionName,
+    String? notes,
+  }) async {
+    final localizations = AppLocalizations.of(context);
+    final isUrdu = localizations?.localeName == 'ur';
+    // Capture UI strings BEFORE any async gap (analyzer:
+    // use_build_context_synchronously) — only plain strings may cross
+    // awaits; BuildContexts never do.
+    final String permissionMessage =
+        localizations?.installPermissionNeeded ??
+            'Allow install permission in Settings, then try again.';
+    final String errorMessage =
+        localizations?.genericError ?? 'Something went wrong. Please try again.';
+    bool canInstall = true;
+    try {
+      canInstall =
+          await _channel.invokeMethod<bool>('canInstallPackages').timeout(
+                const Duration(seconds: 10),
+              ) ??
+              true;
+    } catch (_) {
+      // A channel hiccup must not block the update; the system install
+      // UI surfaces the permission itself when needed.
+      canInstall = true;
+    }
     if (!canInstall) {
-      await _channel.invokeMethod<void>('openInstallSettings');
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(localizations.installPermissionNeeded)),
-        );
+      try {
+        await _channel.invokeMethod<void>('openInstallSettings');
+      } catch (_) {
+        // Best-effort.
       }
+      _globalSnack(permissionMessage);
       return;
     }
-    final ValueNotifier<_DownloadProgress> progress =
-        ValueNotifier<_DownloadProgress>(
-      const _DownloadProgress(downloaded: 0, total: 0, stalled: false),
-    );
-    OverlayEntry? banner;
-    if (context.mounted) {
-      final OverlayState? overlay =
-          Navigator.of(context, rootNavigator: true).overlay;
-      if (overlay != null) {
-        banner = OverlayEntry(
-          builder: (BuildContext ctx) => _DownloadProgressBanner(
-            progress: progress,
-            localizations: localizations,
-          ),
-        );
-        overlay.insert(banner);
-      }
-    }
+    final state = UpdateDownloadState.instance;
+    if (state.isActive) return; // a download is already running
+    int? downloadId;
     try {
-      final file = await _downloadApkFile(apkUrl, progress);
-      if (file == null) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(localizations.genericError)),
-          );
-        }
-        return;
-      }
-      if (context.mounted) {
-        await _channel.invokeMethod<void>(
-            'installApk', {'path': file.path});
-      }
+      downloadId = await _channel.invokeMethod<int>(
+        'downloadApk',
+        {'url': apkUrl, 'fileName': 'tj-earn-update.apk'},
+      ).timeout(const Duration(seconds: 15));
     } catch (_) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(localizations.genericError)),
-        );
-      }
-    } finally {
-      banner?.remove();
-      progress.dispose();
+      downloadId = null;
     }
+    if (downloadId == null) {
+      _globalSnack(errorMessage);
+      return;
+    }
+    state.downloadId = downloadId;
+    state.versionCode = versionCode;
+    state.versionName = versionName;
+    state.notes = notes;
+    state.progress.value = const DownloadProgress(
+      downloaded: 0,
+      total: 0,
+      stalled: false,
+    );
+    await _saveState();
+    _showBanner();
+    _globalSnack(
+      isUrdu
+          ? 'اپ ڈیٹ بیک گراؤنڈ میں ڈاؤن لوڈ ہو رہی ہے — آپ ایپ استعمال کرتے رہیں۔'
+          : 'Update is downloading in the background — keep using the app.',
+    );
+    // Fire-and-forget: the system download survives app background/kill
+    // regardless of this loop; the banner updates live and the install
+    // prompt fires on completion.
+    unawaited(_pollLoop());
   }
 
-  /// Streams the APK to the app cache dir via HttpClient.
-  ///
-  /// HttpClient follows HTTP redirects automatically (followRedirects=true
-  /// by default), so GitHub's 302 to the release asset works. Returns the
-  /// file on success, null on any failure. Progress (downloaded, total)
-  /// is pushed to [progress]; total is 0 when the server hides its size.
-  static Future<File?> _downloadApkFile(
-    String apkUrl,
-    ValueNotifier<_DownloadProgress> progress,
-  ) async {
-    HttpClient? client;
+  /// Global poll loop: exactly one runs at a time ([_polling] guard).
+  /// Drives [UpdateDownloadState.progress]; on completion the install
+  /// prompt is shown through the global navigator.
+  static Future<void> _pollLoop() async {
+    if (_polling) return;
+    _polling = true;
     try {
-      final cacheDir = await _apkCacheDir();
-      final file = File('${cacheDir.path}/tj-earn-update.apk');
-      if (await file.exists()) await file.delete();
-      client = HttpClient()
-        ..connectionTimeout = const Duration(seconds: 30);
-      final request = await client.getUrl(Uri.parse(apkUrl));
-      // Redirect behavior is set on the request, not the client.
-      request
-        ..followRedirects = true
-        ..maxRedirects = 5;
-      final response = await request.close().timeout(
-        const Duration(seconds: 60),
-        onTimeout: () => throw TimeoutException('Download timed out'),
-      );
-      if (response.statusCode != HttpStatus.ok) return null;
-      final total = response.contentLength;
-      var downloaded = 0;
-      var lastBytes = 0;
-      var lastChange = DateTime.now();
-      final sink = file.openWrite();
-      await for (final chunk in response) {
-        downloaded += chunk.length;
-        sink.add(chunk);
-        final now = DateTime.now();
+      final state = UpdateDownloadState.instance;
+      int lastBytes = 0;
+      DateTime lastChange = DateTime.now();
+      // Poll DownloadManager for completion (max ~10 minutes).
+      for (var i = 0; i < 300; i++) {
+        final id = state.downloadId;
+        if (id == null) break;
+        await Future.delayed(const Duration(seconds: 2));
+        late final Map<String, dynamic> st;
+        try {
+          st = await _downloadStatus(id);
+        } catch (_) {
+          continue;
+        }
+        final s = st['status'] as String?;
+        final int downloaded = (st['bytesDownloaded'] as num?)?.toInt() ?? 0;
+        final int total = (st['bytesTotal'] as num?)?.toInt() ?? 0;
+        final DateTime now = DateTime.now();
         if (downloaded > lastBytes) {
           lastBytes = downloaded;
           lastChange = now;
         }
-        final stalled =
+        final bool stalled = (s == 'running' || s == 'pending') &&
             now.difference(lastChange).inSeconds >= 60;
-        progress.value = _DownloadProgress(
+        state.progress.value = DownloadProgress(
           downloaded: downloaded,
           total: total,
           stalled: stalled,
         );
+        if (s == 'success') {
+          await _onDownloadSuccess(st);
+          break;
+        } else if (s == 'failed' || s == 'not_found') {
+          await _onDownloadFailed();
+          break;
+        }
+        // running/pending/paused -> keep polling; banner shows live progress.
       }
-      await sink.close();
-      if (await file.length() == 0) return null;
-      return file;
-    } catch (_) {
-      return null;
+      // Poll window exhausted (very slow network): hide the banner but
+      // leave the system download running — its notification keeps the
+      // user informed, and the next cold start re-attaches automatically.
+      if (state.downloadId != null) {
+        _hideBanner();
+      }
     } finally {
-      client?.close(force: true);
+      _polling = false;
     }
   }
 
-  /// App cache directory for the downloaded APK.
-  static Future<Directory> _apkCacheDir() async {
-    // MethodChannel already exists for installer; reuse a cache path via
-    // the channel to avoid adding path_provider dependency.
-    final path = await _channel.invokeMethod<String>('apkCacheDir') ??
-        '/data/user/0/com.tjearn.app/cache';
-    final dir = Directory(path);
-    if (!await dir.exists()) await dir.create(recursive: true);
-    return dir;
+  static Future<void> _onDownloadSuccess(Map<String, dynamic> st) async {
+    final state = UpdateDownloadState.instance;
+    final vName = state.versionName;
+    final vNotes = state.notes;
+    final vCode = state.versionCode;
+    _hideBanner();
+    state.reset();
+    await _clearSavedState();
+    // Don't prompt when the newer build is already installed (e.g. the
+    // native download-complete receiver fired while the app was dead
+    // and the user already installed).
+    try {
+      final info = await PackageInfo.fromPlatform();
+      final installed = int.tryParse(info.buildNumber) ?? 0;
+      if (vCode != null && installed >= vCode) return;
+    } catch (_) {
+      // Fall through and show the prompt.
+    }
+    final path = _uriToPath(st['localUri'] as String? ?? '');
+    if (path == null) return;
+    _showInstallDialog(path, vName, vNotes);
   }
 
+  static Future<void> _onDownloadFailed() async {
+    // Capture the message before the async gap (analyzer:
+    // use_build_context_synchronously); only a plain string crosses it.
+    final ctx = appNavigatorKey.currentContext;
+    final String message =
+        (ctx == null ? null : AppLocalizations.of(ctx)?.genericError) ??
+            'Something went wrong. Please try again.';
+    final state = UpdateDownloadState.instance;
+    _hideBanner();
+    state.reset();
+    await _clearSavedState();
+    _globalSnack(message);
+  }
+
+  /// Install prompt through the GLOBAL navigator (Jaani, 3 Nov 2026):
+  /// appears even if the user navigated away from Settings.
+  static void _showInstallDialog(
+    String apkPath,
+    String? versionName,
+    String? notes,
+  ) {
+    final ctx = appNavigatorKey.currentContext;
+    if (ctx == null) return; // next cold start will offer it again
+    final t = AppLocalizations.of(ctx);
+    final isUrdu = t?.localeName == 'ur';
+    showDialog<void>(
+      context: ctx,
+      barrierDismissible: true,
+      builder: (dialogCtx) => AlertDialog(
+        title: Text(t?.updateAvailable ?? 'Update available'),
+        content: Text(
+          [
+            if (versionName != null && versionName.isNotEmpty) versionName,
+            if (notes != null && notes.isNotEmpty) notes,
+            isUrdu
+                ? 'اپ ڈیٹ ڈاؤن لوڈ ہو چکا ہے۔ انسٹال مکمل کرنے کے لیے انسٹال دبائیں۔'
+                : 'The update has finished downloading. Tap Install to complete the update.',
+          ].join('\n\n'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogCtx).pop(),
+            child: Text(t?.updateLater ?? 'Later'),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.of(dialogCtx).pop();
+              unawaited(
+                _channel
+                    .invokeMethod<void>('installApk', {'path': apkPath})
+                    .timeout(const Duration(seconds: 10))
+                    .catchError((_) {}),
+              );
+            },
+            child: Text(isUrdu ? 'انسٹال کریں' : 'Install'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Shows a snackbar through the global navigator. Sync — grabs the
+  /// current context fresh, so no BuildContext ever crosses an async gap
+  /// (analyzer: use_build_context_synchronously).
+  static void _globalSnack(String message) {
+    final ctx = appNavigatorKey.currentContext;
+    if (ctx == null) return;
+    ScaffoldMessenger.of(ctx).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        duration: const Duration(seconds: 4),
+      ),
+    );
+  }
+
+  /// Inserts the progress banner into the GLOBAL navigator's overlay
+  /// (survives navigation). No-op when already inserted or when the
+  /// overlay isn't ready yet.
+  static void _showBanner() {
+    if (_banner != null) return;
+    final overlay = appNavigatorKey.currentState?.overlay;
+    if (overlay == null) return;
+    final ctx = appNavigatorKey.currentContext;
+    final t = ctx == null ? null : AppLocalizations.of(ctx);
+    _banner = OverlayEntry(
+      builder: (_) => _DownloadProgressBanner(
+        progress: UpdateDownloadState.instance.progress,
+        localizations: t,
+      ),
+    );
+    overlay.insert(_banner!);
+  }
+
+  static void _hideBanner() {
+    _banner?.remove();
+    _banner = null;
+  }
+
+  static Future<void> _saveState() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final state = UpdateDownloadState.instance;
+      final id = state.downloadId;
+      if (id == null) return;
+      await prefs.setInt(_prefsIdKey, id);
+      final code = state.versionCode;
+      if (code != null) await prefs.setInt(_prefsCodeKey, code);
+      final name = state.versionName;
+      if (name != null) await prefs.setString(_prefsNameKey, name);
+      final n = state.notes;
+      if (n != null) await prefs.setString(_prefsNotesKey, n);
+    } catch (_) {
+      // Best-effort: without the record the download still completes
+      // in DownloadManager; only the re-attach is lost.
+    }
+  }
+
+  static Future<void> _clearSavedState() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_prefsIdKey);
+      await prefs.remove(_prefsCodeKey);
+      await prefs.remove(_prefsNameKey);
+      await prefs.remove(_prefsNotesKey);
+    } catch (_) {
+      // Best-effort.
+    }
+  }
+
+  /// Queries DownloadManager for one download id. Throws on channel
+  /// failure (callers decide whether to retry or abort).
+  static Future<Map<String, dynamic>> _downloadStatus(int downloadId) async {
+    final res = await _channel
+        .invokeMethod<Map>('downloadStatus', {'downloadId': downloadId})
+        .timeout(const Duration(seconds: 10));
+    return Map<String, dynamic>.from(res ?? <String, dynamic>{});
+  }
+
+  /// Convert a DownloadManager local URI (file:// or content://) to a path
+  /// usable by the install intent. For content:// URIs we copy to cache.
+  static String? _uriToPath(String uri) {
+    if (uri.isEmpty) return null;
+    if (uri.startsWith('file://')) {
+      return Uri.parse(uri).toFilePath();
+    }
+    return null; // content:// handled by system; shouldn't happen with our dest
+  }
 }
