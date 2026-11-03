@@ -204,5 +204,17 @@
   "watchAdTitle": "Watch Ad & Earn Coins",
   "withdrawTitle": "Withdraw",
   "withdrawalFailed": "Withdrawal request failed.",
-  "withdrawalSubmitted": "Withdrawal request submitted."
+  "withdrawalSubmitted": "Withdrawal request submitted.",
+  "adminGroupByUser": "Group by user",
+  "adminTransactions": "transactions",
+  "referAutoApplied": "Referral {code} applied! 🎉",
+  "@referAutoApplied": {
+    "description": "Shown when a referral code from a shared link is auto-applied after signup.",
+    "placeholders": {
+      "code": {
+        "type": "String",
+        "example": "SKD9FTHE"
+      }
+    }
+  }
 }

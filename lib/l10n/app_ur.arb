@@ -204,5 +204,17 @@
   "watchAdTitle": "اشتہار دیکھیں اور کوئنز کمائیں",
   "withdrawTitle": "رقم نکالیں",
   "withdrawalFailed": "درخواست ناکام ہوئی۔",
-  "withdrawalSubmitted": "درخواست جمع ہو گئی ہے۔"
+  "withdrawalSubmitted": "درخواست جمع ہو گئی ہے۔",
+  "adminGroupByUser": "صارف کے حساب سے گروپ کریں",
+  "adminTransactions": "لین دین",
+  "referAutoApplied": "ریفرل {code} لگا دیا گیا! 🎉",
+  "@referAutoApplied": {
+    "description": "Shown when a referral code from a shared link is auto-applied after signup.",
+    "placeholders": {
+      "code": {
+        "type": "String",
+        "example": "SKD9FTHE"
+      }
+    }
+  }
 }

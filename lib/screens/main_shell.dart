@@ -3,6 +3,7 @@ import 'package:tj_earn/l10n/app_localizations.dart';
 
 import '../services/startup_bundle_service.dart';
 import '../services/supabase_service.dart';
+import '../services/referral_deep_link_service.dart';
 import '../services/updater_service.dart';
 import 'admin_screen.dart';
 import 'articles_tab.dart';
@@ -62,6 +63,38 @@ class _MainShellState extends State<MainShell> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) UpdaterService.checkForUpdate(context);
     });
+    // Referral deep link auto-apply (Jaani, 3 Nov 2026): if the user
+    // arrived via a referral link (?ref=CODE), the code was stored as
+    // pending at startup. Auto-apply it now that they're signed in —
+    // no manual code entry needed. Best-effort, never blocks UI.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _autoApplyReferral();
+    });
+  }
+
+  /// Auto-applies a pending referral code from a deep link.
+  /// Shows a confirmation snackbar on success. Silent on failure —
+  /// the user can still apply manually in the Refer tab.
+  Future<void> _autoApplyReferral() async {
+    try {
+      final code =
+          await ReferralDeepLinkService.instance.autoApplyPendingCode().timeout(
+        const Duration(seconds: 30),
+      );
+      if (code != null && mounted) {
+        final t = AppLocalizations.of(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              t?.referAutoApplied(code) ?? 'Referral $code applied! 🎉',
+            ),
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    } catch (_) {
+      // Silent: manual apply remains available in the Refer tab.
+    }
   }
 
   Widget _tab(int i) {
