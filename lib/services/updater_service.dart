@@ -1,24 +1,37 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:tj_earn/l10n/app_localizations.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../config.dart';
-import 'supabase_service.dart';
 import 'validation.dart';
 
 /// In-app updater for sideloaded (website APK) installs.
 ///
-/// Flow: version-check -> dialog -> download to cache -> platform install
-/// intent. The install keeps the app's data: same package
-/// (com.tjearn.app) + same signing key + a higher versionCode means Android
-/// treats it as an update, never a reinstall. Play Store installs are
-/// updated by Play itself and never reach this path in practice.
-/// Live download-progress state (Jaani, 2 Nov 2026): the update download
-/// must show visible progress in the app — percent + MB downloaded/total —
-/// so the user never stares at a stuck screen wondering if it is downloading.
+/// Doner-style flow (Jaani, 3 Nov 2026 — "jesy Doner update hoti ha wesy"):
+/// the app fetches a small JSON manifest from the website
+/// (https://nigraantv.xyz/apps/tj-earn-version.json) and compares its
+/// versionCode with the installed one. When a newer version exists, the
+/// user is offered an update; the new APK downloads via Android
+/// DownloadManager (system process — survives app background/kill) and
+/// the system install prompt fires. A sideloaded app can NEVER install
+/// silently — Android always requires the user's install tap.
+///
+/// Manifest format (same as Doner's):
+///   {"versionCode": 16, "versionName": "1.0.15",
+///    "url": "https://.../tj-earn-v1.0.15.apk", "notes": "What's new"}
+///
+/// The updater is inert until that manifest exists: a missing or
+/// unreachable manifest simply means "no update prompt, no error".
+///
+/// Launch check never nags: a version the user dismissed ("Later") is
+/// recorded under 'dismissed_update_code' and never prompts again on
+/// launch; a future newer version prompts again. The manual check shows
+/// its dialog regardless of dismissal.
 class _DownloadProgress {
   final int downloaded;
   final int total;
@@ -100,17 +113,81 @@ class _DownloadProgressBanner extends StatelessWidget {
 class UpdaterService {
   static const _channel = MethodChannel('tj_earn/updater');
 
+  /// Website manifest (Doner-style). Published separately by the parent
+  /// with the stable APK download link; until it exists the checker
+  /// stays silent.
+  static const String manifestUrl =
+      'https://nigraantv.xyz/apps/tj-earn-version.json';
+
+  /// VersionCode the user dismissed with "Later" — never re-prompted
+  /// on launch. A newer versionCode prompts again.
+  static const String _dismissedKey = 'dismissed_update_code';
+
+  /// Fetches the version manifest from the website (Doner-style).
+  /// Returns {versionCode, versionName, url, notes} or null on ANY
+  /// failure (no network, 404, bad JSON). Never throws.
+  static Future<Map<String, dynamic>?> _fetchManifest() async {
+    HttpClient? client;
+    try {
+      client = HttpClient()
+        ..connectionTimeout = const Duration(seconds: 15);
+      final request = await client.getUrl(Uri.parse(manifestUrl));
+      final response =
+          await request.close().timeout(const Duration(seconds: 20));
+      if (response.statusCode != HttpStatus.ok) return null;
+      final body = await response
+          .transform(utf8.decoder)
+          .join()
+          .timeout(const Duration(seconds: 20));
+      final data = jsonDecode(body);
+      if (data is! Map<String, dynamic>) return null;
+      final code = data['versionCode'];
+      final url = data['url'];
+      if (code is! int || url is! String || url.isEmpty) return null;
+      return <String, dynamic>{
+        'versionCode': code,
+        'versionName': (data['versionName'] as String?) ?? 'v$code',
+        'url': url,
+        'notes': (data['notes'] as String?) ?? '',
+      };
+    } catch (_) {
+      return null;
+    } finally {
+      client?.close(force: true);
+    }
+  }
+
+  static Future<int> _dismissedCode() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getInt(_dismissedKey) ?? 0;
+    } catch (_) {
+      return 0;
+    }
+  }
+
+  static Future<void> _recordDismissed(int versionCode) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt(_dismissedKey, versionCode);
+    } catch (_) {
+      // Dismissal is best-effort; a missed write only re-prompts once.
+    }
+  }
+
+  /// Launch check: silent unless a newer, NOT-dismissed version exists.
+  /// Never throws and never blocks the UI — safe from addPostFrameCallback.
   static Future<void> checkForUpdate(BuildContext context) async {
     if (!AppConfig.isConfigured) return;
     try {
       final info = await PackageInfo.fromPlatform();
       final currentCode = int.tryParse(info.buildNumber) ?? 0;
-      final latest = await SupabaseService.getLatestVersion();
+      final latest = await _fetchManifest();
       if (latest == null) return;
-      final latestCode = latest['version_code'];
-      final apkUrl = latest['apk_url'];
-      if (latestCode is! int || apkUrl is! String || apkUrl.isEmpty) return;
+      final latestCode = latest['versionCode'] as int;
+      final apkUrl = latest['url'] as String;
       if (!isNewerVersion(latestCode, currentCode)) return;
+      if (await _dismissedCode() == latestCode) return;
       if (!context.mounted) return;
       final localizations = AppLocalizations.of(context)!;
       final wantUpdate = await showDialog<bool>(
@@ -119,11 +196,14 @@ class UpdaterService {
         builder: (ctx) => AlertDialog(
           title: Text(localizations.updateAvailable),
           content: Text(
-            '${latest['version_name'] ?? ''}\n${latest['notes'] ?? ''}'.trim(),
+            '${latest['versionName'] ?? ''}\n${latest['notes'] ?? ''}'.trim(),
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.of(ctx).pop(false),
+              onPressed: () {
+                _recordDismissed(latestCode);
+                Navigator.of(ctx).pop(false);
+              },
               child: Text(localizations.updateLater),
             ),
             FilledButton(
@@ -145,7 +225,8 @@ class UpdaterService {
   /// exactly what happened:
   /// - "up to date" when already on the latest version
   /// - "no internet" when offline
-  /// - "update info not found" when the version record is unreachable
+  /// - "update info not found" when the manifest is unreachable
+  /// Shows the update dialog regardless of dismissal.
   static Future<void> checkManually(BuildContext context) async {
     if (!AppConfig.isConfigured) return;
     final localizations = AppLocalizations.of(context);
@@ -161,10 +242,10 @@ class UpdaterService {
       return;
     }
 
-    // 2. Fetch version info from Supabase.
+    // 2. Fetch version manifest from the website (Doner-style).
     Map<String, dynamic>? latest;
     try {
-      latest = await SupabaseService.getLatestVersion();
+      latest = await _fetchManifest();
     } on SocketException {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -187,8 +268,8 @@ class UpdaterService {
       );
       return;
     }
-    final latestCode = latest['version_code'];
-    final apkUrl = latest['apk_url'];
+    final latestCode = latest['versionCode'];
+    final apkUrl = latest['url'];
     if (latestCode is! int || apkUrl is! String || apkUrl.isEmpty) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -216,11 +297,14 @@ class UpdaterService {
       builder: (ctx) => AlertDialog(
         title: Text(localizations.updateAvailable),
         content: Text(
-          '${latest?['version_name'] ?? ''}\n${latest?['notes'] ?? ''}'.trim(),
+          '${latest?['versionName'] ?? ''}\n${latest?['notes'] ?? ''}'.trim(),
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
+            onPressed: () {
+              _recordDismissed(latestCode);
+              Navigator.of(ctx).pop(false);
+            },
             child: Text(localizations.updateLater),
           ),
           FilledButton(
@@ -238,7 +322,7 @@ class UpdaterService {
   /// "no internet" from other failures.
   static Future<bool> _hasInternetConnection() async {
     try {
-      final result = await InternetAddress.lookup('znyaxxkhhopdqrvxhxmb.supabase.co')
+      final result = await InternetAddress.lookup('nigraantv.xyz')
           .timeout(const Duration(seconds: 5));
       return result.isNotEmpty && result.first.rawAddress.isNotEmpty;
     } catch (_) {

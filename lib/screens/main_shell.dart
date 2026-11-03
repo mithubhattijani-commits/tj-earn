@@ -3,17 +3,26 @@ import 'package:tj_earn/l10n/app_localizations.dart';
 
 import '../services/startup_bundle_service.dart';
 import '../services/supabase_service.dart';
+import '../services/updater_service.dart';
+import 'admin_screen.dart';
 import 'referral_tab.dart';
+import 'settings_tab.dart';
 import 'withdraw_tab.dart';
 import 'watch_ad_screen.dart';
 
-/// v1.0.18 simple shell (Jaani, 3 Nov 2026).
+/// v1.0.19 shell (Jaani, 3 Nov 2026).
 ///
-/// Built on the PROVEN v1.0.17 minimal shell (no ANR on Jaani's phone).
-/// Three tabs, nothing else:
+/// Built on the PROVEN v1.0.18 simple shell (no ANR on Jaani's phone).
+/// Four tabs:
 /// - Home: balance display + Watch Ad button (v1.0.17 code, unchanged)
 /// - Refer: simple referral (code/share/apply/direct list/claim)
 /// - Withdraw: payout request form + history
+/// - Settings: language, Check for Update, admin panel, logout, support
+///
+/// Doner-style update (Jaani, 3 Nov 2026 — "jesy Doner update hoti ha
+/// wesy"): admin + update icons always visible in the AppBar (like
+/// Doner), plus a silent launch update check. Website manifest at
+/// https://nigraantv.xyz/apps/tj-earn-version.json.
 ///
 /// EXCLUDED per Jaani: spin wheel, daily tasks, leaderboard.
 ///
@@ -36,10 +45,29 @@ class MainShell extends StatefulWidget {
 
 class _MainShellState extends State<MainShell> {
   var _index = 0;
-  // Lazily-created tab widgets: index 0 = home, 1 = referral, 2 = withdraw.
+  // Lazily-created tab widgets: index 0 = home, 1 = referral,
+  // 2 = withdraw. Settings (3) is rebuilt fresh so a language change
+  // always reaches it.
   final List<Widget?> _tabs = <Widget?>[null, null, null];
 
+  @override
+  void initState() {
+    super.initState();
+    // Doner-style launch update check (Jaani, 3 Nov 2026): silent unless
+    // a newer version exists. Non-blocking, never touches the first frame.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) UpdaterService.checkForUpdate(context);
+    });
+  }
+
   Widget _tab(int i) {
+    if (i == 3) {
+      return SettingsTab(
+        key: const ValueKey('settings'),
+        locale: widget.locale,
+        onLocaleChanged: widget.onLocaleChanged,
+      );
+    }
     var w = _tabs[i];
     if (w == null) {
       w = switch (i) {
@@ -56,10 +84,28 @@ class _MainShellState extends State<MainShell> {
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context)!;
     return Scaffold(
-      appBar: AppBar(title: Text(t.appTitle)),
+      appBar: AppBar(
+        title: Text(t.appTitle),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.admin_panel_settings),
+            tooltip: t.adminTitle,
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const AdminScreen()),
+              );
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.system_update),
+            tooltip: t.checkForUpdate,
+            onPressed: () => UpdaterService.checkManually(context),
+          ),
+        ],
+      ),
       body: IndexedStack(
         index: _index,
-        children: [_tab(0), _tab(1), _tab(2)],
+        children: [_tab(0), _tab(1), _tab(2), _tab(3)],
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _index,
@@ -77,6 +123,10 @@ class _MainShellState extends State<MainShell> {
           BottomNavigationBarItem(
             icon: const Icon(Icons.payments),
             label: t.withdrawTitle,
+          ),
+          BottomNavigationBarItem(
+            icon: const Icon(Icons.settings),
+            label: t.settingsTitle,
           ),
         ],
       ),
