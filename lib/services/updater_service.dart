@@ -337,27 +337,7 @@ class UpdaterService {
   /// progress, and auto-resumes on network interruption. We poll for
   /// completion then fire the install intent.
   static Future<String?> _resolveRedirects(String url) async {
-    HttpClient? client;
-    try {
-      client = HttpClient()
-        ..connectionTimeout = const Duration(seconds: 15)
-        ..followRedirects = true
-        ..maxRedirects = 5;
-      final request = await client.headUrl(Uri.parse(url));
-      final response = await request.close().timeout(
-        const Duration(seconds: 20),
-      );
-      await response.drain();
-      final finalUrl = response.redirects.isNotEmpty
-          ? response.redirects.last.location.toString()
-          : null;
-      if (finalUrl != null && finalUrl != url) return finalUrl;
-      return null;
-    } catch (_) {
-      return null;
-    } finally {
-      client?.close(force: true);
-    }
+    return null;
   }
 
   static Future<void> _downloadAndInstall(
