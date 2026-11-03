@@ -374,6 +374,14 @@ class UpdaterService {
   }) async {
     final localizations = AppLocalizations.of(context);
     final isUrdu = localizations?.localeName == 'ur';
+    // Capture UI strings BEFORE any async gap (analyzer:
+    // use_build_context_synchronously) — only plain strings may cross
+    // awaits; BuildContexts never do.
+    final String permissionMessage =
+        localizations?.installPermissionNeeded ??
+            'Allow install permission in Settings, then try again.';
+    final String errorMessage =
+        localizations?.genericError ?? 'Something went wrong. Please try again.';
     bool canInstall = true;
     try {
       canInstall =
@@ -392,16 +400,7 @@ class UpdaterService {
       } catch (_) {
         // Best-effort.
       }
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              localizations?.installPermissionNeeded ??
-                  'Allow install permission in Settings, then try again.',
-            ),
-          ),
-        );
-      }
+      _globalSnack(permissionMessage);
       return;
     }
     final state = UpdateDownloadState.instance;
@@ -416,16 +415,7 @@ class UpdaterService {
       downloadId = null;
     }
     if (downloadId == null) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              localizations?.genericError ??
-                  'Something went wrong. Please try again.',
-            ),
-          ),
-        );
-      }
+      _globalSnack(errorMessage);
       return;
     }
     state.downloadId = downloadId;
@@ -439,20 +429,11 @@ class UpdaterService {
     );
     await _saveState();
     _showBanner();
-    final messengerCtx =
-        appNavigatorKey.currentContext ?? (context.mounted ? context : null);
-    if (messengerCtx != null) {
-      ScaffoldMessenger.of(messengerCtx).showSnackBar(
-        SnackBar(
-          content: Text(
-            isUrdu
-                ? 'اپ ڈیٹ بیک گراؤنڈ میں ڈاؤن لوڈ ہو رہی ہے — آپ ایپ استعمال کرتے رہیں۔'
-                : 'Update is downloading in the background — keep using the app.',
-          ),
-          duration: const Duration(seconds: 4),
-        ),
-      );
-    }
+    _globalSnack(
+      isUrdu
+          ? 'اپ ڈیٹ بیک گراؤنڈ میں ڈاؤن لوڈ ہو رہی ہے — آپ ایپ استعمال کرتے رہیں۔'
+          : 'Update is downloading in the background — keep using the app.',
+    );
     // Fire-and-forget: the system download survives app background/kill
     // regardless of this loop; the banner updates live and the install
     // prompt fires on completion.
@@ -539,20 +520,17 @@ class UpdaterService {
   }
 
   static Future<void> _onDownloadFailed() async {
+    // Capture the message before the async gap (analyzer:
+    // use_build_context_synchronously); only a plain string crosses it.
+    final ctx = appNavigatorKey.currentContext;
+    final String message =
+        (ctx == null ? null : AppLocalizations.of(ctx)?.genericError) ??
+            'Something went wrong. Please try again.';
     final state = UpdateDownloadState.instance;
     _hideBanner();
     state.reset();
     await _clearSavedState();
-    final ctx = appNavigatorKey.currentContext;
-    if (ctx == null) return;
-    final t = AppLocalizations.of(ctx);
-    ScaffoldMessenger.of(ctx).showSnackBar(
-      SnackBar(
-        content: Text(
-          t?.genericError ?? 'Something went wrong. Please try again.',
-        ),
-      ),
-    );
+    _globalSnack(message);
   }
 
   /// Install prompt through the GLOBAL navigator (Jaani, 3 Nov 2026):
@@ -598,6 +576,20 @@ class UpdaterService {
             child: Text(isUrdu ? 'انسٹال کریں' : 'Install'),
           ),
         ],
+      ),
+    );
+  }
+
+  /// Shows a snackbar through the global navigator. Sync — grabs the
+  /// current context fresh, so no BuildContext ever crosses an async gap
+  /// (analyzer: use_build_context_synchronously).
+  static void _globalSnack(String message) {
+    final ctx = appNavigatorKey.currentContext;
+    if (ctx == null) return;
+    ScaffoldMessenger.of(ctx).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        duration: const Duration(seconds: 4),
       ),
     );
   }
