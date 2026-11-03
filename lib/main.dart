@@ -10,6 +10,7 @@ import 'config.dart';
 import 'screens/auth_screen.dart';
 import 'screens/main_shell.dart';
 import 'services/admin_status.dart';
+import 'services/checkin_reminder_service.dart';
 import 'services/startup_bundle_service.dart';
 import 'services/device_service.dart';
 import 'services/remote_config_service.dart';
@@ -37,6 +38,12 @@ Future<void> main() async {
   // in the background with an 8s timeout — nothing here may block the
   // first frame (APP ROBUSTNESS RULE).
   unawaited(RemoteConfigService.instance.init());
+
+  // Daily check-in reminder (Jaani, 3 Nov 2026): fire-and-forget, NOT
+  // awaited. Initializes the local-notification plugin, requests
+  // permission on first launch, and schedules the 9 PM PKT reminder if
+  // the user hasn't checked in today. Best-effort — never blocks UI.
+  unawaited(CheckinReminderService.instance.init());
 
   // Cache-first startup (Jaani, 2 Nov 2026 — PERMANENT hang fix): load
   // the last-known balance/streak/onboarding from local disk BEFORE the

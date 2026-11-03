@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:tj_earn/l10n/app_localizations.dart';
 
 import '../services/startup_bundle_service.dart';
+import '../services/checkin_reminder_service.dart';
 import '../services/supabase_service.dart';
 import '../services/unity_ads_service.dart';
 import '../theme.dart';
@@ -51,6 +52,9 @@ class _CheckInCardState extends State<CheckInCard> {
         _streak = s;
         _settled = true;
       });
+      // Keep the 9 PM reminder text in sync with the fresh streak data.
+      // ignore: unawaited_futures
+      CheckinReminderService.instance.scheduleIfNeeded();
     }
   }
 
@@ -96,6 +100,12 @@ class _CheckInCardState extends State<CheckInCard> {
       });
       // Refresh the cached streak so the card shows the new state.
       StartupBundleService.refreshInBackground();
+      if (!already) {
+        // Checked in — cancel today's 9 PM reminder (it will be
+        // rescheduled tomorrow on app start if not checked in).
+        // ignore: unawaited_futures
+        CheckinReminderService.instance.cancel();
+      }
       if (!already && coins > 0) {
         // ignore: unawaited_futures
         UnityAdsService.showClaimInterstitial();
