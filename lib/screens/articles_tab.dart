@@ -125,7 +125,7 @@ class _ArticlesTabState extends State<ArticlesTab> {
                   )
                 : ListView.separated(
                     itemCount: _articles.length,
-                    separatorBuilder: (_, __) => const Divider(height: 1),
+                    separatorBuilder: (_, _) => const Divider(height: 1),
                     itemBuilder: (context, i) {
                       final a = _articles[i];
                       return ListTile(
