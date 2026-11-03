@@ -241,6 +241,27 @@ class SupabaseService {  static SupabaseClient get client => Supabase.instance.c
     throw Exception('claim-streak returned an unexpected response');
   }
 
+
+  /// Claims the daily check-in with streak progression (Jaani, 3 Nov 2026).
+  ///
+  /// The `claim-checkin` Edge Function awards 10 coins on Day 1, +5 for each
+  /// consecutive day (15, 20, 25...), capped at 100/day. A missed day resets
+  /// the streak to Day 1. One claim per PKT day; 409 means already checked in
+  /// today (returned as data, not thrown, so the UI can render the state).
+  static Future<Map<String, dynamic>> claimCheckin() async {
+    final res = await _invoke('claim-checkin');
+    final data = res.data;
+    if (res.status != 200) {
+      final message =
+          data is Map && data['error'] is String ? data['error'] : 'failed';
+      // 409 = already checked in today (not a hard error for the UI)
+      if (res.status == 409 && data is Map<String, dynamic>) return data;
+      throw Exception('claim-checkin failed: $message');
+    }
+    if (data is Map<String, dynamic>) return data;
+    throw Exception('claim-checkin returned an unexpected response');
+  }
+
   /// Gets the user's current streak info (read-only).
   ///
   /// Returns current_streak, longest_streak, total_checkins.
