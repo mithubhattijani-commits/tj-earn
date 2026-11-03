@@ -83,7 +83,7 @@ class _ArticlesTabState extends State<ArticlesTab> {
         _error = 'Network timed out. Pull to retry.';
         _loading = false;
       });
-    } catch (e) {
+    } catch (_) {
       if (!mounted) return;
       setState(() {
         _error = 'Could not load articles. Pull to retry.';
