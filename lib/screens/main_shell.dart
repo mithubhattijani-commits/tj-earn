@@ -5,16 +5,20 @@ import '../services/startup_bundle_service.dart';
 import '../services/supabase_service.dart';
 import '../services/updater_service.dart';
 import 'admin_screen.dart';
+import 'articles_tab.dart';
 import 'referral_tab.dart';
 import 'settings_tab.dart';
 import 'withdraw_tab.dart';
 import 'watch_ad_screen.dart';
 
-/// v1.0.19 shell (Jaani, 3 Nov 2026).
+/// v1.0.20 shell (Jaani, 3 Nov 2026): website <-> app integration.
 ///
-/// Built on the PROVEN v1.0.18 simple shell (no ANR on Jaani's phone).
-/// Four tabs:
+/// Built on the PROVEN v1.0.19 shell (no ANR on Jaani's phone).
+/// Five tabs:
 /// - Home: balance display + Watch Ad button (v1.0.17 code, unchanged)
+/// - Articles: read nigraantv.xyz articles, earn +10 coins each (cap 5/day)
+///   via the SAME submit-reading Edge Function the website uses — shared
+///   balance, shared cap. This is why the app exists: grow website audience.
 /// - Refer: simple referral (code/share/apply/direct list/claim)
 /// - Withdraw: payout request form + history
 /// - Settings: language, Check for Update, admin panel, logout, support
@@ -45,10 +49,10 @@ class MainShell extends StatefulWidget {
 
 class _MainShellState extends State<MainShell> {
   var _index = 0;
-  // Lazily-created tab widgets: index 0 = home, 1 = referral,
-  // 2 = withdraw. Settings (3) is rebuilt fresh so a language change
-  // always reaches it.
-  final List<Widget?> _tabs = <Widget?>[null, null, null];
+  // Lazily-created tab widgets: index 0 = home, 1 = articles,
+  // 2 = referral, 3 = withdraw. Settings (4) is rebuilt fresh so a
+  // language change always reaches it.
+  final List<Widget?> _tabs = <Widget?>[null, null, null, null];
 
   @override
   void initState() {
@@ -61,7 +65,7 @@ class _MainShellState extends State<MainShell> {
   }
 
   Widget _tab(int i) {
-    if (i == 3) {
+    if (i == 4) {
       return SettingsTab(
         key: const ValueKey('settings'),
         locale: widget.locale,
@@ -72,7 +76,8 @@ class _MainShellState extends State<MainShell> {
     if (w == null) {
       w = switch (i) {
         0 => _HomeTab(key: const ValueKey('home')),
-        1 => const ReferralTab(key: ValueKey('referral')),
+        1 => const ArticlesTab(key: ValueKey('articles')),
+        2 => const ReferralTab(key: ValueKey('referral')),
         _ => const WithdrawTab(key: ValueKey('withdraw')),
       };
       _tabs[i] = w;
@@ -105,7 +110,7 @@ class _MainShellState extends State<MainShell> {
       ),
       body: IndexedStack(
         index: _index,
-        children: [_tab(0), _tab(1), _tab(2), _tab(3)],
+        children: [_tab(0), _tab(1), _tab(2), _tab(3), _tab(4)],
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _index,
@@ -115,6 +120,10 @@ class _MainShellState extends State<MainShell> {
           BottomNavigationBarItem(
             icon: const Icon(Icons.home),
             label: t.homeTitle,
+          ),
+          BottomNavigationBarItem(
+            icon: const Icon(Icons.article_outlined),
+            label: 'Articles',
           ),
           BottomNavigationBarItem(
             icon: const Icon(Icons.group_add),

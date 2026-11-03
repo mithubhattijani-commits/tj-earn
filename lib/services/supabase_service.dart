@@ -458,6 +458,51 @@ class SupabaseService {  static SupabaseClient get client => Supabase.instance.c
     if (data is Map<String, dynamic>) return data;
     throw Exception('$name returned an unexpected response');
   }
+
+  /// Article-reading reward (Jaani, 3 Nov 2026): website <-> app integration.
+  ///
+  /// Calls the SAME Edge Functions the website /earn/ uses, so the balance
+  /// and the 5/day cap are shared between web and app. The server enforces
+  /// the cap and the minimum read time — the client only renders state.
+  ///
+  /// [getReadingRemaining] returns how many reading claims are left today
+  /// (0-5). [submitReading] claims +10 coins for [articleId]; throws on
+  /// 429 (cap reached) or other failures.
+
+  static Future<int> getReadingRemaining() async {
+    final res = await _invoke('get-reading');
+    if (res.status != 200) {
+      throw Exception('get-reading failed: ${res.status}');
+    }
+    final data = res.data;
+    if (data is Map) {
+      // Server returns remaining count; be lenient about the key name.
+      for (final key in ['remaining', 'remaining_today', 'left']) {
+        if (data[key] is int) return data[key] as int;
+      }
+      // Fallback: derive from claimed count if provided.
+      if (data['claimed_today'] is int) {
+        final claimed = data['claimed_today'] as int;
+        return (5 - claimed).clamp(0, 5);
+      }
+    }
+    return 5; // Unknown — let the claim attempt surface the real state.
+  }
+
+  static Future<void> submitReading(String articleId) async {
+    final res = await _invoke('submit-reading', body: {
+      'article_id': articleId,
+    });
+    if (res.status == 429) {
+      throw Exception('reading cap reached (429)');
+    }
+    if (res.status != 200) {
+      final data = res.data;
+      final message =
+          data is Map && data['error'] is String ? data['error'] : 'failed';
+      throw Exception('submit-reading failed: $message');
+    }
+  }
 }
 
 /// Thrown when an admin Edge Function denies the caller: 403 means the
