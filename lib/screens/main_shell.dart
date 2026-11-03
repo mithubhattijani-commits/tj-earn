@@ -40,7 +40,7 @@ class _MainShellState extends State<MainShell> {
     try {
       return await SupabaseService.getBalance();
     } catch (_) {
-      return StartupBundleService.balanceCoins;
+      return StartupBundleService.balanceCoins ?? 0;
     }
   }
 
