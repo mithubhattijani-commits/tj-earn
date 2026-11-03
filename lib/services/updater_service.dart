@@ -424,10 +424,12 @@ class UpdaterService {
       final file = File('${cacheDir.path}/tj-earn-update.apk');
       if (await file.exists()) await file.delete();
       client = HttpClient()
-        ..connectionTimeout = const Duration(seconds: 30)
+        ..connectionTimeout = const Duration(seconds: 30);
+      final request = await client.getUrl(Uri.parse(apkUrl));
+      // Redirect behavior is set on the request, not the client.
+      request
         ..followRedirects = true
         ..maxRedirects = 5;
-      final request = await client.getUrl(Uri.parse(apkUrl));
       final response = await request.close().timeout(
         const Duration(seconds: 60),
         onTimeout: () => throw TimeoutException('Download timed out'),

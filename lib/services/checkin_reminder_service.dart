@@ -137,6 +137,8 @@ class CheckinReminderService {
               ),
             ),
             androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+            uiLocalNotificationDateInterpretation:
+                UILocalNotificationDateInterpretation.absoluteTime,
             matchDateTimeComponents: DateTimeComponents.time,
           )
           .timeout(const Duration(seconds: 10));
