@@ -19,9 +19,8 @@ import 'validation.dart';
 /// versionCode with the installed one. When a newer version exists, the
 /// user is offered an update; the new APK downloads via Android
 /// DownloadManager (system process — survives app background/kill) and
-/// the system install prompt fires. GitHub's 302 redirect is resolved via
-/// HttpClient first (Jaani, 3 Nov 2026 fix). A sideloaded app can NEVER
-/// install silently — Android always requires the user's install tap.
+/// the system install prompt fires. A sideloaded app can NEVER install
+/// silently — Android always requires the user's install tap.
 ///
 /// Manifest format (same as Doner's):
 ///   {"versionCode": 16, "versionName": "1.0.15",
@@ -337,34 +336,6 @@ class UpdaterService {
   /// download, so it survives app background/kill, shows a notification with
   /// progress, and auto-resumes on network interruption. We poll for
   /// completion then fire the install intent.
-  /// Follows HTTP redirects and returns the final URL.
-  ///
-  /// GitHub release asset URLs return 302 to objects.githubusercontent.com.
-  /// Returns null on any failure (caller falls back to the original URL).
-  static Future<String?> _resolveRedirects(String url) async {
-    HttpClient? client;
-    try {
-      client = HttpClient()
-        ..connectionTimeout = const Duration(seconds: 15)
-        ..followRedirects = true
-        ..maxRedirects = 5;
-      final request = await client.headUrl(Uri.parse(url));
-      final response = await request.close().timeout(
-        const Duration(seconds: 20),
-      );
-      await response.drain();
-      final finalUrl = response.redirects.isNotEmpty
-          ? response.redirects.last.location.toString()
-          : null;
-      if (finalUrl != null && finalUrl != url) return finalUrl;
-      return null;
-    } catch (_) {
-      return null;
-    } finally {
-      client?.close(force: true);
-    }
-  }
-
   static Future<void> _downloadAndInstall(
     BuildContext context,
     String apkUrl,
@@ -400,13 +371,9 @@ class UpdaterService {
       }
     }
     try {
-      // FIX (Jaani, 3 Nov 2026): resolve GitHub's 302 redirect BEFORE handing
-      // the URL to DownloadManager — the manager does not follow the redirect
-      // reliably, causing "something went wrong". HttpClient follows redirects.
-      final resolvedUrl = await _resolveRedirects(apkUrl) ?? apkUrl;
       final downloadId = await _channel.invokeMethod<int>(
         'downloadApk',
-        {'url': resolvedUrl, 'fileName': 'tj-earn-update.apk'},
+        {'url': apkUrl, 'fileName': 'tj-earn-update.apk'},
       );
       if (downloadId == null) return;
       int lastBytes = 0;
