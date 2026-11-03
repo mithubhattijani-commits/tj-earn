@@ -192,5 +192,9 @@
   "checkForUpdate": "Check for Update",
   "@checkForUpdate": {
     "description": "Button to manually check for app updates"
-  }
+  },
+  "pendingBonuses": "Pending bonuses",
+  "claimAll": "Claim all",
+  "bonusClaimed": "Bonus claimed!",
+  "bonusClaimFailed": "Could not claim bonus."
 }

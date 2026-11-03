@@ -192,5 +192,9 @@
   "checkForUpdate": "اپ ڈیٹ چیک کریں",
   "@checkForUpdate": {
     "description": "Button to manually check for app updates"
-  }
+  },
+  "pendingBonuses": "زیر التواء بونس",
+  "claimAll": "سب حاصل کریں",
+  "bonusClaimed": "بونس مل گیا!",
+  "bonusClaimFailed": "بونس حاصل نہیں ہو سکا۔"
 }
