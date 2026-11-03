@@ -477,13 +477,4 @@ class UpdaterService {
     return dir;
   }
 
-  /// Convert a DownloadManager local URI (file:// or content://) to a path
-  /// usable by the install intent. For content:// URIs we copy to cache.
-  static String? _uriToPath(String uri) {
-    if (uri.isEmpty) return null;
-    if (uri.startsWith('file://')) {
-      return Uri.parse(uri).toFilePath();
-    }
-    return null; // content:// handled by system; shouldn't happen with our dest
-  }
 }
