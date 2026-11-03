@@ -483,7 +483,8 @@ class SupabaseService {  static SupabaseClient get client => Supabase.instance.c
       // Fallback: derive from claimed count if provided.
       if (data['claimed_today'] is int) {
         final claimed = data['claimed_today'] as int;
-        return (5 - claimed).clamp(0, 5);
+        final remaining = 5 - claimed;
+        return remaining < 0 ? 0 : (remaining > 5 ? 5 : remaining);
       }
     }
     return 5; // Unknown — let the claim attempt surface the real state.
