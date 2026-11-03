@@ -6,6 +6,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'app_navigator.dart';
 import 'config.dart';
 import 'screens/auth_screen.dart';
 import 'screens/main_shell.dart';
@@ -15,6 +16,7 @@ import 'services/device_service.dart';
 import 'services/remote_config_service.dart';
 import 'services/supabase_service.dart';
 import 'services/unity_ads_service.dart';
+import 'services/updater_service.dart';
 import 'theme.dart';
 
 /// Language choice, persisted locally. Defaults to English.
@@ -64,6 +66,13 @@ class _TjEarnAppState extends State<TjEarnApp> {
   void initState() {
     super.initState();
     _boot = _bootApp();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Background-update re-attach (Jaani, 3 Nov 2026): if a previous
+      // session left an APK download in-flight, restore its banner and
+      // polling; if it finished, show the install prompt. Fire-and-forget,
+      // never blocks startup, never throws.
+      unawaited(UpdaterService.restoreDownloadState());
+    });
   }
 
   /// Boots the backend connection. Returns true when Supabase is
@@ -119,6 +128,9 @@ class _TjEarnAppState extends State<TjEarnApp> {
       builder: (context, locale, _) {
         return MaterialApp(
           title: 'TJ Earn',
+          // Global key for the updater (Jaani, 3 Nov 2026): the download
+          // banner + install prompt must survive navigation.
+          navigatorKey: appNavigatorKey,
           locale: locale,
           localizationsDelegates: [
             AppLocalizations.delegate,

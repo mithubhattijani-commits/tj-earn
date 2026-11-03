@@ -29,6 +29,17 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
+        <!-- Updater: fires the install intent when a download finishes
+             while the app process is dead (Jaani, 3 Nov 2026).
+             ACTION_DOWNLOAD_COMPLETE is exempt from the Android 8+
+             implicit-broadcast ban, so a manifest receiver works. -->
+        <receiver
+            android:name=".DownloadCompleteReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.DOWNLOAD_COMPLETE" />
+            </intent-filter>
+        </receiver>
         <!-- FileProvider for the updater's downloaded APK. -->
         <provider
             android:name="androidx.core.content.FileProvider"

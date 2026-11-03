@@ -96,6 +96,12 @@ class MainActivity : FlutterActivity() {
                                 setAllowedOverRoaming(false)
                             }
                             val downloadId = dm.enqueue(request)
+                            // Remember the id for DownloadCompleteReceiver
+                            // (fires the install intent when the app is dead).
+                            getSharedPreferences(
+                                "tj_earn_updater",
+                                Context.MODE_PRIVATE,
+                            ).edit().putLong("last_download_id", downloadId).apply()
                             result.success(downloadId)
                         } catch (e: Exception) {
                             result.error("DOWNLOAD_FAILED", e.message, null)
