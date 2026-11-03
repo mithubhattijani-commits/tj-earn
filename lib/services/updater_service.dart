@@ -336,8 +336,9 @@ class UpdaterService {
   /// download, so it survives app background/kill, shows a notification with
   /// progress, and auto-resumes on network interruption. We poll for
   /// completion then fire the install intent.
+  // ignore: unused_element
   static Future<String?> _resolveRedirects(String url) async {
-    return null;
+    return url;
   }
 
   static Future<void> _downloadAndInstall(
