@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:app_links/app_links.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'supabase_service.dart';
@@ -116,7 +117,15 @@ class ReferralDeepLinkService {
   /// This is best-effort: if the code was already applied, is invalid,
   /// or is the user's own code, the server rejects it and we clear it.
   Future<String?> autoApplyPendingCode() async {
-    final code = await getPendingCode();
+    var code = await getPendingCode();
+    // Fallback: check clipboard for a referral code (user may have copied
+    // it from the website download page before installing).
+    if (code == null && !kIsWeb) {
+      code = await _checkClipboardForCode();
+      if (code != null) {
+        await _storePendingCode(code);
+      }
+    }
     if (code == null) return null;
     try {
       await SupabaseService.applyReferral(code).timeout(
@@ -128,6 +137,28 @@ class ReferralDeepLinkService {
       // Server rejected (duplicate, self-referral, invalid, etc.).
       // Clear so we don't retry forever.
       await clearPendingCode();
+      return null;
+    }
+  }
+
+  /// Checks the clipboard for a valid referral code pattern.
+  /// Used as fallback when the user copied the code from the website.
+  Future<String?> _checkClipboardForCode() async {
+    try {
+      final data = await Clipboard.getData(Clipboard.kTextPlain).timeout(
+        const Duration(seconds: 5),
+      );
+      final text = data?.text?.trim().toUpperCase() ?? '';
+      // Check if clipboard contains a valid code (exact or embedded in link).
+      if (isValidReferralCode(text)) return text;
+      // Try to extract from a referral link.
+      final match = RegExp(r'[?&]ref=([A-Z0-9]{8})').firstMatch(text);
+      if (match != null) {
+        final extracted = match.group(1)!;
+        if (isValidReferralCode(extracted)) return extracted;
+      }
+      return null;
+    } catch (_) {
       return null;
     }
   }
