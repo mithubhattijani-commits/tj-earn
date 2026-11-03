@@ -7,6 +7,10 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 /// Registration only creates the auth user. The matching `profiles` row is
 /// created by a database trigger (see the SQL migration), never by the app
 /// writing profile data it could tamper with.
+///
+/// Daily upgrade, 3 Nov 2026 (Shami): password visibility toggle — users
+/// kept mistyping passwords with no way to verify (the #1 friction point
+/// on the login screen).
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
 
@@ -20,6 +24,7 @@ class _AuthScreenState extends State<AuthScreen> {
   final _name = TextEditingController();
   var _registerMode = false;
   var _busy = false;
+  var _obscurePassword = true;
   String? _error;
 
   @override
@@ -176,8 +181,18 @@ class _AuthScreenState extends State<AuthScreen> {
             const SizedBox(height: 12),
             TextField(
               controller: _password,
-              obscureText: true,
-              decoration: InputDecoration(labelText: t.password),
+              obscureText: _obscurePassword,
+              decoration: InputDecoration(
+                labelText: t.password,
+                suffixIcon: IconButton(
+                  tooltip: _obscurePassword ? 'Show' : 'Hide',
+                  icon: Icon(_obscurePassword
+                      ? Icons.visibility
+                      : Icons.visibility_off),
+                  onPressed: () => setState(
+                      () => _obscurePassword = !_obscurePassword),
+                ),
+              ),
             ),
             const SizedBox(height: 24),
             FilledButton(
