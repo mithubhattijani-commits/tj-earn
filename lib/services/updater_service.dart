@@ -16,10 +16,11 @@ import 'validation.dart';
 /// the app fetches a small JSON manifest from the website
 /// (https://nigraantv.xyz/apps/tj-earn-version.json) and compares its
 /// versionCode with the installed one. When a newer version exists, the
-/// user is offered an update; the new APK downloads via Android
-/// DownloadManager (system process — survives app background/kill) and
-/// the system install prompt fires. A sideloaded app can NEVER install
-/// silently — Android always requires the user's install tap.
+/// user is offered an update; the new APK downloads via Dart HttpClient
+/// (follows GitHub's 302 redirects — DownloadManager did not, Jaani 3 Nov
+/// 2026 fix) with a live progress banner, then the system install prompt
+/// fires. A sideloaded app can NEVER install silently — Android always
+/// requires the user's install tap.
 ///
 /// Manifest format (same as Doner's):
 ///   {"versionCode": 16, "versionName": "1.0.15",
@@ -335,6 +336,17 @@ class UpdaterService {
   /// download, so it survives app background/kill, shows a notification with
   /// progress, and auto-resumes on network interruption. We poll for
   /// completion then fire the install intent.
+  /// Downloads the APK via Dart HttpClient and fires the install prompt.
+  ///
+  /// FIX (Jaani, 3 Nov 2026 — "App k ander hi update hona chahiye"): the old
+  /// implementation used Android DownloadManager, which FAILS on GitHub
+  /// release URLs (302 redirect to objects.githubusercontent.com — the
+  /// manager does not follow it reliably, download ends "failed" and the UI
+  /// shows "something went wrong"). This version uses Dart's HttpClient
+  /// (same as Doner's working updater): HttpClient follows redirects
+  /// automatically, streams to a file in the app cache dir with live
+  /// progress, then fires the system install prompt via FileProvider.
+  /// The app is never locked behind a modal — the banner shows progress.
   static Future<void> _downloadAndInstall(
     BuildContext context,
     String apkUrl,
@@ -370,50 +382,18 @@ class UpdaterService {
       }
     }
     try {
-      final downloadId = await _channel.invokeMethod<int>(
-        'downloadApk',
-        {'url': apkUrl, 'fileName': 'tj-earn-update.apk'},
-      );
-      if (downloadId == null) return;
-      int lastBytes = 0;
-      DateTime lastChange = DateTime.now();
-      // Poll DownloadManager for completion (max ~10 minutes).
-      for (var i = 0; i < 300; i++) {
-        await Future.delayed(const Duration(seconds: 2));
-        final status = await _channel.invokeMethod<Map>('downloadStatus', {
-          'downloadId': downloadId,
-        });
-        final s = status?['status'] as String?;
-        final int downloaded = (status?['bytesDownloaded'] as int?) ?? 0;
-        final int total = (status?['bytesTotal'] as int?) ?? 0;
-        final DateTime now = DateTime.now();
-        if (downloaded > lastBytes) {
-          lastBytes = downloaded;
-          lastChange = now;
+      final file = await _downloadApkFile(apkUrl, progress);
+      if (file == null) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(localizations.genericError)),
+          );
         }
-        final bool stalled = (s == 'running' || s == 'pending') &&
-            now.difference(lastChange).inSeconds >= 60;
-        progress.value = _DownloadProgress(
-          downloaded: downloaded,
-          total: total,
-          stalled: stalled,
-        );
-        if (s == 'success') {
-          final uri = status?['localUri'] as String? ?? '';
-          final path = _uriToPath(uri);
-          if (path != null && context.mounted) {
-            await _channel.invokeMethod<void>('installApk', {'path': path});
-          }
-          return;
-        } else if (s == 'failed' || s == 'not_found') {
-          if (context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(localizations.genericError)),
-            );
-          }
-          return;
-        }
-        // running/pending/paused -> keep polling; banner shows live progress.
+        return;
+      }
+      if (context.mounted) {
+        await _channel.invokeMethod<void>(
+            'installApk', {'path': file.path});
       }
     } catch (_) {
       if (context.mounted) {
@@ -425,6 +405,73 @@ class UpdaterService {
       banner?.remove();
       progress.dispose();
     }
+  }
+
+  /// Streams the APK to the app cache dir via HttpClient.
+  ///
+  /// HttpClient follows HTTP redirects automatically (followRedirects=true
+  /// by default), so GitHub's 302 to the release asset works. Returns the
+  /// file on success, null on any failure. Progress (downloaded, total)
+  /// is pushed to [progress]; total is 0 when the server hides its size.
+  static Future<File?> _downloadApkFile(
+    String apkUrl,
+    ValueNotifier<_DownloadProgress> progress,
+  ) async {
+    HttpClient? client;
+    try {
+      final cacheDir = await _apkCacheDir();
+      final file = File('${cacheDir.path}/tj-earn-update.apk');
+      if (await file.exists()) await file.delete();
+      client = HttpClient()
+        ..connectionTimeout = const Duration(seconds: 30)
+        ..followRedirects = true
+        ..maxRedirects = 5;
+      final request = await client.getUrl(Uri.parse(apkUrl));
+      final response = await request.close().timeout(
+        const Duration(seconds: 60),
+        onTimeout: () => throw TimeoutException('Download timed out'),
+      );
+      if (response.statusCode != HttpStatus.ok) return null;
+      final total = response.contentLength;
+      var downloaded = 0;
+      var lastBytes = 0;
+      var lastChange = DateTime.now();
+      final sink = file.openWrite();
+      await for (final chunk in response) {
+        downloaded += chunk.length;
+        sink.add(chunk);
+        final now = DateTime.now();
+        if (downloaded > lastBytes) {
+          lastBytes = downloaded;
+          lastChange = now;
+        }
+        final stalled =
+            now.difference(lastChange).inSeconds >= 60;
+        progress.value = _DownloadProgress(
+          downloaded: downloaded,
+          total: total,
+          stalled: stalled,
+        );
+      }
+      await sink.close();
+      if (await file.length() == 0) return null;
+      return file;
+    } catch (_) {
+      return null;
+    } finally {
+      client?.close(force: true);
+    }
+  }
+
+  /// App cache directory for the downloaded APK.
+  static Future<Directory> _apkCacheDir() async {
+    // MethodChannel already exists for installer; reuse a cache path via
+    // the channel to avoid adding path_provider dependency.
+    final path = await _channel.invokeMethod<String>('apkCacheDir') ??
+        '/data/user/0/com.tjearn.app/cache';
+    final dir = Directory(path);
+    if (!await dir.exists()) await dir.create(recursive: true);
+    return dir;
   }
 
   /// Convert a DownloadManager local URI (file:// or content://) to a path

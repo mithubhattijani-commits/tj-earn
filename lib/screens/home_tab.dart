@@ -9,7 +9,7 @@ import '../services/startup_bundle_service.dart';
 import '../theme.dart';
 import '../widgets/adsterra_app_banner.dart';
 import '../widgets/onboarding_checklist.dart';
-import '../widgets/streak_card.dart';
+import '../widgets/checkin_card.dart';
 import 'leaderboard_screen.dart';
 import 'onboarding_screen.dart';
 import 'spin_screen.dart';
@@ -284,8 +284,8 @@ class _HomeTabState extends State<HomeTab> {
           // Onboarding checklist for new users (hidden when complete)
           const OnboardingChecklist(),
           const SizedBox(height: 16),
-          // Daily streak card (Swagbucks-style retention)
-          const StreakCard(),
+          // Daily check-in card (Jaani, 3 Nov 2026: +5/day streak progression)
+          const CheckInCard(),
           const SizedBox(height: 16),
           // Server-driven sponsored ad (Remote Config). Zero height when
           // the server disables it — no layout shift, no placeholder.

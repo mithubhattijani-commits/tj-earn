@@ -44,6 +44,9 @@ class MainActivity : FlutterActivity() {
                         }
                         result.success(canInstall)
                     }
+                    "apkCacheDir" -> {
+                        result.success(cacheDir.absolutePath)
+                    }
                     "openInstallSettings" -> {
                         val intent = Intent(
                             Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
