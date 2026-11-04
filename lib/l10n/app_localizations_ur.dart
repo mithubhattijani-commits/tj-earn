@@ -41,6 +41,30 @@ class AppLocalizationsUr extends AppLocalizations {
   String get displayName => 'نام';
 
   @override
+  String get doubleRewardAdFailed => 'ویڈیو نہیں چل سکی۔ بعد میں دوبارہ کوشش کریں۔';
+
+  @override
+  String get doubleRewardAlready => 'یہ انعام پہلے ہی دوگنا ہو چکا ہے۔';
+
+  @override
+  String doubleRewardBody(Object coins) => 'اپنے $coins کوئنز دوگنا کرنے کے لیے ایک مختصر ویڈیو دیکھیں۔';
+
+  @override
+  String get doubleRewardButton => 'ویڈیو دیکھیں اور دوگنا کریں';
+
+  @override
+  String get doubleRewardClaimFailed => 'بونس جمع نہیں ہو سکا۔ دوبارہ کوشش کریں۔';
+
+  @override
+  String doubleRewardEarned(Object coins) => 'مبارک! +$coins بونس کوئنز آپ کے اکاؤنٹ میں جمع ہو گئے۔';
+
+  @override
+  String get doubleRewardNoThanks => 'نہیں، شکریہ';
+
+  @override
+  String get doubleRewardTitle => 'انعام دوگنا کریں؟';
+
+  @override
   String get downloading => 'اپ ڈیٹ ڈاؤن لوڈ ہو رہا ہے…';
   @override
   String get downloadStalled => 'ڈاؤن لوڈ رک گیا ہے — اپنا انٹرنیٹ چیک کریں';

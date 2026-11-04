@@ -511,7 +511,7 @@ class SupabaseService {  static SupabaseClient get client => Supabase.instance.c
     return 5; // Unknown — let the claim attempt surface the real state.
   }
 
-  static Future<void> submitReading(String articleId) async {
+  static Future<int> submitReading(String articleId) async {
     final res = await _invoke('submit-reading', body: {
       'article_id': articleId,
     });
@@ -524,6 +524,34 @@ class SupabaseService {  static SupabaseClient get client => Supabase.instance.c
           data is Map && data['error'] is String ? data['error'] : 'failed';
       throw Exception('submit-reading failed: $message');
     }
+    // Return the server's actual credited coins so the UI (double-reward
+    // dialog) always displays the real payout, never an assumed one.
+    final data = res.data;
+    if (data is Map && data['coins'] is int) {
+      return data['coins'] as int;
+    }
+    return 10; // Server default read_article_coins.
+  }
+
+  /// Double-reward bonus (Jaani, 4 Nov 2026): after a reading claim, the
+  /// user may opt-in to watch one Unity rewarded video to DOUBLE that
+  /// claim. The `claim-double-bonus` Edge Function re-derives the
+  /// original reading claim from [ref] (the article_id), validates it
+  /// belongs to the caller and is today's, then credits the SAME amount
+  /// server-side. Returns the bonus coins credited. Throws on any
+  /// failure — the UI only ever shows credited bonuses.
+  static Future<int> claimDoubleBonus({required String ref}) async {
+    final res = await _invoke('claim-double-bonus', body: {'ref': ref});
+    final data = res.data;
+    if (res.status != 200) {
+      final message =
+          data is Map && data['error'] is String ? data['error'] : 'failed';
+      throw Exception('claim-double-bonus failed: $message');
+    }
+    if (data is Map<String, dynamic> && data['coins'] is int) {
+      return data['coins'] as int;
+    }
+    throw Exception('claim-double-bonus returned an unexpected response');
   }
 }
 

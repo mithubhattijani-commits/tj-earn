@@ -41,6 +41,30 @@ class AppLocalizationsEn extends AppLocalizations {
   String get displayName => 'Display name';
 
   @override
+  String get doubleRewardAdFailed => 'The video could not be shown. Try again later.';
+
+  @override
+  String get doubleRewardAlready => 'This reward was already doubled.';
+
+  @override
+  String doubleRewardBody(Object coins) => 'Watch a short video to double your $coins coins.';
+
+  @override
+  String get doubleRewardButton => 'Watch video & double';
+
+  @override
+  String get doubleRewardClaimFailed => 'The bonus could not be credited. Try again.';
+
+  @override
+  String doubleRewardEarned(Object coins) => 'Doubled! +$coins bonus coins credited.';
+
+  @override
+  String get doubleRewardNoThanks => 'No, thanks';
+
+  @override
+  String get doubleRewardTitle => 'Double your reward?';
+
+  @override
   String get downloading => 'Downloading update…';
   @override
   String get downloadStalled => 'Stalled — check your connection';

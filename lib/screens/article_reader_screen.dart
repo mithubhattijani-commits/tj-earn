@@ -1,15 +1,22 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:tj_earn/l10n/app_localizations.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 import '../services/supabase_service.dart';
+import '../services/unity_ads_service.dart';
 
 /// In-app article reader (Jaani, 3 Nov 2026).
 /// Opens the nigraantv.xyz article in a WebView. A countdown enforces the
 /// minimum read time (matching the website's rule); then the user taps
 /// "Claim +10 Coins" which calls the shared `submit-reading` Edge Function.
 /// Returns true if a reward was claimed (so the list can refresh).
+///
+/// DOUBLE REWARD (Jaani, 4 Nov 2026): after a successful claim the user
+/// is OFFERED (never forced) one Unity rewarded video to double the
+/// coins. The bonus is credited server-side by the `claim-double-bonus`
+/// Edge Function — the UI only shows what the server actually credited.
 class ArticleReaderScreen extends StatefulWidget {
   final String articleId;
   final String title;
@@ -63,15 +70,18 @@ class _ArticleReaderScreenState extends State<ArticleReaderScreen> {
       _claimError = null;
     });
     try {
-      await SupabaseService.submitReading(widget.articleId);
+      final int coins = await SupabaseService.submitReading(widget.articleId);
       if (!mounted) return;
       setState(() {
         _claimed = true;
         _claiming = false;
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('+10 coins earned!')),
+        SnackBar(content: Text('+$coins coins earned!')),
       );
+      // Optional double-reward — the user's choice, never forced.
+      await _offerDoubleReward(coins);
+      if (!mounted) return;
       // Pop back with claimed=true after a beat.
       Future.delayed(const Duration(milliseconds: 800), () {
         if (mounted) Navigator.of(context).pop(true);
@@ -92,6 +102,81 @@ class _ArticleReaderScreenState extends State<ArticleReaderScreen> {
         _claiming = false;
       });
     }
+  }
+
+  /// Double-reward offer (Jaani, 4 Nov 2026).
+  ///
+  /// Shows the opt-in dialog, then (only on tap) a Unity rewarded video.
+  /// On a FULL watch, credits the bonus via `claim-double-bonus` and
+  /// returns true when the server actually credited it. Every wait is
+  /// bounded — the UI never hangs on ads or the network. Skipping the
+  /// video or declining the dialog is a clean no-op.
+  Future<bool> _offerDoubleReward(int coins) async {
+    final t = AppLocalizations.of(context)!;
+    final bool? want = await showDialog<bool>(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext ctx) => AlertDialog(
+        title: Text(t.doubleRewardTitle),
+        content: Text(t.doubleRewardBody('$coins')),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(t.doubleRewardNoThanks),
+          ),
+          FilledButton.icon(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            icon: const Icon(Icons.play_arrow),
+            label: Text(t.doubleRewardButton),
+          ),
+        ],
+      ),
+    );
+    if (want != true || !mounted) return false;
+
+    // Late init in case startup init failed (e.g. no network then).
+    if (!UnityAdsService.isInitialized) {
+      await UnityAdsService.init();
+    }
+    if (!mounted) return false;
+    // Bounded load — a stall surfaces as false, never a hang.
+    final bool loaded = await UnityAdsService.loadRewardedAd();
+    if (!mounted) return false;
+    if (!loaded) {
+      _showDoubleError(t.doubleRewardAdFailed);
+      return false;
+    }
+    final UnityAdResult result = await UnityAdsService.showRewardedAd();
+    if (!mounted) return false;
+    if (result != UnityAdResult.completed) {
+      if (result == UnityAdResult.failed) {
+        _showDoubleError(t.doubleRewardAdFailed);
+      }
+      // Skipped: no error, no bonus — the user chose not to finish.
+      return false;
+    }
+    // Full watch — credit the bonus server-side. The server is the
+    // authority: only a credited response counts as earned.
+    try {
+      final int bonus =
+          await SupabaseService.claimDoubleBonus(ref: widget.articleId);
+      if (!mounted) return false;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(t.doubleRewardEarned('$bonus'))),
+      );
+      return true;
+    } catch (_) {
+      if (!mounted) return false;
+      _showDoubleError(t.doubleRewardClaimFailed);
+      return false;
+    }
+  }
+
+  void _showDoubleError(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
   }
 
   @override

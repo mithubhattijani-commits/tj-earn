@@ -158,6 +158,54 @@ abstract class AppLocalizations {
   /// **'Display name'**
   String get displayName;
 
+  /// No description provided for @doubleRewardAdFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The video could not be shown. Try again later.'**
+  String get doubleRewardAdFailed;
+
+  /// No description provided for @doubleRewardAlready.
+  ///
+  /// In en, this message translates to:
+  /// **'This reward was already doubled.'**
+  String get doubleRewardAlready;
+
+  /// No description provided for @doubleRewardBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Watch a short video to double your {coins} coins.'**
+  String doubleRewardBody(Object coins);
+
+  /// No description provided for @doubleRewardButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Watch video & double'**
+  String get doubleRewardButton;
+
+  /// No description provided for @doubleRewardClaimFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The bonus could not be credited. Try again.'**
+  String get doubleRewardClaimFailed;
+
+  /// No description provided for @doubleRewardEarned.
+  ///
+  /// In en, this message translates to:
+  /// **'Doubled! +{coins} bonus coins credited.'**
+  String doubleRewardEarned(Object coins);
+
+  /// No description provided for @doubleRewardNoThanks.
+  ///
+  /// In en, this message translates to:
+  /// **'No, thanks'**
+  String get doubleRewardNoThanks;
+
+  /// No description provided for @doubleRewardTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Double your reward?'**
+  String get doubleRewardTitle;
+
   /// No description provided for @downloading.
   ///
   /// In en, this message translates to:
