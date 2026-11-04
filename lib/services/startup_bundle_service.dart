@@ -178,6 +178,22 @@ class StartupBundleService {
     return const [];
   }
 
+  /// Referral rewards guide image URL (Jaani, 4 Nov 2026 — no-update
+  /// content path). The `get-startup-bundle` Edge Function may override it
+  /// via `remote_content.referral_guide_url`; otherwise the built-in link
+  /// is used, so the guide is always available.
+  static String get referralGuideUrl {
+    final rc = _cached?['remote_content'];
+    if (rc is Map) {
+      final u = rc['referral_guide_url'];
+      if (u is String && u.isNotEmpty) return u;
+    }
+    return _defaultReferralGuideUrl;
+  }
+
+  static const _defaultReferralGuideUrl =
+      'https://nigraantv.xyz/earn/referral-guide.png';
+
   /// Clear on logout so the next account starts fresh. Sync signature
   /// (existing call sites stay unchanged); disk clear is fire-and-forget.
   static void reset() {

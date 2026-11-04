@@ -15,8 +15,11 @@ import { corsHeaders } from '../_shared/cors.ts';
 ///   "balance_coins": 10,
 ///   "streak": { "current_streak": 5, ... } | null,
 ///   "onboarding_completed": ["checkin", "quiz"],
-///   "is_admin": false
+///   "is_admin": false,
+///   "remote_content": { "referral_guide_url": "https://..." }
 /// }
+/// remote_content carries server-driven UI content (Jaani, 4 Nov 2026):
+/// the app renders it without needing an update.
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -82,7 +85,13 @@ Deno.serve(async (req) => {
   const is_admin =
     callerEmail.length > 0 && adminEmails.includes(callerEmail);
 
-  return json({ balance_coins, streak, onboarding_completed, is_admin });
+  // Server-driven UI content (Jaani, 4 Nov 2026 — no-update path):
+  // the referral guide image can be swapped without an app update.
+  const remote_content = {
+    referral_guide_url: 'https://nigraantv.xyz/earn/referral-guide.png',
+  };
+
+  return json({ balance_coins, streak, onboarding_completed, is_admin, remote_content });
 });
 
 /// Parses the admin email allow-list (same as referral-stats): accepts a

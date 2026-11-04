@@ -4,6 +4,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:tj_earn/l10n/app_localizations.dart';
 
 import '../services/supabase_service.dart';
+import '../services/startup_bundle_service.dart';
 import '../services/validation.dart';
 
 /// SIMPLE Refer & Earn (Jaani, 3 Nov 2026 — v1.0.18).
@@ -54,6 +55,53 @@ class _ReferralTabState extends State<ReferralTab> {
   void _snack(String msg) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+  }
+
+  void _showGuide(BuildContext context) {
+    final t = AppLocalizations.of(context)!;
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        insetPadding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 8, 8),
+              child: Row(
+                children: [
+                  Expanded(
+                      child: Text(t.referHowTitle,
+                          style: Theme.of(context).textTheme.titleMedium)),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                ],
+              ),
+            ),
+            Flexible(
+              child: InteractiveViewer(
+                child: Image.network(
+                  StartupBundleService.referralGuideUrl,
+                  fit: BoxFit.contain,
+                  loadingBuilder: (context, child, progress) => progress == null
+                      ? child
+                      : const Padding(
+                          padding: EdgeInsets.all(48),
+                          child:
+                              Center(child: CircularProgressIndicator())),
+                  errorBuilder: (context, error, stackTrace) => Padding(
+                    padding: const EdgeInsets.all(32),
+                    child: Text(t.referLoadFailed),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _copy(String text) async {
@@ -170,6 +218,43 @@ class _ReferralTabState extends State<ReferralTab> {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                // Rewards guide (Jaani, 4 Nov 2026): image URL comes from
+                // the startup bundle (server-driven), so the guide can
+                // change without an app update.
+                Card(
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(12),
+                    onTap: () => _showGuide(context),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Text(t.referHowTitle,
+                              style: Theme.of(context).textTheme.titleMedium),
+                          const SizedBox(height: 12),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: Image.network(
+                              StartupBundleService.referralGuideUrl,
+                              fit: BoxFit.fitWidth,
+                              loadingBuilder: (context, child, progress) =>
+                                  progress == null
+                                      ? child
+                                      : const SizedBox(
+                                          height: 220,
+                                          child: Center(
+                                              child:
+                                                  CircularProgressIndicator())),
+                              errorBuilder: (context, error, stackTrace) =>
+                                  const SizedBox.shrink(),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
                 // Your code card
                 Card(
                   child: Padding(
