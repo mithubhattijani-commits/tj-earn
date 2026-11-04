@@ -12,7 +12,6 @@ import '../widgets/onboarding_checklist.dart';
 import '../widgets/checkin_card.dart';
 import 'leaderboard_screen.dart';
 import 'onboarding_screen.dart';
-import 'spin_screen.dart';
 import 'streak_screen.dart';
 import 'watch_ad_screen.dart';
 
@@ -302,11 +301,6 @@ class _HomeTabState extends State<HomeTab> {
             crossAxisSpacing: 12,
             childAspectRatio: 1.5,
             children: [
-              _rewardTile(
-                icon: Icons.casino,
-                label: t.spinTitle,
-                onTap: () => _open(const SpinScreen()),
-              ),
               _rewardTile(
                 icon: Icons.local_fire_department,
                 label: t.streakTitle,

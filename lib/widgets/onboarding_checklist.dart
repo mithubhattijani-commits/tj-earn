@@ -6,7 +6,7 @@ import 'package:tj_earn/l10n/app_localizations.dart';
 
 /// New-user onboarding checklist (Roz Dhan-style welcome tasks).
 ///
-/// Shows 5 tasks: profile, checkin, quiz, spin, referral.
+/// Shows 4 tasks: profile, checkin, quiz, referral.
 /// Completing all earns the onboarding bonus (default 100 coins).
 /// Hidden once all tasks are complete.
 class OnboardingChecklist extends StatefulWidget {
@@ -60,7 +60,6 @@ class _OnboardingChecklistState extends State<OnboardingChecklist> {
       ('profile', t.onboardingProfile, Icons.person),
       ('checkin', t.onboardingCheckin, Icons.check_circle),
       ('quiz', t.onboardingQuiz, Icons.quiz),
-      ('spin', t.onboardingSpin, Icons.casino),
       ('referral', t.onboardingReferral, Icons.share),
     ];
 
