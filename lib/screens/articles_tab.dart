@@ -10,8 +10,15 @@ import 'article_reader_screen.dart';
 /// "Read Articles" tab (Jaani, 3 Nov 2026): website <-> app integration.
 /// Lists latest nigraantv.xyz articles. Tapping one opens it in an in-app
 /// WebView; after the minimum read time the user can claim the reading
-/// reward (10 coins, cap 5/day) via the same `submit-reading` Edge Function
+/// reward (5 coins, cap 5/day) via the same `submit-reading` Edge Function
 /// the website uses — so the balance is shared.
+///
+/// Bilingual (Jaani, 6 Nov 2026): the feed carries both Urdu and English
+/// articles (English ones have en:true). Filter chips at the top of the
+/// list — All / English / اردو — default All, so both languages stay
+/// visible; each row carries a small language badge (EN / اردو). The
+/// reader screen opens the site chrome in the article's language via the
+/// site's own setLang() (see ArticleReaderScreen).
 class ArticlesTab extends StatefulWidget {
   const ArticlesTab({super.key});
 
@@ -22,14 +29,18 @@ class ArticlesTab extends StatefulWidget {
 class _Article {
   final String id;
   final String title;
-  _Article(this.id, this.title);
+  final bool isEnglish;
+  _Article(this.id, this.title, {this.isEnglish = false});
 }
+
+enum _LangFilter { all, en, ur }
 
 class _ArticlesTabState extends State<ArticlesTab> {
   List<_Article> _articles = [];
   bool _loading = true;
   String? _error;
   int? _remainingToday;
+  _LangFilter _filter = _LangFilter.all;
 
   @override
   void initState() {
@@ -60,7 +71,8 @@ class _ArticlesTabState extends State<ArticlesTab> {
           final id = item['id']?.toString() ?? '';
           final title = item['title']?.toString() ?? '';
           if (id.isNotEmpty && title.isNotEmpty) {
-            articles.add(_Article(id, title));
+            articles.add(_Article(id, title,
+                isEnglish: item['en'] == true));
           }
         }
       }
@@ -89,6 +101,18 @@ class _ArticlesTabState extends State<ArticlesTab> {
         _error = 'Could not load articles. Pull to retry.';
         _loading = false;
       });
+    }
+  }
+
+  /// Articles visible under the current language filter (default: all).
+  List<_Article> get _visible {
+    switch (_filter) {
+      case _LangFilter.en:
+        return _articles.where((a) => a.isEnglish).toList();
+      case _LangFilter.ur:
+        return _articles.where((a) => !a.isEnglish).toList();
+      case _LangFilter.all:
+        return _articles;
     }
   }
 
@@ -124,21 +148,41 @@ class _ArticlesTabState extends State<ArticlesTab> {
                     ],
                   )
                 : ListView.separated(
-                    itemCount: _articles.length,
+                    // Item 0 is the language filter row; the rest are
+                    // articles. Keeps the ListView the direct child of
+                    // RefreshIndicator so pull-to-refresh keeps working.
+                    itemCount: _visible.length + 1,
                     separatorBuilder: (_, _) => const Divider(height: 1),
                     itemBuilder: (context, i) {
-                      final a = _articles[i];
+                      if (i == 0) {
+                        return Padding(
+                          padding:
+                              const EdgeInsets.fromLTRB(12, 12, 12, 8),
+                          child: Row(
+                            children: [
+                              _filterChip('All', _LangFilter.all),
+                              const SizedBox(width: 8),
+                              _filterChip('English', _LangFilter.en),
+                              const SizedBox(width: 8),
+                              _filterChip('اردو', _LangFilter.ur),
+                            ],
+                          ),
+                        );
+                      }
+                      final a = _visible[i - 1];
                       return ListTile(
                         leading: const Icon(Icons.article_outlined),
                         title: Text(a.title,
                             maxLines: 2, overflow: TextOverflow.ellipsis),
-                        trailing: const Row(
+                        trailing: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.monetization_on_outlined,
+                            _langBadge(a.isEnglish),
+                            const SizedBox(width: 8),
+                            const Icon(Icons.monetization_on_outlined,
                                 size: 16, color: Colors.amber),
-                            SizedBox(width: 4),
-                            Text('+10',
+                            const SizedBox(width: 4),
+                            const Text('+5',
                                 style: TextStyle(color: Colors.amber)),
                           ],
                         ),
@@ -149,6 +193,7 @@ class _ArticlesTabState extends State<ArticlesTab> {
                               builder: (_) => ArticleReaderScreen(
                                 articleId: a.id,
                                 title: a.title,
+                                isEnglish: a.isEnglish,
                               ),
                             ),
                           );
@@ -157,6 +202,30 @@ class _ArticlesTabState extends State<ArticlesTab> {
                       );
                     },
                   ),
+      ),
+    );
+  }
+
+  Widget _filterChip(String label, _LangFilter value) {
+    return ChoiceChip(
+      label: Text(label),
+      selected: _filter == value,
+      onSelected: (_) {
+        if (_filter != value) setState(() => _filter = value);
+      },
+    );
+  }
+
+  Widget _langBadge(bool isEnglish) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.grey.shade400),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        isEnglish ? 'EN' : 'اردو',
+        style: const TextStyle(fontSize: 11, color: Colors.grey),
       ),
     );
   }

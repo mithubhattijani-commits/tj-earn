@@ -6,7 +6,7 @@ import '../services/unity_ads_service.dart';
 
 /// Dedicated Watch Ad screen (Unity rewarded video).
 ///
-/// Prominent "Watch Ad — Earn 20 Coins" entry point from the Home tab's
+/// Prominent "Watch Ad — Earn 10 Coins" entry point from the Home tab's
 /// Rewards section (Jaani, 31 Oct 2026). The user watches a full rewarded
 /// video; coins are credited server-side by the `claim-unity-reward`
 /// Edge Function — the app never writes to the ledger.

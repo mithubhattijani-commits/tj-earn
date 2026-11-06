@@ -8,16 +8,26 @@ import '../services/supabase_service.dart';
 /// In-app article reader (Jaani, 3 Nov 2026).
 /// Opens the nigraantv.xyz article in a WebView. A countdown enforces the
 /// minimum read time (matching the website's rule); then the user taps
-/// "Claim +10 Coins" which calls the shared `submit-reading` Edge Function.
+/// "Claim +5 Coins" which calls the shared `submit-reading` Edge Function.
 /// Returns true if a reward was claimed (so the list can refresh).
+///
+/// Bilingual (Jaani, 6 Nov 2026): the site has no URL lang param — its
+/// language lives only in localStorage ('ntv-lang') and its own global
+/// setLang() switches the chrome live (verified in dist/index.html). A
+/// fresh WebView defaults to Urdu and ntv-lang persists across reader
+/// screens, so on every page finish we call setLang() with this
+/// article's language (English articles: 'en', Urdu articles: 'ur').
+/// The article body itself always renders in the article's own language.
 class ArticleReaderScreen extends StatefulWidget {
   final String articleId;
   final String title;
+  final bool isEnglish;
 
   const ArticleReaderScreen({
     super.key,
     required this.articleId,
     required this.title,
+    this.isEnglish = false,
   });
 
   @override
@@ -32,12 +42,18 @@ class _ArticleReaderScreenState extends State<ArticleReaderScreen> {
   bool _claiming = false;
   String? _claimError;
   bool _claimed = false;
+  bool _langApplied = false;
 
   @override
   void initState() {
     super.initState();
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setNavigationDelegate(
+        NavigationDelegate(
+          onPageFinished: (_) => _applyArticleLanguage(),
+        ),
+      )
       ..loadRequest(
         Uri.parse('https://nigraantv.xyz/#/article/${widget.articleId}'),
       );
@@ -49,6 +65,17 @@ class _ArticleReaderScreenState extends State<ArticleReaderScreen> {
         t.cancel();
       }
     });
+  }
+
+  /// Switch the site chrome to this article's language using the site's
+  /// own global setLang(). Runs once per page load.
+  void _applyArticleLanguage() {
+    if (_langApplied) return;
+    _langApplied = true;
+    final lang = widget.isEnglish ? 'en' : 'ur';
+    _controller.runJavaScript(
+      "if (typeof setLang === 'function') setLang('$lang');",
+    );
   }
 
   @override
@@ -70,7 +97,7 @@ class _ArticleReaderScreenState extends State<ArticleReaderScreen> {
         _claiming = false;
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('+10 coins earned!')),
+        const SnackBar(content: Text('+5 coins earned!')),
       );
       // Pop back with claimed=true after a beat.
       Future.delayed(const Duration(milliseconds: 800), () {
@@ -123,11 +150,11 @@ class _ArticleReaderScreenState extends State<ArticleReaderScreen> {
                 children: [
                   Expanded(
                     child: _claimed
-                        ? const Text('+10 coins claimed!',
+                        ? const Text('+5 coins claimed!',
                             style: TextStyle(color: Colors.green))
                         : _secondsLeft > 0
                             ? Text(
-                                'Read for $_secondsLeft s to earn +10 coins',
+                                'Read for $_secondsLeft s to earn +5 coins',
                                 style: Theme.of(context).textTheme.bodySmall,
                               )
                             : _claimError != null
@@ -150,7 +177,7 @@ class _ArticleReaderScreenState extends State<ArticleReaderScreen> {
                             child: CircularProgressIndicator(
                                 strokeWidth: 2),
                           )
-                        : const Text('Claim +10'),
+                        : const Text('Claim +5'),
                   ),
                 ],
               ),
