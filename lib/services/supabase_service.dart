@@ -262,6 +262,35 @@ class SupabaseService {  static SupabaseClient get client => Supabase.instance.c
     throw Exception('claim-checkin returned an unexpected response');
   }
 
+  /// Claims the Visit task reward (Jaani, 7 Nov 2026).
+  ///
+  /// The `claim-visit` Edge Function pays 50 coins for the user's
+  /// first-ever visit and 5 coins once per PKT day afterwards. The reward
+  /// is for VISITING the Nigraan TV Facebook Page or the website — never
+  /// for following or liking (Meta prohibits incentivised follows and the
+  /// Graph API cannot verify them). A 409 means already claimed today
+  /// (returned as data, not thrown, so the UI can render the state).
+  /// `destination` is 'facebook' or 'website'; it is recorded for
+  /// analytics only and never changes the reward.
+  static Future<Map<String, dynamic>> claimVisit({
+    required String destination,
+  }) async {
+    final res = await _invoke(
+      'claim-visit',
+      body: {'destination': destination},
+    );
+    final data = res.data;
+    if (res.status != 200) {
+      final message =
+          data is Map && data['error'] is String ? data['error'] : 'failed';
+      // 409 = already claimed today (not a hard error for the UI)
+      if (res.status == 409 && data is Map<String, dynamic>) return data;
+      throw Exception('claim-visit failed: $message');
+    }
+    if (data is Map<String, dynamic>) return data;
+    throw Exception('claim-visit returned an unexpected response');
+  }
+
   /// Gets the user's current streak info (read-only).
   ///
   /// Returns current_streak, longest_streak, total_checkins.

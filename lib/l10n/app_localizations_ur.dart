@@ -494,6 +494,37 @@ class AppLocalizationsUr extends AppLocalizations {
   String get checkinAlreadyDone => 'آج پہلے ہی چیک ان ہو چکا ہے';
 
   @override
+  String get visitTitle => 'وزٹ کریں اور کمائیں';
+
+  @override
+  String get visitSubtitle =>
+      'نگران ٹی وی فیس بک پیج یا ہماری ویب سائٹ وزٹ کریں۔ پہلی وزٹ پر 50 کوئنز، پھر ہر روز 5 کوئنز۔';
+
+  @override
+  String get visitFacebookButton => 'فیس بک پیج وزٹ کریں';
+
+  @override
+  String get visitWebsiteButton => 'ویب سائٹ وزٹ کریں';
+
+  @override
+  String get visitClaimButton => 'کوئنز حاصل کریں';
+
+  @override
+  String get visitClaimFirst => 'وزٹ کھل گئی — واپس آ کر کوئنز حاصل کریں دبائیں۔';
+
+  @override
+  String get visitAlreadyDone => 'آج پہلے ہی حاصل کر چکے ہیں — کل واپس آئیں۔';
+
+  @override
+  String get visitOpenFailed => 'لنک نہیں کھل سکا۔ دوبارہ کوشش کریں۔';
+
+  @override
+  String visitEarnedFirst(Object coins) => 'پہلی وزٹ! +$coins کوئنز ملے!';
+
+  @override
+  String visitEarnedDaily(Object coins) => 'آج کی وزٹ پر $coins کوئنز ملے!';
+
+  @override
   String streakDays(Object count) => '$count دن کی اسٹریک';
 
   @override

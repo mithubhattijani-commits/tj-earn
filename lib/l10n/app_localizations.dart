@@ -849,6 +849,36 @@ AppLocalizations lookupAppLocalizations(Locale locale) {
 
   /// Already checked in message.
   String get checkinAlreadyDone;
+
+  /// Visit task title.
+  String get visitTitle;
+
+  /// Visit task subtitle (first visit 50 coins, then 5 daily).
+  String get visitSubtitle;
+
+  /// Visit task Facebook Page button label.
+  String get visitFacebookButton;
+
+  /// Visit task website button label.
+  String get visitWebsiteButton;
+
+  /// Visit task claim button label.
+  String get visitClaimButton;
+
+  /// Hint shown after a destination opens, before claiming.
+  String get visitClaimFirst;
+
+  /// Visit task already-claimed-today message.
+  String get visitAlreadyDone;
+
+  /// Visit task open-link failure message.
+  String get visitOpenFailed;
+
+  /// First-visit success message, e.g. "First visit! +50 coins earned!".
+  String visitEarnedFirst(Object coins);
+
+  /// Daily-visit success message, e.g. "You earned 5 coins for today's visit!".
+  String visitEarnedDaily(Object coins);
   String streakDays(Object count);
   String get streakKeepGoing;
   String streakMilestone(Object coins);

@@ -495,6 +495,39 @@ class AppLocalizationsEn extends AppLocalizations {
   String get checkinAlreadyDone => 'Already checked in today';
 
   @override
+  String get visitTitle => 'Visit & Earn';
+
+  @override
+  String get visitSubtitle =>
+      'Visit the Nigraan TV Facebook Page or our website. First visit earns 50 coins, then 5 coins every day.';
+
+  @override
+  String get visitFacebookButton => 'Visit Facebook Page';
+
+  @override
+  String get visitWebsiteButton => 'Visit Website';
+
+  @override
+  String get visitClaimButton => 'Claim Coins';
+
+  @override
+  String get visitClaimFirst =>
+      'Visit opened — come back here and tap Claim Coins.';
+
+  @override
+  String get visitAlreadyDone => 'Already claimed today — come back tomorrow.';
+
+  @override
+  String get visitOpenFailed => 'Could not open the link. Please try again.';
+
+  @override
+  String visitEarnedFirst(Object coins) => 'First visit! +$coins coins earned!';
+
+  @override
+  String visitEarnedDaily(Object coins) =>
+      'You earned $coins coins for today\'s visit!';
+
+  @override
   String streakDays(Object count) => '$count day streak';
 
   @override
