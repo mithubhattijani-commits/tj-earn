@@ -209,16 +209,88 @@ class SupabaseService {  static SupabaseClient get client => Supabase.instance.c
   /// enforces the daily cap and the 30-second anti-spam gap, then credits
   /// coins server-side. Returns the coins credited and remaining claims
   /// for today. Rewards are coins (virtual currency), never cash.
+  ///
+  /// RETRY (Jaani, 8 Nov 2026 — users watched full ads but got zero
+  /// coins): one network stall, 500, or 429 `too_soon` used to lose the
+  /// whole watch. The server call is idempotent (a replay inside the
+  /// same 30s bucket returns `duplicate:true` with coins), so retrying
+  /// is safe: up to 3 attempts, short backoff for transient failures,
+  /// and a 31s wait plus one retry for `too_soon`. `cap_reached` is
+  /// never retried. A 200 body carrying `error` is treated as failure.
   static Future<Map<String, dynamic>> claimUnityReward() async {
-    final res = await _invoke('claim-unity-reward');
-    final data = res.data;
-    if (res.status != 200) {
-      final message =
-          data is Map && data['error'] is String ? data['error'] : 'failed';
-      throw Exception('claim-unity-reward failed: $message');
+    const List<int> backoffSeconds = <int>[2, 5];
+    for (int attempt = 0; attempt < 3; attempt++) {
+      try {
+        final FunctionResponse res = await _invoke('claim-unity-reward');
+        final Object? data = res.data;
+        if (res.status == 200) {
+          if (data is Map && data['error'] is String) {
+            throw Exception('claim-unity-reward failed: ${data['error']}');
+          }
+          if (data is Map<String, dynamic>) return data;
+          throw Exception(
+              'claim-unity-reward returned an unexpected response');
+        }
+        final String message = data is Map && data['error'] is String
+            ? data['error'] as String
+            : 'failed';
+        if (message == 'cap_reached') {
+          throw Exception('claim-unity-reward failed: cap_reached');
+        }
+        if (message == 'too_soon' && attempt == 0) {
+          // Server enforces a 30s gap between claims: wait it out once,
+          // then retry. A later failure falls through to the backoff.
+          await Future<void>.delayed(const Duration(seconds: 31));
+          continue;
+        }
+        if (attempt < 2) {
+          await Future<void>.delayed(
+              Duration(seconds: backoffSeconds[attempt]));
+          continue;
+        }
+        throw Exception('claim-unity-reward failed: $message');
+      } on TimeoutException {
+        if (attempt < 2) {
+          await Future<void>.delayed(
+              Duration(seconds: backoffSeconds[attempt]));
+          continue;
+        }
+        rethrow;
+      }
     }
-    if (data is Map<String, dynamic>) return data;
-    throw Exception('claim-unity-reward returned an unexpected response');
+    throw Exception('claim-unity-reward failed: failed');
+  }
+
+  /// How many Unity rewarded ads the user can still claim today (0-10).
+  ///
+  /// Counts today's `unity_reward` rows in the own ledger (server cap is
+  /// 10/day, counted on the PKT day). Returns null when the count cannot
+  /// be determined — the caller then hides the counter instead of
+  /// showing a wrong number.
+  static Future<int?> getUnityAdsRemainingToday() async {
+    try {
+      final List<Map<String, dynamic>> rows = await getLedger();
+      final DateTime pktNow =
+          DateTime.now().toUtc().add(const Duration(hours: 5));
+      int used = 0;
+      for (final Map<String, dynamic> row in rows) {
+        if (row['type'] != 'unity_reward') continue;
+        final Object? createdAt = row['created_at'];
+        if (createdAt is! String) continue;
+        final DateTime? at = DateTime.tryParse(createdAt);
+        if (at == null) continue;
+        final DateTime pktAt = at.toUtc().add(const Duration(hours: 5));
+        if (pktAt.year == pktNow.year &&
+            pktAt.month == pktNow.month &&
+            pktAt.day == pktNow.day) {
+          used++;
+        }
+      }
+      final int remaining = 10 - used;
+      return remaining < 0 ? 0 : remaining;
+    } catch (_) {
+      return null;
+    }
   }
 
   /// Claims the daily check-in streak.

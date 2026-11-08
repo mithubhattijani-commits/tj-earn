@@ -114,7 +114,7 @@ class _ArticleReaderScreenState extends State<ArticleReaderScreen> {
       final msg = e.toString();
       setState(() {
         _claimError = msg.contains('429') || msg.contains('cap')
-            ? 'Daily reading limit reached (5/day).'
+            ? 'Daily reading limit reached (30/day).'
             : 'Could not claim. Try again.';
         _claiming = false;
       });
