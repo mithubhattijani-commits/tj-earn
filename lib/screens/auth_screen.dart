@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:tj_earn/l10n/app_localizations.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter/foundation.dart';
+
+import '../services/referral_deep_link_service.dart';
+import '../services/validation.dart';
+
 
 /// Email + password login and registration.
 ///
@@ -14,26 +19,75 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
 
+
   @override
   State<AuthScreen> createState() => _AuthScreenState();
 }
+
 
 class _AuthScreenState extends State<AuthScreen> {
   final _email = TextEditingController();
   final _password = TextEditingController();
   final _name = TextEditingController();
+  final _referralCode = TextEditingController();
   var _registerMode = false;
   var _busy = false;
   var _obscurePassword = true;
   String? _error;
+
+
+  @override
+  void initState() {
+    super.initState();
+    _prefillReferralCode();
+  }
+
+
+  /// Task E (12 Nov 2026): prefill the referral field from the pending
+  /// code (deep link / deferred /api/ref/match) or the clipboard, so a
+  /// user who copied a code from the website does not have to retype it.
+  /// Runs once when the screen appears; the user can still edit it.
+  Future<void> _prefillReferralCode() async {
+    try {
+      final service = ReferralDeepLinkService.instance;
+      var code = await service.getPendingCode();
+      code ??= await service.checkDeferredReferral();
+      if (code == null && !kIsWeb) {
+        code = await service.readClipboardReferralCode();
+      }
+      final matched = code;
+      if (matched != null && mounted && _referralCode.text.isEmpty) {
+        setState(() => _referralCode.text = matched);
+      }
+    } catch (_) {
+      // Best-effort prefill: leave the field empty on failure.
+    }
+  }
+
+
+  /// Task E: stores the referral code entered (or prefilled) in this form
+  /// as pending, so MainShell's post-sign-in auto-apply picks it up via
+  /// the deployed apply-referral function (immediate credit). Called
+  /// after a successful sign-up only. Never throws.
+  Future<void> _saveReferralCode() async {
+    try {
+      final code = _referralCode.text.trim().toUpperCase();
+      if (code.isEmpty) return;
+      if (!isValidReferralCode(code)) return;
+      await ReferralDeepLinkService.instance.savePendingCode(code);
+    } catch (_) {}
+  }
+
 
   @override
   void dispose() {
     _email.dispose();
     _password.dispose();
     _name.dispose();
+    _referralCode.dispose();
     super.dispose();
   }
+
 
   Future<void> _submit() async {
     final t = AppLocalizations.of(context)!;
@@ -49,6 +103,9 @@ class _AuthScreenState extends State<AuthScreen> {
           password: _password.text,
           data: {'display_name': _name.text.trim()},
         );
+        // Task E: remember the referral code from this form so it is
+        // auto-applied after sign-in (see _saveReferralCode).
+        await _saveReferralCode();
       } else {
         await auth.signInWithPassword(
           email: _email.text.trim(),
@@ -66,12 +123,14 @@ class _AuthScreenState extends State<AuthScreen> {
     }
   }
 
+
   Future<void> _forgotPassword() async {
     final t = AppLocalizations.of(context)!;
     final emailCtrl = TextEditingController(text: _email.text.trim());
     var sending = false;
     String? msg;
     var sent = false;
+
 
     await showDialog<void>(
       context: context,
@@ -151,6 +210,7 @@ class _AuthScreenState extends State<AuthScreen> {
     emailCtrl.dispose();
   }
 
+
   @override
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context)!;
@@ -170,6 +230,19 @@ class _AuthScreenState extends State<AuthScreen> {
               TextField(
                 controller: _name,
                 decoration: InputDecoration(labelText: t.displayName),
+              ),
+              const SizedBox(height: 12),
+              // Referral code (Task E, 12 Nov 2026): optional. Prefilled
+              // from a referral link, deferred match or the clipboard.
+              TextField(
+                controller: _referralCode,
+                textCapitalization: TextCapitalization.characters,
+                maxLength: 8,
+                decoration: InputDecoration(
+                  labelText: t.referApplyTitle,
+                  hintText: t.referApplyHint,
+                  counterText: '',
+                ),
               ),
               const SizedBox(height: 12),
             ],
