@@ -513,24 +513,6 @@ class AppLocalizationsUr extends AppLocalizations {
   String get streakCheckedInToday => 'آج چیک اِن ہو گیا ہے۔ کل دوبارہ آئیں!';
 
   @override
-  String get spinTitle => 'روزانہ اسپن';
-
-  @override
-  String get spinSubtitle => 'روزانہ مفت کوئنز کے لیے وہیل گھمائیں!';
-
-  @override
-  String get spinButton => 'اسپن کریں';
-
-  @override
-  String spinWon(Object coins) => 'آپ نے $coins کوئنز جیتے!';
-
-  @override
-  String get spinUsed => 'اگلے اسپن کے لیے کل واپس آئیں!';
-
-  @override
-  String get spinSpinning => 'گھوم رہا ہے...';
-
-  @override
   String onboardingTitle(Object coins) => 'شروع کریں - $coins بونس کمائیں!';
 
   @override
@@ -544,9 +526,6 @@ class AppLocalizationsUr extends AppLocalizations {
 
   @override
   String get onboardingQuiz => 'پہلا کوئز مکمل کریں';
-
-  @override
-  String get onboardingSpin => 'پہلا اسپن آزمائیں';
 
   @override
   String get onboardingReferral => 'اپنا ریفرل لنک شیئر کریں';
