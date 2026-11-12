@@ -699,6 +699,7 @@ class UpdaterService {
       // Best-effort: without the record the download still completes
       // in DownloadManager; only the re-attach is lost.
     }
+  }
     
 
   
