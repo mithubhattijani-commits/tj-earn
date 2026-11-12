@@ -11,7 +11,6 @@ import 'config.dart';
 import 'screens/auth_screen.dart';
 import 'screens/main_shell.dart';
 import 'services/admin_status.dart';
-import 'services/checkin_reminder_service.dart';
 import 'services/startup_bundle_service.dart';
 import 'services/device_service.dart';
 import 'services/referral_deep_link_service.dart';
@@ -42,11 +41,6 @@ Future<void> main() async {
   // first frame (APP ROBUSTNESS RULE).
   unawaited(RemoteConfigService.instance.init());
 
-  // Daily check-in reminder (Jaani, 3 Nov 2026): fire-and-forget, NOT
-  // awaited. Initializes the local-notification plugin, requests
-  // permission on first launch, and schedules the 9 PM PKT reminder if
-  // the user hasn't checked in today. Best-effort — never blocks UI.
-  unawaited(CheckinReminderService.instance.init());
 
   // Referral deep linking (Jaani, 3 Nov 2026): fire-and-forget, NOT
   // awaited. Captures ?ref=CODE from incoming links (app_links on mobile,
@@ -55,7 +49,7 @@ Future<void> main() async {
   unawaited(ReferralDeepLinkService.instance.init());
 
   // Cache-first startup (Jaani, 2 Nov 2026 — PERMANENT hang fix): load
-  // the last-known balance/streak/onboarding from local disk BEFORE the
+  // the last-known balance/onboarding from local disk BEFORE the
   // first frame, so every card renders INSTANTLY from cache. A single
   // background refresh updates the data silently after login.
   await StartupBundleService.initCache();
@@ -235,7 +229,7 @@ class AuthGate extends StatelessWidget {
           return const AuthScreen();
         }
         // Cache-first startup (Jaani, 2 Nov 2026 — PERMANENT hang fix):
-        // ONE background call refreshes balance, streak, onboarding,
+        // ONE background call refreshes balance, onboarding,
         // and the admin flag. The UI already rendered from local cache,
         // so this never blocks — widgets update via refreshDone.
         StartupBundleService.refreshInBackground();
