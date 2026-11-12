@@ -9,10 +9,7 @@ import '../services/startup_bundle_service.dart';
 import '../theme.dart';
 import '../widgets/adsterra_app_banner.dart';
 import '../widgets/onboarding_checklist.dart';
-import '../widgets/checkin_card.dart';
-import 'leaderboard_screen.dart';
 import 'onboarding_screen.dart';
-import 'streak_screen.dart';
 import 'watch_ad_screen.dart';
 
 /// Home dashboard: server-side balance + quick actions.
@@ -283,9 +280,6 @@ class _HomeTabState extends State<HomeTab> {
           // Onboarding checklist for new users (hidden when complete)
           const OnboardingChecklist(),
           const SizedBox(height: 16),
-          // Daily check-in card (Jaani, 3 Nov 2026: +5/day streak progression)
-          const CheckInCard(),
-          const SizedBox(height: 16),
           // Server-driven sponsored ad (Remote Config). Zero height when
           // the server disables it — no layout shift, no placeholder.
           const SponsoredAdCard(),
@@ -301,16 +295,6 @@ class _HomeTabState extends State<HomeTab> {
             crossAxisSpacing: 12,
             childAspectRatio: 1.5,
             children: [
-              _rewardTile(
-                icon: Icons.local_fire_department,
-                label: t.streakTitle,
-                onTap: () => _open(const StreakScreen()),
-              ),
-              _rewardTile(
-                icon: Icons.leaderboard,
-                label: t.leaderboardTitle,
-                onTap: () => _open(const LeaderboardScreen()),
-              ),
               _rewardTile(
                 icon: Icons.checklist,
                 label: t.tasksTitle,
