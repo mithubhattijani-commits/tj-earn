@@ -209,16 +209,88 @@ class SupabaseService {  static SupabaseClient get client => Supabase.instance.c
   /// enforces the daily cap and the 30-second anti-spam gap, then credits
   /// coins server-side. Returns the coins credited and remaining claims
   /// for today. Rewards are coins (virtual currency), never cash.
+  ///
+  /// RETRY (Jaani, 8 Nov 2026 — users watched full ads but got zero
+  /// coins): one network stall, 500, or 429 `too_soon` used to lose the
+  /// whole watch. The server call is idempotent (a replay inside the
+  /// same 30s bucket returns `duplicate:true` with coins), so retrying
+  /// is safe: up to 3 attempts, short backoff for transient failures,
+  /// and a 31s wait plus one retry for `too_soon`. `cap_reached` is
+  /// never retried. A 200 body carrying `error` is treated as failure.
   static Future<Map<String, dynamic>> claimUnityReward() async {
-    final res = await _invoke('claim-unity-reward');
-    final data = res.data;
-    if (res.status != 200) {
-      final message =
-          data is Map && data['error'] is String ? data['error'] : 'failed';
-      throw Exception('claim-unity-reward failed: $message');
+    const List<int> backoffSeconds = <int>[2, 5];
+    for (int attempt = 0; attempt < 3; attempt++) {
+      try {
+        final FunctionResponse res = await _invoke('claim-unity-reward');
+        final Object? data = res.data;
+        if (res.status == 200) {
+          if (data is Map && data['error'] is String) {
+            throw Exception('claim-unity-reward failed: ${data['error']}');
+          }
+          if (data is Map<String, dynamic>) return data;
+          throw Exception(
+              'claim-unity-reward returned an unexpected response');
+        }
+        final String message = data is Map && data['error'] is String
+            ? data['error'] as String
+            : 'failed';
+        if (message == 'cap_reached') {
+          throw Exception('claim-unity-reward failed: cap_reached');
+        }
+        if (message == 'too_soon' && attempt == 0) {
+          // Server enforces a 30s gap between claims: wait it out once,
+          // then retry. A later failure falls through to the backoff.
+          await Future<void>.delayed(const Duration(seconds: 31));
+          continue;
+        }
+        if (attempt < 2) {
+          await Future<void>.delayed(
+              Duration(seconds: backoffSeconds[attempt]));
+          continue;
+        }
+        throw Exception('claim-unity-reward failed: $message');
+      } on TimeoutException {
+        if (attempt < 2) {
+          await Future<void>.delayed(
+              Duration(seconds: backoffSeconds[attempt]));
+          continue;
+        }
+        rethrow;
+      }
     }
-    if (data is Map<String, dynamic>) return data;
-    throw Exception('claim-unity-reward returned an unexpected response');
+    throw Exception('claim-unity-reward failed: failed');
+  }
+
+  /// How many Unity rewarded ads the user can still claim today (0-10).
+  ///
+  /// Counts today's `unity_reward` rows in the own ledger (server cap is
+  /// 10/day, counted on the PKT day). Returns null when the count cannot
+  /// be determined — the caller then hides the counter instead of
+  /// showing a wrong number.
+  static Future<int?> getUnityAdsRemainingToday() async {
+    try {
+      final List<Map<String, dynamic>> rows = await getLedger();
+      final DateTime pktNow =
+          DateTime.now().toUtc().add(const Duration(hours: 5));
+      int used = 0;
+      for (final Map<String, dynamic> row in rows) {
+        if (row['type'] != 'unity_reward') continue;
+        final Object? createdAt = row['created_at'];
+        if (createdAt is! String) continue;
+        final DateTime? at = DateTime.tryParse(createdAt);
+        if (at == null) continue;
+        final DateTime pktAt = at.toUtc().add(const Duration(hours: 5));
+        if (pktAt.year == pktNow.year &&
+            pktAt.month == pktNow.month &&
+            pktAt.day == pktNow.day) {
+          used++;
+        }
+      }
+      final int remaining = 10 - used;
+      return remaining < 0 ? 0 : remaining;
+    } catch (_) {
+      return null;
+    }
   }
 
   /// Claims the daily check-in streak.
@@ -239,6 +311,27 @@ class SupabaseService {  static SupabaseClient get client => Supabase.instance.c
     }
     if (data is Map<String, dynamic>) return data;
     throw Exception('claim-streak returned an unexpected response');
+  }
+
+
+  /// Claims the daily check-in with streak progression (Jaani, 3 Nov 2026).
+  ///
+  /// The `claim-checkin` Edge Function awards 10 coins on Day 1, +5 for each
+  /// consecutive day (15, 20, 25...), capped at 100/day. A missed day resets
+  /// the streak to Day 1. One claim per PKT day; 409 means already checked in
+  /// today (returned as data, not thrown, so the UI can render the state).
+  static Future<Map<String, dynamic>> claimCheckin() async {
+    final res = await _invoke('claim-checkin');
+    final data = res.data;
+    if (res.status != 200) {
+      final message =
+          data is Map && data['error'] is String ? data['error'] : 'failed';
+      // 409 = already checked in today (not a hard error for the UI)
+      if (res.status == 409 && data is Map<String, dynamic>) return data;
+      throw Exception('claim-checkin failed: $message');
+    }
+    if (data is Map<String, dynamic>) return data;
+    throw Exception('claim-checkin returned an unexpected response');
   }
 
   /// Gets the user's current streak info (read-only).
@@ -457,6 +550,52 @@ class SupabaseService {  static SupabaseClient get client => Supabase.instance.c
     }
     if (data is Map<String, dynamic>) return data;
     throw Exception('$name returned an unexpected response');
+  }
+
+  /// Article-reading reward (Jaani, 3 Nov 2026): website <-> app integration.
+  ///
+  /// Calls the SAME Edge Functions the website /earn/ uses, so the balance
+  /// and the 5/day cap are shared between web and app. The server enforces
+  /// the cap and the minimum read time — the client only renders state.
+  ///
+  /// [getReadingRemaining] returns how many reading claims are left today
+  /// (0-5). [submitReading] claims +10 coins for [articleId]; throws on
+  /// 429 (cap reached) or other failures.
+
+  static Future<int> getReadingRemaining() async {
+    final res = await _invoke('get-reading');
+    if (res.status != 200) {
+      throw Exception('get-reading failed: ${res.status}');
+    }
+    final data = res.data;
+    if (data is Map) {
+      // Server returns remaining count; be lenient about the key name.
+      for (final key in ['remaining', 'remaining_today', 'left']) {
+        if (data[key] is int) return data[key] as int;
+      }
+      // Fallback: derive from claimed count if provided.
+      if (data['claimed_today'] is int) {
+        final claimed = data['claimed_today'] as int;
+        final remaining = 5 - claimed;
+        return remaining < 0 ? 0 : (remaining > 5 ? 5 : remaining);
+      }
+    }
+    return 5; // Unknown — let the claim attempt surface the real state.
+  }
+
+  static Future<void> submitReading(String articleId) async {
+    final res = await _invoke('submit-reading', body: {
+      'article_id': articleId,
+    });
+    if (res.status == 429) {
+      throw Exception('reading cap reached (429)');
+    }
+    if (res.status != 200) {
+      final data = res.data;
+      final message =
+          data is Map && data['error'] is String ? data['error'] : 'failed';
+      throw Exception('submit-reading failed: $message');
+    }
   }
 }
 

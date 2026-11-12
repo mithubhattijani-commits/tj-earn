@@ -441,10 +441,10 @@ class AppLocalizationsUr extends AppLocalizations {
   String get watchAdNote => 'ہر مکمل اشتہار پر ایک انعام۔ روزانہ حد لاگو ہوتی ہے۔';
 
   @override
-  String get watchAdTile => 'ایڈ دیکھیں\n20 کوئنز پائیں';
+  String get watchAdTile => 'ایڈ دیکھیں\n10 کوئنز پائیں';
 
   @override
-  String get watchAdRewardLine => 'ہر مکمل ویڈیو پر 20 کوئنز ملیں گے';
+  String get watchAdRewardLine => 'ہر مکمل ویڈیو پر 10 کوئنز ملیں گے';
 
   @override
   String get pleaseWait => 'براہ کرم انتظار کریں…';
@@ -465,6 +465,33 @@ class AppLocalizationsUr extends AppLocalizations {
 
   @override
   String get streakTitle => 'روزانہ اسٹریک';
+
+  @override
+  String get checkinTitle => 'روزانہ چیک ان';
+
+  @override
+  String get checkinButton => 'چیک ان کریں';
+
+  @override
+  String get checkinDone => 'چیک ان ہو گیا \u2713';
+
+  @override
+  String checkinStreak(Object count) => '$count دن کی اسٹریک';
+
+  @override
+  String checkinTodayPays(Object day, Object coins) =>
+      'دن $day: ابھی چیک ان کریں اور +$coins کوئنز پائیں';
+
+  @override
+  String checkinComeBack(Object coins) =>
+      'کل واپس آئیں اور +$coins کوئنز پائیں';
+
+  @override
+  String checkinEarned(Object coins, Object day) =>
+      '+$coins کوئنز ملے! دن $day کی اسٹریک';
+
+  @override
+  String get checkinAlreadyDone => 'آج پہلے ہی چیک ان ہو چکا ہے';
 
   @override
   String streakDays(Object count) => '$count دن کی اسٹریک';

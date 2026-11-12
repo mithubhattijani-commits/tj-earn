@@ -442,10 +442,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get watchAdNote => 'One reward per completed ad. Daily limits apply.';
 
   @override
-  String get watchAdTile => 'Watch Ad\nEarn 20 Coins';
+  String get watchAdTile => 'Watch Ad\nEarn 10 Coins';
 
   @override
-  String get watchAdRewardLine => 'Earn 20 coins per completed video';
+  String get watchAdRewardLine => 'Earn 10 coins per completed video';
 
   @override
   String get pleaseWait => 'Please wait…';
@@ -466,6 +466,33 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get streakTitle => 'Daily Streak';
+
+  @override
+  String get checkinTitle => 'Daily Check-in';
+
+  @override
+  String get checkinButton => 'Check In';
+
+  @override
+  String get checkinDone => 'Checked In \u2713';
+
+  @override
+  String checkinStreak(Object count) => '$count day streak';
+
+  @override
+  String checkinTodayPays(Object day, Object coins) =>
+      'Day $day: check in now for +$coins coins';
+
+  @override
+  String checkinComeBack(Object coins) =>
+      'Come back tomorrow for +$coins coins';
+
+  @override
+  String checkinEarned(Object coins, Object day) =>
+      '+$coins coins earned! Day $day streak';
+
+  @override
+  String get checkinAlreadyDone => 'Already checked in today';
 
   @override
   String streakDays(Object count) => '$count day streak';

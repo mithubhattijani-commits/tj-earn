@@ -487,11 +487,17 @@ class _LedgerTab extends StatefulWidget {
 
 class _LedgerTabState extends State<_LedgerTab> {
   static const _pageSize = 50;
+  static const _groupFetchLimit = 1000;
   int _page = 0;
   int _total = 0;
   String _typeFilter = '';
+  bool _groupByUser = false;
   final _typeController = TextEditingController();
   late Future<Map<String, dynamic>> _future;
+  // Grouped view state
+  Map<String, _UserEarnings>? _grouped;
+  bool _groupLoading = false;
+  String? _groupError;
 
   @override
   void initState() {
@@ -518,7 +524,82 @@ class _LedgerTabState extends State<_LedgerTab> {
   void _applyFilter() {
     _page = 0;
     _typeFilter = _typeController.text.trim();
-    _reload();
+    if (_groupByUser) {
+      _loadGrouped();
+    } else {
+      _reload();
+    }
+  }
+
+  /// Toggles between flat transaction list and grouped-by-user view.
+  void _toggleGroupByUser(bool value) {
+    setState(() {
+      _groupByUser = value;
+      if (value) {
+        _loadGrouped();
+      }
+    });
+  }
+
+  /// Fetches ledger entries and groups them by user email client-side.
+  /// Each user gets one row with total coins; tapping expands to show
+  /// the breakdown by earning type.
+  Future<void> _loadGrouped() async {
+    setState(() {
+      _groupLoading = true;
+      _groupError = null;
+      _grouped = null;
+    });
+    try {
+      // Fetch in pages until we have all entries (bounded to avoid hangs).
+      final all = <Map<String, dynamic>>[];
+      var offset = 0;
+      const fetchSize = 200;
+      while (true) {
+        final res = await SupabaseService.listLedger(
+          limit: fetchSize,
+          offset: offset,
+          type: _typeFilter.isEmpty ? null : _typeFilter,
+        ).timeout(const Duration(seconds: 25));
+        final entries =
+            (res['entries'] as List?)?.cast<Map<String, dynamic>>() ??
+                const <Map<String, dynamic>>[];
+        all.addAll(entries);
+        final total = (res['total'] as num?)?.toInt() ?? 0;
+        if (all.length >= total || entries.length < fetchSize) break;
+        offset += fetchSize;
+        if (all.length >= _groupFetchLimit) break;
+      }
+      // Group by user email.
+      final grouped = <String, _UserEarnings>{};
+      for (final e in all) {
+        final email = (e['user_email'] ?? '').toString();
+        final key = email.isEmpty ? 'unknown' : email;
+        final amount = (e['amount_coins'] as num?)?.toInt() ?? 0;
+        final type = (e['type'] ?? 'other').toString();
+        grouped.putIfAbsent(key, () => _UserEarnings(email: email));
+        grouped[key]!.addTransaction(type, amount);
+      }
+      // Sort by total coins descending.
+      final sorted = Map.fromEntries(
+        grouped.entries.toList()
+          ..sort((a, b) => b.value.total.compareTo(a.value.total)),
+      );
+      if (mounted) {
+        setState(() {
+          _grouped = sorted;
+          _groupLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _groupLoading = false;
+          _groupError =
+              e is AdminAccessDenied ? 'denied' : e.toString();
+        });
+      }
+    }
   }
 
   @override
@@ -550,57 +631,51 @@ class _LedgerTabState extends State<_LedgerTab> {
             ],
           ),
         ),
-        Expanded(
-          child: FutureBuilder<Map<String, dynamic>>(
-            future: _future,
-            builder: (context, snapshot) {
-              if (snapshot.hasError) {
-                final denied = snapshot.error is AdminAccessDenied;
-                return _AdminDenied(
-                  message: denied
-                      ? t.adminAccessRequired
-                      : t.adminLoadFailed,
-                  onRetry: _reload,
-                );
-              }
-              if (!snapshot.hasData) {
-                return const Center(
-                    child: CircularProgressIndicator());
-              }
-              final data = snapshot.data!;
-              _total = (data['total'] as num?)?.toInt() ?? 0;
-              final rows =
-                  (data['entries'] as List?)
-                          ?.cast<Map<String, dynamic>>() ??
-                      const <Map<String, dynamic>>[];
-              if (rows.isEmpty) {
-                return Center(child: Text(t.adminLedgerEmpty));
-              }
-              return ListView.builder(
-                itemCount: rows.length,
-                itemBuilder: (context, i) => _ledgerRow(t, rows[i]),
-              );
-            },
+        // Group-by-user toggle (Jaani, 3 Nov 2026): one row per user
+        // instead of one row per transaction.
+        Padding(
+          padding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          child: Row(
+            children: [
+              const Icon(Icons.group, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                t.adminGroupByUser,
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              const Spacer(),
+              Switch(
+                value: _groupByUser,
+                onChanged: _toggleGroupByUser,
+              ),
+            ],
           ),
         ),
-        Padding(
-          padding: const EdgeInsets.symmetric(
-              horizontal: 16, vertical: 8),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              IconButton(
-                icon: const Icon(Icons.chevron_left),
-                tooltip: t.adminPrev,
-                onPressed: _page > 0
-                    ? () {
-                        _page--;
-                        _reload();
-                      }
-                    : null,
-              ),
-              Text(t.adminPageOf(_page + 1)),
-              IconButton(
+        Expanded(
+          child: _groupByUser
+              ? _buildGroupedView(t)
+              : _buildFlatView(t),
+        ),
+        if (!_groupByUser)
+          Padding(
+            padding: const EdgeInsets.symmetric(
+                horizontal: 16, vertical: 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.chevron_left),
+                  tooltip: t.adminPrev,
+                  onPressed: _page > 0
+                      ? () {
+                          _page--;
+                          _reload();
+                        }
+                      : null,
+                ),
+                Text(t.adminPageOf(_page + 1)),
+                IconButton(
                 icon: const Icon(Icons.chevron_right),
                 tooltip: t.adminNext,
                 onPressed: (_page + 1) * _pageSize < _total
@@ -614,6 +689,122 @@ class _LedgerTabState extends State<_LedgerTab> {
           ),
         ),
       ],
+    );
+  }
+
+  /// Flat transaction list (original view).
+  Widget _buildFlatView(AppLocalizations t) {
+    return FutureBuilder<Map<String, dynamic>>(
+      future: _future,
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          final denied = snapshot.error is AdminAccessDenied;
+          return _AdminDenied(
+            message:
+                denied ? t.adminAccessRequired : t.adminLoadFailed,
+            onRetry: _reload,
+          );
+        }
+        if (!snapshot.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        final data = snapshot.data!;
+        _total = (data['total'] as num?)?.toInt() ?? 0;
+        final rows = (data['entries'] as List?)
+                ?.cast<Map<String, dynamic>>() ??
+            const <Map<String, dynamic>>[];
+        if (rows.isEmpty) {
+          return Center(child: Text(t.adminLedgerEmpty));
+        }
+        return ListView.builder(
+          itemCount: rows.length,
+          itemBuilder: (context, i) => _ledgerRow(t, rows[i]),
+        );
+      },
+    );
+  }
+
+  /// Grouped-by-user view: one row per user with total coins.
+  /// Tapping expands to show the breakdown by earning type.
+  Widget _buildGroupedView(AppLocalizations t) {
+    if (_groupLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_groupError != null) {
+      final denied = _groupError == 'denied';
+      return _AdminDenied(
+        message: denied ? t.adminAccessRequired : t.adminLoadFailed,
+        onRetry: _loadGrouped,
+      );
+    }
+    final grouped = _grouped;
+    if (grouped == null || grouped.isEmpty) {
+      return Center(child: Text(t.adminLedgerEmpty));
+    }
+    return RefreshIndicator(
+      onRefresh: _loadGrouped,
+      child: ListView.builder(
+        itemCount: grouped.length,
+        itemBuilder: (context, i) {
+          final entry = grouped.entries.elementAt(i);
+          final user = entry.value;
+          return _userEarningsRow(t, user);
+        },
+      ),
+    );
+  }
+
+  /// One expandable row per user: email + total coins.
+  /// Expands to show breakdown by earning type.
+  Widget _userEarningsRow(AppLocalizations t, _UserEarnings user) {
+    final positive = user.total >= 0;
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      child: ExpansionTile(
+        leading: CircleAvatar(
+          child: Text(
+            user.email.isEmpty
+                ? '?'
+                : user.email[0].toUpperCase(),
+          ),
+        ),
+        title: Text(
+          user.email.isEmpty ? t.adminUnknownUser : user.email,
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+        subtitle: Text(
+          '${user.transactionCount} ${t.adminTransactions}',
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+        trailing: Text(
+          '${positive ? '+' : '−'}${user.total}',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+            color: positive ? Colors.green : Colors.red,
+          ),
+        ),
+        children: user.byType.entries.map((typeEntry) {
+          final typeTotal = typeEntry.value.total;
+          final typeCount = typeEntry.value.count;
+          final typePositive = typeTotal >= 0;
+          return ListTile(
+            dense: true,
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 24, vertical: 2),
+            leading: const Icon(Icons.label_outline, size: 18),
+            title: Text(typeEntry.key),
+            subtitle: Text('$typeCount ${t.adminTransactions}'),
+            trailing: Text(
+              '${typePositive ? '+' : '−'}$typeTotal',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: typePositive ? Colors.green : Colors.red,
+              ),
+            ),
+          );
+        }).toList(),
+      ),
     );
   }
 
@@ -667,4 +858,29 @@ class _LedgerTabState extends State<_LedgerTab> {
       ),
     );
   }
+}
+
+/// Aggregated earnings for one user (Jaani, 3 Nov 2026 — admin panel
+/// group-by-user view). Holds the total plus a per-type breakdown.
+class _UserEarnings {
+  final String email;
+  int total = 0;
+  int transactionCount = 0;
+  final Map<String, _TypeTotal> byType = {};
+
+  _UserEarnings({required this.email});
+
+  void addTransaction(String type, int amount) {
+    total += amount;
+    transactionCount++;
+    byType.putIfAbsent(type, () => _TypeTotal());
+    byType[type]!.total += amount;
+    byType[type]!.count++;
+  }
+}
+
+/// Per-type subtotal within a user's earnings.
+class _TypeTotal {
+  int total = 0;
+  int count = 0;
 }

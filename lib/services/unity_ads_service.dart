@@ -41,12 +41,20 @@ class UnityAdsService {
   /// the Watch Ad button is unavailable).
   static bool get initFailed => _initFailed;
 
-  /// Initialize the Unity Ads SDK. Safe to call once at app startup;
-  /// subsequent calls are no-ops. Never throws.
+  /// Initialize the Unity Ads SDK. Safe to call at app startup and
+  /// again later; a call while an attempt is in flight is a no-op.
+  /// Never throws.
+  ///
+  /// RETRY (Jaani, 8 Nov 2026 — a failed first init killed ads for the
+  /// whole session): a failed or timed-out attempt now marks the init
+  /// as failed instead of stuck, so the next call retries instead of
+  /// returning immediately.
   static Future<void> init() async {
     if (!adsEnabled) return;
-    if (_initialized || _initFailed || _initStarted) return;
+    if (_initialized) return;
+    if (_initStarted && !_initFailed) return;
     _initStarted = true;
+    _initFailed = false;
     try {
       final completer = Completer<void>();
       UnityAds.init(
@@ -64,8 +72,15 @@ class UnityAdsService {
       // Don't block startup forever — give init up to 10s.
       await completer.future.timeout(
         const Duration(seconds: 10),
-        onTimeout: () {},
+        onTimeout: () {
+          _initFailed = true;
+        },
       );
+      if (!_initialized && !_initFailed) {
+        // Neither callback fired within 10s: treat as failed so a
+        // later call can retry.
+        _initFailed = true;
+      }
     } catch (_) {
       _initFailed = true;
     }

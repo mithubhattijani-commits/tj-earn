@@ -28,6 +28,17 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+            <!-- Referral deep links (Jaani, 3 Nov 2026): clicking a referral
+                 link like https://nigraantv.xyz/earn/?ref=SKD9FTHE opens the
+                 app directly (when installed) so the code auto-applies. -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" />
+                <data android:host="nigraantv.xyz" />
+                <data android:pathPrefix="/earn" />
+            </intent-filter>
         </activity>
         <!-- Updater: fires the install intent when a download finishes
              while the app process is dead (Jaani, 3 Nov 2026).

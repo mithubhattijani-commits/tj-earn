@@ -6,7 +6,7 @@ import '../services/unity_ads_service.dart';
 
 /// Dedicated Watch Ad screen (Unity rewarded video).
 ///
-/// Prominent "Watch Ad — Earn 20 Coins" entry point from the Home tab's
+/// Prominent "Watch Ad — Earn 10 Coins" entry point from the Home tab's
 /// Rewards section (Jaani, 31 Oct 2026). The user watches a full rewarded
 /// video; coins are credited server-side by the `claim-unity-reward`
 /// Edge Function — the app never writes to the ledger.
@@ -23,6 +23,21 @@ class _WatchAdScreenState extends State<WatchAdScreen> {
   bool _busy = false;
   String? _message;
   bool _isError = false;
+  int? _adsLeft;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRemaining();
+  }
+
+  Future<void> _loadRemaining() async {
+    final int? left = await SupabaseService.getUnityAdsRemainingToday();
+    if (!mounted) return;
+    setState(() {
+      _adsLeft = left;
+    });
+  }
 
   Future<void> _watchAd() async {
     if (_busy) return;
@@ -48,11 +63,14 @@ class _WatchAdScreenState extends State<WatchAdScreen> {
       if (!mounted) return;
       if (result == UnityAdResult.completed) {
         // Full watch — credit coins server-side.
-        final claim = await SupabaseService.claimUnityReward();
-        final coins = claim['coins'];
+        final Map<String, dynamic> claim =
+            await SupabaseService.claimUnityReward();
+        final Object? coins = claim['coins'];
+        final Object? remaining = claim['remaining'];
         if (!mounted) return;
         setState(() {
           _message = t.rewardEarned(coins is int ? '$coins' : '0');
+          if (remaining is int) _adsLeft = remaining;
         });
       } else if (result == UnityAdResult.skipped) {
         setState(() {
@@ -64,9 +82,14 @@ class _WatchAdScreenState extends State<WatchAdScreen> {
       }
     } catch (e) {
       if (!mounted) return;
-      final msg = e.toString().replaceFirst('Exception: ', '');
+      final String msg = e.toString().replaceFirst('Exception: ', '');
+      final String friendly = msg.contains('cap_reached')
+          ? t.adLimitReached
+          : msg.contains('too_soon')
+              ? t.claimTooSoon
+              : msg;
       setState(() {
-        _message = msg.isEmpty ? t.genericError : msg;
+        _message = friendly.isEmpty ? t.genericError : friendly;
         _isError = true;
       });
     } finally {
@@ -112,6 +135,17 @@ class _WatchAdScreenState extends State<WatchAdScreen> {
                         fontSize: 16,
                       ),
                     ),
+                    if (_adsLeft != null) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        t.adsLeftToday('$_adsLeft'),
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.primary,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 8),
                     Text(
                       t.watchAdSubtitle,
@@ -119,7 +153,8 @@ class _WatchAdScreenState extends State<WatchAdScreen> {
                     ),
                     const SizedBox(height: 20),
                     FilledButton.icon(
-                      onPressed: _busy ? null : _watchAd,
+                      onPressed:
+                          (_busy || _adsLeft == 0) ? null : _watchAd,
                       icon: _busy
                           ? const SizedBox(
                               width: 20,

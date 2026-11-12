@@ -825,6 +825,30 @@ AppLocalizations lookupAppLocalizations(Locale locale) {
   String get unityNotReady;
   String get tasksTitle;
   String get streakTitle;
+
+  /// Daily check-in title.
+  String get checkinTitle;
+
+  /// Daily check-in button label.
+  String get checkinButton;
+
+  /// Daily check-in done state.
+  String get checkinDone;
+
+  /// Current streak display, e.g. "3 day streak".
+  String checkinStreak(Object count);
+
+  /// Today's reward line, e.g. "Day 3: check in now for +20 coins".
+  String checkinTodayPays(Object day, Object coins);
+
+  /// Checked-in state, e.g. "Come back tomorrow for +25 coins".
+  String checkinComeBack(Object coins);
+
+  /// Success message, e.g. "+20 coins earned! Day 3 streak".
+  String checkinEarned(Object coins, Object day);
+
+  /// Already checked in message.
+  String get checkinAlreadyDone;
   String streakDays(Object count);
   String get streakKeepGoing;
   String streakMilestone(Object coins);

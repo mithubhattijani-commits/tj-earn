@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -9,7 +10,6 @@ import 'package:tj_earn/l10n/app_localizations.dart';
 
 import '../app_navigator.dart';
 import '../config.dart';
-import 'supabase_service.dart';
 import 'validation.dart';
 
 /// In-app updater for sideloaded (website APK) installs.
@@ -165,6 +165,68 @@ class UpdaterService {
   static const _prefsNameKey = 'tj_earn_update_version_name';
   static const _prefsNotesKey = 'tj_earn_update_notes';
 
+  /// Website manifest (Doner-style, Jaani 3 Nov 2026). Published by the
+  /// parent with the stable APK download link; the Supabase app_versions
+  /// table is stale and must NOT be used.
+  static const String manifestUrl =
+      'https://nigraantv.xyz/apps/tj-earn-version.json';
+
+  /// VersionCode the user dismissed with "Later" — never re-prompted
+  /// on launch. A newer versionCode prompts again.
+  static const String _dismissedKey = 'dismissed_update_code';
+
+  /// Fetches the version manifest from the website (Doner-style).
+  /// Returns {versionCode, versionName, url, notes} or null on ANY
+  /// failure (no network, 404, bad JSON). Never throws.
+  static Future<Map<String, dynamic>?> _fetchManifest() async {
+    HttpClient? client;
+    try {
+      client = HttpClient()
+        ..connectionTimeout = const Duration(seconds: 15);
+      final request = await client.getUrl(Uri.parse(manifestUrl));
+      final response =
+          await request.close().timeout(const Duration(seconds: 20));
+      if (response.statusCode != HttpStatus.ok) return null;
+      final body = await response
+          .transform(utf8.decoder)
+          .join()
+          .timeout(const Duration(seconds: 20));
+      final data = jsonDecode(body);
+      if (data is! Map<String, dynamic>) return null;
+      final code = data['versionCode'];
+      final url = data['url'];
+      if (code is! int || url is! String || url.isEmpty) return null;
+      return <String, dynamic>{
+        'versionCode': code,
+        'versionName': (data['versionName'] as String?) ?? 'v$code',
+        'url': url,
+        'notes': (data['notes'] as String?) ?? '',
+      };
+    } catch (_) {
+      return null;
+    } finally {
+      client?.close(force: true);
+    }
+  }
+
+  static Future<int> _dismissedCode() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getInt(_dismissedKey) ?? 0;
+    } catch (_) {
+      return 0;
+    }
+  }
+
+  static Future<void> _recordDismissed(int versionCode) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt(_dismissedKey, versionCode);
+    } catch (_) {
+      // Best-effort.
+    }
+  }
+
   static OverlayEntry? _banner;
   static bool _polling = false;
 
@@ -206,12 +268,12 @@ class UpdaterService {
     try {
       final info = await PackageInfo.fromPlatform();
       final currentCode = int.tryParse(info.buildNumber) ?? 0;
-      final latest = await SupabaseService.getLatestVersion();
+      final latest = await _fetchManifest();
       if (latest == null) return;
-      final latestCode = latest['version_code'];
-      final apkUrl = latest['apk_url'];
-      if (latestCode is! int || apkUrl is! String || apkUrl.isEmpty) return;
+      final latestCode = latest['versionCode'] as int;
+      final apkUrl = latest['url'] as String;
       if (!isNewerVersion(latestCode, currentCode)) return;
+      if (await _dismissedCode() == latestCode) return;
       if (!context.mounted) return;
       final localizations = AppLocalizations.of(context)!;
       final wantUpdate = await showDialog<bool>(
@@ -220,11 +282,14 @@ class UpdaterService {
         builder: (ctx) => AlertDialog(
           title: Text(localizations.updateAvailable),
           content: Text(
-            '${latest['version_name'] ?? ''}\n${latest['notes'] ?? ''}'.trim(),
+            '${latest['versionName'] ?? ''}\n${latest['notes'] ?? ''}'.trim(),
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.of(ctx).pop(false),
+              onPressed: () {
+                _recordDismissed(latestCode);
+                Navigator.of(ctx).pop(false);
+              },
               child: Text(localizations.updateLater),
             ),
             FilledButton(
@@ -239,7 +304,7 @@ class UpdaterService {
         context,
         apkUrl,
         versionCode: latestCode,
-        versionName: latest['version_name'] as String?,
+        versionName: latest['versionName'] as String?,
         notes: latest['notes'] as String?,
       );
     } catch (_) {
@@ -252,7 +317,7 @@ class UpdaterService {
   /// exactly what happened:
   /// - "up to date" when already on the latest version
   /// - "no internet" when offline
-  /// - "update info not found" when the version record is unreachable
+  /// - "update info not found" when the manifest is unreachable
   static Future<void> checkManually(BuildContext context) async {
     if (!AppConfig.isConfigured) return;
     final localizations = AppLocalizations.of(context);
@@ -268,10 +333,10 @@ class UpdaterService {
       return;
     }
 
-    // 2. Fetch version info from Supabase.
+    // 2. Fetch version manifest from the website (Doner-style).
     Map<String, dynamic>? latest;
     try {
-      latest = await SupabaseService.getLatestVersion();
+      latest = await _fetchManifest();
     } on SocketException {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -294,8 +359,8 @@ class UpdaterService {
       );
       return;
     }
-    final latestCode = latest['version_code'];
-    final apkUrl = latest['apk_url'];
+    final latestCode = latest['versionCode'];
+    final apkUrl = latest['url'];
     if (latestCode is! int || apkUrl is! String || apkUrl.isEmpty) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -323,7 +388,7 @@ class UpdaterService {
       builder: (ctx) => AlertDialog(
         title: Text(localizations.updateAvailable),
         content: Text(
-          '${latest?['version_name'] ?? ''}\n${latest?['notes'] ?? ''}'.trim(),
+          '${latest?['versionName'] ?? ''}\n${latest?['notes'] ?? ''}'.trim(),
         ),
         actions: [
           TextButton(
@@ -342,7 +407,7 @@ class UpdaterService {
       context,
       apkUrl,
       versionCode: latestCode,
-      versionName: latest['version_name'] as String?,
+      versionName: latest['versionName'] as String?,
       notes: latest['notes'] as String?,
     );
   }
@@ -635,7 +700,9 @@ class UpdaterService {
       // in DownloadManager; only the re-attach is lost.
     }
   }
+    
 
+  
   static Future<void> _clearSavedState() async {
     try {
       final prefs = await SharedPreferences.getInstance();
