@@ -60,9 +60,9 @@ class MainShell extends StatefulWidget {
 }
 
 class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
-  /// Lazily-created tab widgets: index 0 = home, 1 = articles,
-  /// 2 = referral, 3 = withdraw. Settings (4) is never cached: it
-  /// changes when the language changes, so it is ALWAYS rebuilt fresh.
+  // Lazily-created tab widgets: index 0 = home, 1 = articles,
+  // 2 = referral, 3 = withdraw. Settings (4) is rebuilt fresh so a
+  // language change always reaches it.
   var _index = 0;
   final List<Widget?> _tabs = <Widget?>[null, null, null, null];
 
@@ -167,32 +167,28 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
     );
   }
 
-  /// Auto-applies a pending referral code from a deep link. Shows a confirmation snackbar on success. Silent on failure — the user can still apply manually in the Refer tab.
+  /// Auto-applies a pending referral code from a deep link.
+  /// Shows a confirmation snackbar on success. Silent on failure —
+  /// the user can still apply manually in the Refer tab.
   Future<void> _autoApplyReferral() async {
     try {
-      final t = AppLocalizations.of(context);
-      // If the app was launched from a referral link, _handleIncomingReferral
-      // stored the code in secure storage; this applies it to the account.
-      final code = await ReferralDeepLinkService.instance
-        .getPendingCode()
-        .timeout(const Duration(seconds: 30));
-      if (code != null && code.isNotEmpty) {
-        final applied = await ReferralDeepLinkService.instance
-            .autoApplyPendingCode()
-            .timeout(const Duration(seconds: 30));
-        if (applied && mounted) {
-          // ignore: use_build_context_synchronously
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                t?.referAutoApplied(code) ?? 'Referral $code applied! 🎉',
-              ),
-            ),
+      final code =
+          await ReferralDeepLinkService.instance.autoApplyPendingCode().timeout(
+            const Duration(seconds: 30),
           );
-        }
+      if (code != null && mounted) {
+        final t = AppLocalizations.of(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              t?.referAutoApplied(code) ?? 'Referral $code applied! 🎉',
+            ),
+            duration: const Duration(seconds: 4),
+          ),
+        );
       }
     } catch (_) {
-      // Silent for auto-apply — the user can still enter the code manually.
+      // Silent: manual apply remains available in the Refer tab.
     }
   }
 
@@ -254,8 +250,6 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
           },
         ),
         actions: [
-          // Admin shield — only when the signed-in user is an admin
-          // (cached per session; the icon appears after the check).
           IconButton(
             icon: const Icon(Icons.admin_panel_settings),
             tooltip: t.adminTitle,
@@ -280,13 +274,7 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
           Expanded(
             child: IndexedStack(
               index: _index,
-              children: [
-                _tab(0),
-                _tab(1),
-                _tab(2),
-                _tab(3),
-                _tab(4),
-              ],
+              children: [_tab(0), _tab(1), _tab(2), _tab(3), _tab(4)],
             ),
           ),
           // Unity banner ad (BP_Banner_Android) in the mounted shell,
@@ -300,23 +288,34 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
         onTap: (i) => setState(() => _index = i),
         type: BottomNavigationBarType.fixed,
         items: [
-          BottomNavigationBarItem(icon: const Icon(Icons.home), label: t.homeTitle),
+          BottomNavigationBarItem(
+            icon: const Icon(Icons.home),
+            label: t.homeTitle,
+          ),
           BottomNavigationBarItem(
             icon: const Icon(Icons.article_outlined),
             label: 'Articles',
           ),
-          BottomNavigationBarItem(icon: const Icon(Icons.group_add), label: t.referTab),
+          BottomNavigationBarItem(
+            icon: const Icon(Icons.group_add),
+            label: t.referTab,
+          ),
           BottomNavigationBarItem(
             icon: const Icon(Icons.payments),
             label: t.withdrawTitle,
           ),
-          BottomNavigationBarItem(icon: const Icon(Icons.settings), label: t.settingsTitle),
+          BottomNavigationBarItem(
+            icon: const Icon(Icons.settings),
+            label: t.settingsTitle,
+          ),
         ],
       ),
     );
   }
 }
 
+/// Home tab: v1.0.17 balance + Watch Ad UI, byte-for-byte behaviour.
+/// Extracted into its own widget so the shell can lazy-load tabs.
 class _HomeTab extends StatefulWidget {
   const _HomeTab({super.key});
 
@@ -333,14 +332,12 @@ class _HomeTabState extends State<_HomeTab> {
     _balance = _loadBalance();
   }
 
-  /// Loads the user's balance. Uses the cached value on start (fast),
-  /// then refreshes from Supabase.
   Future<int> _loadBalance() async {
     try {
       return await SupabaseService.getBalance();
     } catch (_) {
       // FIX (3 Nov 2026): balanceCoins is nullable — the old code returned
-      // an int? from a Future<int> method and broke flutter analyze
+      // `int?` from a `Future<int>` method and broke `flutter analyze`
       // (CI red). Fall back to 0 when the cache is empty; the card shows
       // the cached value or "0" rather than crashing.
       return StartupBundleService.balanceCoins ?? 0;
@@ -355,14 +352,13 @@ class _HomeTabState extends State<_HomeTab> {
     });
   }
 
-  /// The card says "123 coins ≈ Rs 1.23". We trim trailing zeroes so
-  /// 100 coins shows as "Rs 1" not "Rs 1.00".
+  /// Rs equivalent of a coin balance (1 coin = Rs 0.01), formatted
+  /// without trailing zeros (1000 coins -> "10", 1050 coins -> "10.50").
   String _rsValue(int coins) {
-    final rs = coins / 100;
-    final formatted = rs.toStringAsFixed(2);
-    if (formatted.endsWith('.00')) return formatted.substring(0, formatted.length - 3);
-    if (formatted.endsWith('0')) return formatted.substring(0, formatted.length - 1);
-    return formatted;
+    final double rs = coins / 100;
+    return rs == rs.roundToDouble()
+        ? rs.toInt().toString()
+        : rs.toStringAsFixed(2);
   }
 
   Widget _balanceCard(AppLocalizations t) {
@@ -371,7 +367,10 @@ class _HomeTabState extends State<_HomeTab> {
         padding: const EdgeInsets.all(24),
         child: Column(
           children: [
-            Text(t.balance, style: Theme.of(context).textTheme.titleMedium),
+            Text(
+              t.balance,
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
             const SizedBox(height: 8),
             FutureBuilder<int>(
               future: _balance,
@@ -381,19 +380,30 @@ class _HomeTabState extends State<_HomeTab> {
                     children: [
                       Text(t.balanceLoadFailed),
                       const SizedBox(height: 4),
-                      TextButton(onPressed: _reloadBalance, child: Text(t.retry)),
+                      TextButton(
+                        onPressed: _reloadBalance,
+                        child: Text(t.retry),
+                      ),
                     ],
                   );
                 }
-                if (!snapshot.hasData) return const CircularProgressIndicator();
+                if (!snapshot.hasData) {
+                  return const CircularProgressIndicator();
+                }
                 final int coins = snapshot.data!;
                 return Column(
                   children: [
                     Text(
                       '$coins',
-                      style: Theme.of(context).textTheme.headlineLarge?.copyWith(fontWeight: FontWeight.bold),
+                      style: Theme.of(context)
+                          .textTheme
+                          .headlineLarge
+                          ?.copyWith(fontWeight: FontWeight.bold),
                     ),
-                    Text(t.coins, style: Theme.of(context).textTheme.bodySmall),
+                    Text(
+                      t.coins,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
                     const SizedBox(height: 4),
                     // Coins stay primary; the ≈Rs equivalent is
                     // secondary (1 coin = Rs 0.01). Restored per
@@ -418,13 +428,13 @@ class _HomeTabState extends State<_HomeTab> {
     return RefreshIndicator(
       onRefresh: () async {
         _reloadBalance();
+        // Wait for the refreshed future so the indicator spins until
+        // the new balance actually lands (bounded by the Supabase
+        // _guard timeout — never an infinite spinner).
         try {
-          // Same behavior as after an article read: the _reloadBalance
-          // above starts a fresh Future; await it with a 30s guard so
-          // a slow connection can't hang the refresh indicator forever.
           await _balance.timeout(const Duration(seconds: 30));
         } catch (_) {
-          // Timed out or failed — the cached card value stays.
+          // The FutureBuilder shows the error/retry state itself.
         }
       },
       child: SingleChildScrollView(
@@ -439,9 +449,12 @@ class _HomeTabState extends State<_HomeTab> {
               onPressed: () {
                 Navigator.of(context)
                     .push(
-                      MaterialPageRoute(builder: (_) => const WatchAdScreen()),
+                      MaterialPageRoute(
+                        builder: (_) => const WatchAdScreen(),
+                      ),
                     )
                     .then((_) {
+                      // Refresh balance after returning from Watch Ad
                       _reloadBalance();
                     });
               },
