@@ -514,24 +514,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get streakCheckedInToday => 'Checked in today. Come back tomorrow!';
 
   @override
-  String get spinTitle => 'Daily Spin';
-
-  @override
-  String get spinSubtitle => 'Spin the wheel once a day for free coins!';
-
-  @override
-  String get spinButton => 'Spin Now';
-
-  @override
-  String spinWon(Object coins) => 'You won $coins coins!';
-
-  @override
-  String get spinUsed => 'Come back tomorrow for your next spin!';
-
-  @override
-  String get spinSpinning => 'Spinning...';
-
-  @override
   String onboardingTitle(Object coins) => 'Get Started - Earn $coins Bonus!';
 
   @override
@@ -545,9 +527,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get onboardingQuiz => 'Complete your first quiz';
-
-  @override
-  String get onboardingSpin => 'Try your first spin';
 
   @override
   String get onboardingReferral => 'Share your referral link';
