@@ -48,18 +48,22 @@ import 'watch_ad_screen.dart';
 class MainShell extends StatefulWidget {
   final Locale locale;
   final void Function(Locale locale) onLocaleChanged;
-  const MainShell({super.key, required this.locale, required this.onLocaleChanged});
+
+  const MainShell({
+    super.key,
+    required this.locale,
+    required this.onLocaleChanged,
+  });
 
   @override
   State<MainShell> createState() => _MainShellState();
 }
 
 class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
+  /// Lazily-created tab widgets: index 0 = home, 1 = articles,
+  /// 2 = referral, 3 = withdraw. Settings (4) is never cached: it
+  /// changes when the language changes, so it is ALWAYS rebuilt fresh.
   var _index = 0;
-
-  // Lazily-created tab widgets: index 0 = home, 1 = articles,
-  // 2 = referral, 3 = withdraw. Settings (4) is rebuilt fresh so a
-  // language change always reaches it.
   final List<Widget?> _tabs = <Widget?>[null, null, null, null];
 
   // Remote config (Task D, 12 Nov 2026): the minVersionCode already
@@ -87,8 +91,8 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     RemoteConfigService.instance.notifier.addListener(_onRemoteConfig);
     RemoteConfigService.instance.startPolling();
-    // The cached config may already carry a force_update — check it
-    // once the first frame is up.
+    // The cached config may already carry a force_update — check it once
+    // the first frame is up.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _maybeForceUpdate();
     });
@@ -163,18 +167,28 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
     );
   }
 
-  /// Auto-applies a pending referral code from a deep link.
+  /// Auto-applies a pending referral code from a deep link. Shows a confirmation snackbar on success. Silent on failure — the user can still apply manually in the Refer tab.
   Future<void> _autoApplyReferral() async {
     try {
-      final code = await ReferralDeepLinkService.consumePendingCode();
-      if (code != null && mounted) {
-        final ok = await SupabaseService.applyReferralCode(code);
-        if (ok && mounted) {
+      final t = AppLocalizations.of(context);
+      // If the app was launched from a referral link, _handleIncomingReferral
+      // stored the code in secure storage; this applies it to the account.
+      final code = await ReferralDeepLinkService.instance
+        .getPendingCode()
+        .timeout(const Duration(seconds: 30));
+      if (code != null && code.isNotEmpty) {
+        final applied = await ReferralDeepLinkService.instance
+            .autoApplyPendingCode()
+            .timeout(const Duration(seconds: 30));
+        if (applied && mounted) {
+          // ignore: use_build_context_synchronously
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(AppLocalizations.of(context)!.referralApplied(code))),
+            SnackBar(
+              content: Text(
+                t?.referAutoApplied(code) ?? 'Referral $code applied! 🎉',
+              ),
+            ),
           );
-          // Wait for balance refresh so the user sees the reward.
-          if (mounted) _reloadBalance();
         }
       }
     } catch (_) {
@@ -182,19 +196,25 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
     }
   }
 
-  Widget _tab(int index) {
-    _tabs[index] ??= switch (index) {
-      0 => _HomeTab(onCoinsChanged: () => setState(() {})),
-      // FIX (3 Nov 2026): lazy lookup — creating all tab widgets in
-      // initState ran Supabase queries for tabs the user may never open,
-      // causing a startup burst (ANR). Only indices 1..3 are pre-known;
-      // 4 (settings) is special-cased below to rebuilt fresh.
-      1 => const ArticlesTab(),
-      2 => const ReferralTab(),
-      3 => const WithdrawTab(),
-      int() => throw StateError('Invalid tab index $index'),
-    };
-    return _tabs[index]!;
+  Widget _tab(int i) {
+    if (i == 4) {
+      return SettingsTab(
+        key: const ValueKey('settings'),
+        locale: widget.locale,
+        onLocaleChanged: widget.onLocaleChanged,
+      );
+    }
+    var w = _tabs[i];
+    if (w == null) {
+      w = switch (i) {
+        0 => _HomeTab(key: const ValueKey('home')),
+        1 => const ArticlesTab(key: ValueKey('articles')),
+        2 => const ReferralTab(key: ValueKey('referral')),
+        _ => const WithdrawTab(key: ValueKey('withdraw')),
+      };
+      _tabs[i] = w;
+    }
+    return w;
   }
 
   @override
@@ -236,18 +256,12 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
         actions: [
           // Admin shield — only when the signed-in user is an admin
           // (cached per session; the icon appears after the check).
-          FutureBuilder<bool>(
-            future: SupabaseService.isAdmin(),
-            builder: (context, snapshot) {
-              if (snapshot.data != true) return const SizedBox.shrink();
-              return IconButton(
-                icon: const Icon(Icons.admin_panel_settings),
-                tooltip: t.adminPanel,
-                onPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const AdminScreen()),
-                  );
-                },
+          IconButton(
+            icon: const Icon(Icons.admin_panel_settings),
+            tooltip: t.adminTitle,
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const AdminScreen()),
               );
             },
           ),
@@ -271,78 +285,52 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
                 _tab(1),
                 _tab(2),
                 _tab(3),
-                SettingsTab(locale: widget.locale, onLocaleChanged: widget.onLocaleChanged),
+                _tab(4),
               ],
             ),
           ),
-          // Unity banner ad (Jaani, 4 Nov 2026): bottom of the shell,
-          // fixed size (standard 320x50), loads asynchronously.
-          // NOTE: a failed load is SILENT — the widget renders an empty
-          // box and must never shift the layout.
-          //
-          // The Adsterra banner in the orphan home_tab.dart is untouched
-          // (Task D): this Unity banner and that Adsterra banner are
-          // separate placements.
+          // Unity banner ad (BP_Banner_Android) in the mounted shell,
+          // above the bottom navigation bar. The Adsterra banner in
+          // the orphan home_tab.dart is untouched.
           const UnityBannerAdWidget(),
         ],
       ),
       bottomNavigationBar: BottomNavigationBar(
-        items: [
-          BottomNavigationBarItem(icon: const Icon(Icons.home), label: t.home),
-          BottomNavigationBarItem(icon: const Icon(Icons.article), label: t.articles),
-          BottomNavigationBarItem(icon: const Icon(Icons.group_add), label: t.invite),
-          BottomNavigationBarItem(icon: const Icon(Icons.account_balance_wallet), label: t.withdraw),
-          BottomNavigationBarItem(icon: const Icon(Icons.settings), label: t.settings),
-        ],
         currentIndex: _index,
-        onTap: (index) => setState(() => _index = index),
+        onTap: (i) => setState(() => _index = i),
         type: BottomNavigationBarType.fixed,
-        selectedItemColor: Theme.of(context).colorScheme.primary,
-        unselectedItemColor: Colors.grey,
+        items: [
+          BottomNavigationBarItem(icon: const Icon(Icons.home), label: t.homeTitle),
+          BottomNavigationBarItem(
+            icon: const Icon(Icons.article_outlined),
+            label: 'Articles',
+          ),
+          BottomNavigationBarItem(icon: const Icon(Icons.group_add), label: t.referTab),
+          BottomNavigationBarItem(
+            icon: const Icon(Icons.payments),
+            label: t.withdrawTitle,
+          ),
+          BottomNavigationBarItem(icon: const Icon(Icons.settings), label: t.settingsTitle),
+        ],
       ),
     );
-  }
-
-  void _reloadBalance() {
-    final home = _tabs[0];
-    if (home is _HomeTab) {
-      home.reloadBalance();
-    }
   }
 }
 
 class _HomeTab extends StatefulWidget {
-  /// Called when the tab's coins change (e.g. after watching an ad or
-  /// reading an article) so the shell can rebuild the AppBar badge.
-  final VoidCallback onCoinsChanged;
-  const _HomeTab({required this.onCoinsChanged});
-
-  void reloadBalance() {
-    // Calls the state directly since the widget is held in _tabs.
-    // (Used after the referral code is applied.)
-    final state = _HomeTabState._current;
-    state?._reloadBalance();
-  }
+  const _HomeTab({super.key});
 
   @override
   State<_HomeTab> createState() => _HomeTabState();
 }
 
 class _HomeTabState extends State<_HomeTab> {
-  static _HomeTabState? _current;
-  late final Future<int> _balance;
+  late Future<int> _balance;
 
   @override
   void initState() {
     super.initState();
-    _current = this;
     _balance = _loadBalance();
-  }
-
-  @override
-  void dispose() {
-    if (_current == this) _current = null;
-    super.dispose();
   }
 
   /// Loads the user's balance. Uses the cached value on start (fast),
@@ -352,31 +340,36 @@ class _HomeTabState extends State<_HomeTab> {
       return await SupabaseService.getBalance();
     } catch (_) {
       // FIX (3 Nov 2026): balanceCoins is nullable — the old code returned
-      // `int?` from a `Future<int>` method and broke `flutter analyze`
+      // an int? from a Future<int> method and broke flutter analyze
       // (CI red). Fall back to 0 when the cache is empty; the card shows
       // the cached value or "0" rather than crashing.
       return StartupBundleService.balanceCoins ?? 0;
     }
   }
 
+  /// Manual refresh (pull-to-refresh + after returning from Watch Ad).
   void _reloadBalance() {
-    if (mounted) {
-      setState(() {
-        _balance = _loadBalance();
-      });
-    }
+    if (!mounted) return;
+    setState(() {
+      _balance = _loadBalance();
+    });
   }
 
-  /// Rs equivalent for the top card: 1 coin = Rs 0.01.
-  int _rsValue(int coins) => (coins * 1) ~/ 100;
+  /// The card says "123 coins ≈ Rs 1.23". We trim trailing zeroes so
+  /// 100 coins shows as "Rs 1" not "Rs 1.00".
+  String _rsValue(int coins) {
+    final rs = coins / 100;
+    final formatted = rs.toStringAsFixed(2);
+    if (formatted.endsWith('.00')) return formatted.substring(0, formatted.length - 3);
+    if (formatted.endsWith('0')) return formatted.substring(0, formatted.length - 1);
+    return formatted;
+  }
 
   Widget _balanceCard(AppLocalizations t) {
     return Card(
-      elevation: 2,
       child: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(t.balance, style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 8),
@@ -385,18 +378,16 @@ class _HomeTabState extends State<_HomeTab> {
               builder: (context, snapshot) {
                 if (snapshot.hasError) {
                   return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(t.balanceLoadFailed, style: Theme.of(context).textTheme.bodyMedium),
+                      Text(t.balanceLoadFailed),
                       const SizedBox(height: 4),
                       TextButton(onPressed: _reloadBalance, child: Text(t.retry)),
                     ],
                   );
                 }
                 if (!snapshot.hasData) return const CircularProgressIndicator();
-                final coins = snapshot.data!;
+                final int coins = snapshot.data!;
                 return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       '$coins',
@@ -426,12 +417,12 @@ class _HomeTabState extends State<_HomeTab> {
     final t = AppLocalizations.of(context)!;
     return RefreshIndicator(
       onRefresh: () async {
+        _reloadBalance();
         try {
-          // Same behavior as after an article read: reload with a
-          // 30s guard so a slow connection can't hang the refresh
-          // indicator forever.
-          await _loadBalance().timeout(const Duration(seconds: 30));
-          _reloadBalance();
+          // Same behavior as after an article read: the _reloadBalance
+          // above starts a fresh Future; await it with a 30s guard so
+          // a slow connection can't hang the refresh indicator forever.
+          await _balance.timeout(const Duration(seconds: 30));
         } catch (_) {
           // Timed out or failed — the cached card value stays.
         }
@@ -445,14 +436,20 @@ class _HomeTabState extends State<_HomeTab> {
             _balanceCard(t),
             const SizedBox(height: 24),
             FilledButton.icon(
-              onPressed: () async {
-                await Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const WatchAdScreen()),
-                );
-                _reloadBalance();
+              onPressed: () {
+                Navigator.of(context)
+                    .push(
+                      MaterialPageRoute(builder: (_) => const WatchAdScreen()),
+                    )
+                    .then((_) {
+                      _reloadBalance();
+                    });
               },
-              icon: const Icon(Icons.play_circle_fill),
-              label: Text(t.watchAd),
+              icon: const Icon(Icons.play_circle_outline),
+              label: Text(t.watchAdTile),
+              style: FilledButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+              ),
             ),
           ],
         ),
