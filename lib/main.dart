@@ -6,6 +6,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'app_navigator.dart';
 import 'config.dart';
 import 'screens/auth_screen.dart';
 import 'screens/main_shell.dart';
@@ -18,7 +19,6 @@ import 'services/remote_config_service.dart';
 import 'services/supabase_service.dart';
 import 'services/unity_ads_service.dart';
 import 'services/updater_service.dart';
-import 'app_navigator.dart';
 import 'theme.dart';
 
 /// Language choice, persisted locally. Defaults to English.
