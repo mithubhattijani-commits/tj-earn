@@ -824,60 +824,15 @@ AppLocalizations lookupAppLocalizations(Locale locale) {
   String get adLoadFailed;
   String get unityNotReady;
   String get tasksTitle;
-  String get streakTitle;
-
-  /// Daily check-in title.
-  String get checkinTitle;
-
-  /// Daily check-in button label.
-  String get checkinButton;
-
-  /// Daily check-in done state.
-  String get checkinDone;
-
-  /// Current streak display, e.g. "3 day streak".
-  String checkinStreak(Object count);
-
-  /// Today's reward line, e.g. "Day 3: check in now for +20 coins".
-  String checkinTodayPays(Object day, Object coins);
-
-  /// Checked-in state, e.g. "Come back tomorrow for +25 coins".
-  String checkinComeBack(Object coins);
-
-  /// Success message, e.g. "+20 coins earned! Day 3 streak".
-  String checkinEarned(Object coins, Object day);
-
-  /// Already checked in message.
-  String get checkinAlreadyDone;
-  String streakDays(Object count);
-  String get streakKeepGoing;
-  String streakMilestone(Object coins);
-  String streakNext(Object days);
-  String streakAtRisk(Object days);
-  String get streakCheckedInToday;
-  String get spinTitle;
-  String get spinSubtitle;
-  String get spinButton;
-  String spinWon(Object coins);
-  String get spinUsed;
-  String get spinSpinning;
   String onboardingTitle(Object coins);
   String get onboardingSubtitle;
   String get onboardingProfile;
-  String get onboardingCheckin;
-  String get onboardingQuiz;
-  String get onboardingSpin;
   String get onboardingReferral;
   String onboardingComplete(Object coins);
   String onboardingProgress(Object done, Object total);
   String get referralMilestoneTitle;
   String referralMilestoneNext(Object remaining, Object bonus);
   String referralMilestoneReached(Object coins);
-  String get leaderboardTitle;
-  String get leaderboardSubtitle;
-  String leaderboardYourRank(Object rank);
-  String get leaderboardEmpty;
-  String get leaderboardYou;
   String get helpSupport;
   String get helpSupportName;
 }

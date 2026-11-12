@@ -1,10 +1,14 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:tj_earn/l10n/app_localizations.dart';
 
+import '../services/referral_deep_link_service.dart';
+import '../services/remote_config_service.dart';
 import '../services/startup_bundle_service.dart';
 import '../services/supabase_service.dart';
-import '../services/referral_deep_link_service.dart';
 import '../services/updater_service.dart';
+import '../services/unity_ads_service.dart';
 import 'admin_screen.dart';
 import 'articles_tab.dart';
 import 'referral_tab.dart';
@@ -34,6 +38,13 @@ import 'watch_ad_screen.dart';
 /// ANR safety: tabs are created lazily (only when first opened), each tab
 /// owns its own Future with a hard timeout — no concurrent startup burst,
 /// no infinite spinners.
+///
+/// Task D (Jaani, 12 Nov 2026): remote config is wired into THIS shell —
+/// the announcement banner above the tabs, the display name + logo in the
+/// AppBar, and the force_update flag triggers the existing updater flow.
+/// The config is re-fetched on launch, on resume and every ~60s (see
+/// RemoteConfigService). The Adsterra banner in the orphan home_tab.dart
+/// is untouched, as is the Unity banner below.
 class MainShell extends StatefulWidget {
   final Locale locale;
   final void Function(Locale locale) onLocaleChanged;
@@ -48,12 +59,17 @@ class MainShell extends StatefulWidget {
   State<MainShell> createState() => _MainShellState();
 }
 
-class _MainShellState extends State<MainShell> {
-  var _index = 0;
+class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
   // Lazily-created tab widgets: index 0 = home, 1 = articles,
   // 2 = referral, 3 = withdraw. Settings (4) is rebuilt fresh so a
   // language change always reaches it.
+  var _index = 0;
   final List<Widget?> _tabs = <Widget?>[null, null, null, null];
+
+  // Remote config (Task D, 12 Nov 2026): the minVersionCode already
+  // prompted for, so the update dialog does not re-fire on every 60s
+  // poll while the same forced version is live.
+  int? _forceUpdatePromptedFor;
 
   @override
   void initState() {
@@ -70,6 +86,85 @@ class _MainShellState extends State<MainShell> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _autoApplyReferral();
     });
+    // Remote config (Task D, 12 Nov 2026): listen for fresh config and
+    // re-fetch it on resume; the 60s poll runs in RemoteConfigService.
+    WidgetsBinding.instance.addObserver(this);
+    RemoteConfigService.instance.notifier.addListener(_onRemoteConfig);
+    RemoteConfigService.instance.startPolling();
+    // The cached config may already carry a force_update — check it once
+    // the first frame is up.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _maybeForceUpdate();
+    });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    RemoteConfigService.instance.notifier.removeListener(_onRemoteConfig);
+    RemoteConfigService.instance.stopPolling();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Resume (and, via the 60s poll, reconnect): fetch the config fresh
+    // — the announcement, name, logo or force-update flag can change
+    // while the app is in the background.
+    if (state == AppLifecycleState.resumed) {
+      unawaited(RemoteConfigService.instance.refresh());
+    }
+  }
+
+  /// A fresh config landed (launch fetch, resume refresh or 60s poll):
+  /// re-check the force-update flag.
+  void _onRemoteConfig() {
+    _maybeForceUpdate();
+  }
+
+  /// Force update (Task D): when the config's force_update flag is on,
+  /// run the EXISTING updater flow — it fetches the website manifest and
+  /// prompts for the update when a newer versionCode exists. Nothing new
+  /// is invented here. Prompted once per forced version per shell
+  /// lifetime (the poll would otherwise re-fire it).
+  void _maybeForceUpdate() {
+    if (!mounted) return;
+    final force = RemoteConfigService.instance.config.forceUpdate;
+    if (!force.enabled || force.minVersionCode <= 0) return;
+    if (_forceUpdatePromptedFor == force.minVersionCode) return;
+    _forceUpdatePromptedFor = force.minVersionCode;
+    unawaited(UpdaterService.checkForUpdate(context));
+  }
+
+  /// Remote-config announcement banner (Task D): a slim notice bar at
+  /// the top of the mounted shell, shown only when the config
+  /// announcement is enabled and non-empty. It listens to the config
+  /// notifier, so it appears and updates without a restart.
+  Widget _announcementBanner() {
+    return ValueListenableBuilder<RemoteConfig>(
+      valueListenable: RemoteConfigService.instance.notifier,
+      builder: (context, config, _) {
+        final announcement = config.announcement;
+        if (!announcement.show) return const SizedBox.shrink();
+        return Container(
+          width: double.infinity,
+          color: Theme.of(context).colorScheme.secondaryContainer,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          child: Row(
+            children: [
+              const Icon(Icons.campaign_outlined, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  announcement.text,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   /// Auto-applies a pending referral code from a deep link.
@@ -79,8 +174,8 @@ class _MainShellState extends State<MainShell> {
     try {
       final code =
           await ReferralDeepLinkService.instance.autoApplyPendingCode().timeout(
-        const Duration(seconds: 30),
-      );
+            const Duration(seconds: 30),
+          );
       if (code != null && mounted) {
         final t = AppLocalizations.of(context);
         ScaffoldMessenger.of(context).showSnackBar(
@@ -123,7 +218,37 @@ class _MainShellState extends State<MainShell> {
     final t = AppLocalizations.of(context)!;
     return Scaffold(
       appBar: AppBar(
-        title: Text(t.appTitle),
+        title: ValueListenableBuilder<RemoteConfig>(
+          valueListenable: RemoteConfigService.instance.notifier,
+          builder: (context, config, _) {
+            // Remote-config display name + logo (Task D): the config
+            // name/logo replace the app name/logo in the mounted
+            // shell's AppBar; the localized app title is the fallback.
+            final name = config.displayName.trim().isNotEmpty
+                ? config.displayName
+                : t.appTitle;
+            final logo = config.logoUrl.trim();
+            if (logo.isEmpty) return Text(name);
+            return Row(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  child: Image.network(
+                    logo,
+                    width: 28,
+                    height: 28,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, _, _) => const SizedBox.shrink(),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(name, overflow: TextOverflow.ellipsis),
+                ),
+              ],
+            );
+          },
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.admin_panel_settings),
@@ -141,9 +266,22 @@ class _MainShellState extends State<MainShell> {
           ),
         ],
       ),
-      body: IndexedStack(
-        index: _index,
-        children: [_tab(0), _tab(1), _tab(2), _tab(3), _tab(4)],
+      body: Column(
+        children: [
+          // Remote-config announcement (Task D): shows in the mounted
+          // shell whenever the config announcement is non-empty.
+          _announcementBanner(),
+          Expanded(
+            child: IndexedStack(
+              index: _index,
+              children: [_tab(0), _tab(1), _tab(2), _tab(3), _tab(4)],
+            ),
+          ),
+          // Unity banner ad (BP_Banner_Android) in the mounted shell,
+          // above the bottom navigation bar. The Adsterra banner in
+          // the orphan home_tab.dart is untouched.
+          const UnityBannerAdWidget(),
+        ],
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _index,
@@ -316,9 +454,9 @@ class _HomeTabState extends State<_HomeTab> {
                       ),
                     )
                     .then((_) {
-                  // Refresh balance after returning from Watch Ad
-                  _reloadBalance();
-                });
+                      // Refresh balance after returning from Watch Ad
+                      _reloadBalance();
+                    });
               },
               icon: const Icon(Icons.play_circle_outline),
               label: Text(t.watchAdTile),

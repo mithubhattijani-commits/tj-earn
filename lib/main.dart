@@ -5,13 +5,11 @@ import 'package:tj_earn/l10n/app_localizations.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-
 import 'app_navigator.dart';
 import 'config.dart';
 import 'screens/auth_screen.dart';
 import 'screens/main_shell.dart';
 import 'services/admin_status.dart';
-import 'services/checkin_reminder_service.dart';
 import 'services/startup_bundle_service.dart';
 import 'services/device_service.dart';
 import 'services/referral_deep_link_service.dart';
@@ -22,52 +20,45 @@ import 'services/updater_service.dart';
 import 'theme.dart';
 
 /// Language choice, persisted locally. Defaults to English.
+/// Default language is English (Task D, 12 Nov 2026); Urdu is second —
+/// it applies only when the user previously chose it. Any other or
+/// missing saved value falls back to English.
 final ValueNotifier<Locale> appLocale = ValueNotifier(const Locale('en'));
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final prefs = await SharedPreferences.getInstance();
   final saved = prefs.getString('language');
-  if (saved == 'ur') appLocale.value = const Locale('ur');
-
+  // Default language is English: only a saved 'ur' switches to Urdu.
+  appLocale.value =
+      saved == 'ur' ? const Locale('ur') : const Locale('en');
   // ROOT-CAUSE FIX (Jaani, 2 Nov 2026): runApp is called IMMEDIATELY.
   // Nothing network-related runs before the first frame anymore — the
   // old code awaited SupabaseService.init() here, and a stalled network
   // hung the app on a black screen until Android raised ANR. Supabase
   // init now happens inside _BootGate with a hard 15s timeout.
-
-  // Remote Config (Jaani, 2 Nov 2026): fire-and-forget, NOT awaited.
-  // init() loads the local cache (fast) and refreshes from the network
-  // in the background with an 8s timeout — nothing here may block the
-  // first frame (APP ROBUSTNESS RULE).
+  // Remote Config (Jaani, 2 Nov 2026; polling per Task D, 12 Nov 2026):
+  // fire-and-forget, NOT awaited. init() loads the local cache (fast)
+  // and refreshes from the network in the background with an 8s timeout,
+  // then polls every ~60s — nothing here may block the first frame
+  // (APP ROBUSTNESS RULE).
   unawaited(RemoteConfigService.instance.init());
-
-  // Daily check-in reminder (Jaani, 3 Nov 2026): fire-and-forget, NOT
-  // awaited. Initializes the local-notification plugin, requests
-  // permission on first launch, and schedules the 9 PM PKT reminder if
-  // the user hasn't checked in today. Best-effort — never blocks UI.
-  unawaited(CheckinReminderService.instance.init());
-
   // Referral deep linking (Jaani, 3 Nov 2026): fire-and-forget, NOT
   // awaited. Captures ?ref=CODE from incoming links (app_links on mobile,
   // Uri.base on web) and stores it as pending. The code is auto-applied
   // after the user signs in — no manual entry needed. Best-effort.
   unawaited(ReferralDeepLinkService.instance.init());
-
   // Cache-first startup (Jaani, 2 Nov 2026 — PERMANENT hang fix): load
-  // the last-known balance/streak/onboarding from local disk BEFORE the
+  // the last-known balance/onboarding from local disk BEFORE the
   // first frame, so every card renders INSTANTLY from cache. A single
   // background refresh updates the data silently after login.
   await StartupBundleService.initCache();
-
   runApp(TjEarnApp(prefs: prefs));
 }
 
 class TjEarnApp extends StatefulWidget {
   final SharedPreferences prefs;
-
   const TjEarnApp({super.key, required this.prefs});
-
   @override
   State<TjEarnApp> createState() => _TjEarnAppState();
 }
@@ -181,7 +172,6 @@ class _TjEarnAppState extends State<TjEarnApp> {
 /// condition. A retry button re-runs the bounded boot.
 class ConfigErrorScreen extends StatelessWidget {
   final VoidCallback onRetry;
-
   const ConfigErrorScreen({super.key, required this.onRetry});
 
   @override
@@ -219,7 +209,6 @@ class ConfigErrorScreen extends StatelessWidget {
 
 class AuthGate extends StatelessWidget {
   final void Function(Locale locale) onLocaleChanged;
-
   const AuthGate({super.key, required this.onLocaleChanged});
 
   @override
@@ -235,14 +224,14 @@ class AuthGate extends StatelessWidget {
           return const AuthScreen();
         }
         // Cache-first startup (Jaani, 2 Nov 2026 — PERMANENT hang fix):
-        // ONE background call refreshes balance, streak, onboarding,
+        // ONE background call refreshes balance, onboarding,
         // and the admin flag. The UI already rendered from local cache,
         // so this never blocks — widgets update via refreshDone.
         StartupBundleService.refreshInBackground();
         // Register device for anti-fraud (silent, never blocks).
         // DeviceService.register runs fully in background (Jaani, 2 Nov 2026):
-    // it never touches UI, so it doesn't need the queue — fire-and-forget.
-    unawaited(DeviceService.register().catchError((_) {}));
+        // it never touches UI, so it doesn't need the queue — fire-and-forget.
+        unawaited(DeviceService.register().catchError((_) {}));
         return MainShell(
           locale: appLocale.value,
           onLocaleChanged: onLocaleChanged,

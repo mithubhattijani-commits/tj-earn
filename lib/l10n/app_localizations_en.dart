@@ -465,73 +465,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get tasksTitle => 'My Tasks';
 
   @override
-  String get streakTitle => 'Daily Streak';
-
-  @override
-  String get checkinTitle => 'Daily Check-in';
-
-  @override
-  String get checkinButton => 'Check In';
-
-  @override
-  String get checkinDone => 'Checked In \u2713';
-
-  @override
-  String checkinStreak(Object count) => '$count day streak';
-
-  @override
-  String checkinTodayPays(Object day, Object coins) =>
-      'Day $day: check in now for +$coins coins';
-
-  @override
-  String checkinComeBack(Object coins) =>
-      'Come back tomorrow for +$coins coins';
-
-  @override
-  String checkinEarned(Object coins, Object day) =>
-      '+$coins coins earned! Day $day streak';
-
-  @override
-  String get checkinAlreadyDone => 'Already checked in today';
-
-  @override
-  String streakDays(Object count) => '$count day streak';
-
-  @override
-  String get streakKeepGoing => 'Check in tomorrow to keep your streak!';
-
-  @override
-  String streakMilestone(Object coins) => 'Streak milestone! +$coins coins bonus!';
-
-  @override
-  String streakNext(Object days) => 'Next bonus at $days days';
-
-  @override
-  String streakAtRisk(Object days) =>
-      'Your $days-day streak is at risk! Check in today to keep it burning.';
-
-  @override
-  String get streakCheckedInToday => 'Checked in today. Come back tomorrow!';
-
-  @override
-  String get spinTitle => 'Daily Spin';
-
-  @override
-  String get spinSubtitle => 'Spin the wheel once a day for free coins!';
-
-  @override
-  String get spinButton => 'Spin Now';
-
-  @override
-  String spinWon(Object coins) => 'You won $coins coins!';
-
-  @override
-  String get spinUsed => 'Come back tomorrow for your next spin!';
-
-  @override
-  String get spinSpinning => 'Spinning...';
-
-  @override
   String onboardingTitle(Object coins) => 'Get Started - Earn $coins Bonus!';
 
   @override
@@ -539,15 +472,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get onboardingProfile => 'Set your display name';
-
-  @override
-  String get onboardingCheckin => 'Complete your first check-in';
-
-  @override
-  String get onboardingQuiz => 'Complete your first quiz';
-
-  @override
-  String get onboardingSpin => 'Try your first spin';
 
   @override
   String get onboardingReferral => 'Share your referral link';
@@ -566,21 +490,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String referralMilestoneReached(Object coins) => 'Milestone reached! +$coins coins!';
-
-  @override
-  String get leaderboardTitle => 'Weekly Leaderboard';
-
-  @override
-  String get leaderboardSubtitle => 'Top earners this week';
-
-  @override
-  String leaderboardYourRank(Object rank) => 'Your rank: #$rank';
-
-  @override
-  String get leaderboardEmpty => 'No earnings this week yet. Be the first!';
-
-  @override
-  String get leaderboardYou => 'You';
 
   @override
   String get helpSupport => 'Help & Support';

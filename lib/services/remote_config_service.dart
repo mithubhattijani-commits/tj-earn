@@ -6,6 +6,10 @@
 //
 // Config URL (live): https://nigraantv.xyz/apps/config/tj-earn.json
 // Operator workflow: see ~/workspace/app-remote-config/REMOTE-CONFIG.md
+//
+// Polling (Task D, 12 Nov 2026): the old 6h TTL is gone — the config is
+// re-fetched fresh on launch, on resume, and every ~60s (see
+// [RemoteConfigService.refresh] / [RemoteConfigService.startPolling]).
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -36,52 +40,48 @@ class AnnouncementConfig {
 class SponsoredAdConfig {
   const SponsoredAdConfig({
     this.enabled = false,
-    this.title = '',
     this.imageUrl = '',
+    this.title = '',
     this.actionUrl = '',
   });
 
   final bool enabled;
-  final String title;
   final String imageUrl;
+  final String title;
   final String actionUrl;
 
-  bool get show =>
-      enabled && title.trim().isNotEmpty && actionUrl.trim().isNotEmpty;
+  bool get show => enabled && imageUrl.trim().isNotEmpty;
 
   factory SponsoredAdConfig.fromJson(Map<String, dynamic> j) {
     return SponsoredAdConfig(
       enabled: j['enabled'] == true,
-      title: (j['title'] ?? '').toString(),
       imageUrl: (j['image_url'] ?? '').toString(),
+      title: (j['title'] ?? '').toString(),
       actionUrl: (j['action_url'] ?? '').toString(),
     );
   }
 }
 
-/// Kill-switch: when enabled and the installed versionCode is below
-/// [minVersionCode], the app shows a non-dismissible update dialog
-/// wired to the existing in-app updater. Use only for critical /
-/// security releases.
+/// Kill-switch (plan app/src/main/AndroidManifest.xml `isUpdateRequired`
+/// BUT for sideloaded FOSS apps the dialog has to sit in-app). When
+/// [enabled] is true and the app's versionCode is below [minVersionCode],
+/// the app shows the update dialog wired to the existing in-app updater.
 class ForceUpdateConfig {
   const ForceUpdateConfig({this.enabled = false, this.minVersionCode = 0});
-
   final bool enabled;
   final int minVersionCode;
 
   factory ForceUpdateConfig.fromJson(Map<String, dynamic> j) {
-    final dynamic raw = j['min_version_code'];
     return ForceUpdateConfig(
       enabled: j['enabled'] == true,
-      minVersionCode: raw is int ? raw : int.tryParse('$raw') ?? 0,
+      minVersionCode: (j['min_version_code'] as num?)?.toInt() ?? 0,
     );
   }
 }
 
-/// Whole-document config object.
 class RemoteConfig {
   const RemoteConfig({
-    this.displayName = '',
+    this.displayName = 'TJ Earn',
     this.logoUrl = '',
     this.announcement = const AnnouncementConfig(),
     this.sponsoredAd = const SponsoredAdConfig(),
@@ -94,24 +94,27 @@ class RemoteConfig {
   final SponsoredAdConfig sponsoredAd;
   final ForceUpdateConfig forceUpdate;
 
-  static const RemoteConfig defaults = RemoteConfig();
-
-  static Map<String, dynamic> _section(
-      Map<String, dynamic> j, String key) {
-    final dynamic raw = j[key];
-    if (raw is Map) {
-      return raw.cast<String, dynamic>();
-    }
-    return <String, dynamic>{};
-  }
-
   factory RemoteConfig.fromJson(Map<String, dynamic> j) {
     return RemoteConfig(
-      displayName: (j['display_name'] ?? '').toString(),
+      displayName: (j['display_name'] as String?)?.trim().isNotEmpty == true
+          ? (j['display_name'] as String).trim()
+          : 'TJ Earn',
       logoUrl: (j['logo_url'] ?? '').toString(),
-      announcement: AnnouncementConfig.fromJson(_section(j, 'announcement')),
-      sponsoredAd: SponsoredAdConfig.fromJson(_section(j, 'sponsored_ad')),
-      forceUpdate: ForceUpdateConfig.fromJson(_section(j, 'force_update')),
+      announcement: j['announcement'] is Map<String, dynamic>
+          ? AnnouncementConfig.fromJson(
+              j['announcement'] as Map<String, dynamic>,
+            )
+          : const AnnouncementConfig(),
+      sponsoredAd: j['sponsored_ad'] is Map<String, dynamic>
+          ? SponsoredAdConfig.fromJson(
+              j['sponsored_ad'] as Map<String, dynamic>,
+            )
+          : const SponsoredAdConfig(),
+      forceUpdate: j['force_update'] is Map<String, dynamic>
+          ? ForceUpdateConfig.fromJson(
+              j['force_update'] as Map<String, dynamic>,
+            )
+          : const ForceUpdateConfig(),
     );
   }
 }
@@ -123,75 +126,95 @@ class RemoteConfigService {
 
   static final RemoteConfigService instance = RemoteConfigService._();
 
-  /// TJ Earn's config URL — set per app.
-  static const String configUrl =
-      'https://nigraantv.xyz/apps/config/tj-earn.json';
+  static const _cacheKey = 'remote_config_json_v1';
+  static const _url = 'https://nigraantv.xyz/apps/config/tj-earn.json';
+  static const Duration _fetchTimeout = Duration(seconds: 8);
 
-  static const Duration fetchTimeout = Duration(seconds: 8);
-  static const Duration refreshInterval = Duration(hours: 6);
-  static const String _cacheKey = 'remote_config_json_v1';
-  static const String _cacheTimeKey = 'remote_config_time_v1';
+  /// Poll interval (Task D, 12 Nov 2026): the old 6-hour TTL is gone.
+  /// Remote config is small and admin-driven, so it is fetched fresh on
+  /// launch, on resume, and every ~60s by [startPolling]. No connectivity
+  /// plugin is used (none is in pubspec): a failed fetch keeps the last
+  /// good cache, and the next poll / resume retry picks the config up as
+  /// soon as the network is back — that is the reconnect path.
+  static const Duration refreshInterval = Duration(seconds: 60);
 
   final ValueNotifier<RemoteConfig> notifier =
-      ValueNotifier<RemoteConfig>(RemoteConfig.defaults);
+      ValueNotifier(const RemoteConfig());
 
   RemoteConfig get config => notifier.value;
 
-  /// Call once at startup, WITHOUT awaiting it (fire-and-forget).
-  /// Loads the local cache first (fast), then refreshes from the network
-  /// in the background. Never blocks the first frame.
+  Timer? _pollTimer;
+  bool _refreshing = false;
+
+  /// Loads the cache first (fast), then ALWAYS fetches fresh from the
+  /// network — no TTL gate anymore — and starts the ~60s poll. Never
+  /// blocks the first frame; failures stay silent and keep the cache.
   Future<void> init() async {
     await _loadFromCache();
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
-    final int ts = prefs.getInt(_cacheTimeKey) ?? 0;
-    final int age = DateTime.now().millisecondsSinceEpoch - ts;
-    if (ts == 0 || age > refreshInterval.inMilliseconds) {
-      unawaited(_refresh()); // never block startup
-    }
+    // Fetch on each cold start. Fire-and-forget: the cached config is
+    // already on screen; the network result lands via [notifier].
+    unawaited(_refresh());
+    startPolling();
+  }
+
+  /// Public refresh: fetch the config now. Called on app resume (by
+  /// MainShell) and by the poll timer. Safe to call any time — a fetch
+  /// already in flight is skipped instead of stacking.
+  Future<void> refresh() => _refresh();
+
+  /// Start the ~60s background poll. Idempotent: restarts the timer.
+  void startPolling() {
+    _pollTimer?.cancel();
+    _pollTimer = Timer.periodic(
+      refreshInterval,
+      (_) => unawaited(_refresh()),
+    );
+  }
+
+  /// Stop the background poll (called when the shell goes away).
+  void stopPolling() {
+    _pollTimer?.cancel();
+    _pollTimer = null;
   }
 
   Future<void> _loadFromCache() async {
     try {
-      final SharedPreferences prefs = await SharedPreferences.getInstance();
-      final String? raw = prefs.getString(_cacheKey);
-      if (raw != null && raw.isNotEmpty) {
-        final dynamic decoded = jsonDecode(raw);
-        if (decoded is Map) {
-          notifier.value =
-              RemoteConfig.fromJson(decoded.cast<String, dynamic>());
-        }
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_cacheKey);
+      if (raw == null || raw.isEmpty) return;
+      final parsed = jsonDecode(raw);
+      if (parsed is Map<String, dynamic>) {
+        notifier.value = RemoteConfig.fromJson(parsed);
       }
     } catch (_) {
-      notifier.value = RemoteConfig.defaults;
+      // Corrupt cache is ignored: defaults survive.
     }
   }
 
   Future<void> _refresh() async {
+    if (_refreshing) return;
+    _refreshing = true;
     HttpClient? client;
     try {
-      client = HttpClient()..connectionTimeout = fetchTimeout;
-      final HttpClientRequest req =
-          await client.getUrl(Uri.parse(configUrl));
-      final HttpClientResponse resp =
-          await req.close().timeout(fetchTimeout);
-      if (resp.statusCode != HttpStatus.ok) {
-        return;
-      }
-      final String body = await resp.transform(utf8.decoder).join();
-      final dynamic decoded = jsonDecode(body);
-      if (decoded is! Map) {
-        return;
-      }
-      final RemoteConfig parsed =
-          RemoteConfig.fromJson(decoded.cast<String, dynamic>());
-      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      client = HttpClient()..connectionTimeout = _fetchTimeout;
+      final request = await client.getUrl(Uri.parse(_url));
+      final response = await request.close().timeout(_fetchTimeout);
+      if (response.statusCode != HttpStatus.ok) return;
+      final body = await response
+          .transform(utf8.decoder)
+          .join()
+          .timeout(_fetchTimeout);
+      final parsed = jsonDecode(body);
+      if (parsed is! Map<String, dynamic>) return;
+      final remote = RemoteConfig.fromJson(parsed);
+      notifier.value = remote;
+      // Save the fresh config — survives the next cold start.
+      final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_cacheKey, body);
-      await prefs.setInt(
-          _cacheTimeKey, DateTime.now().millisecondsSinceEpoch);
-      notifier.value = parsed;
     } catch (_) {
       // Fail-soft: keep cache/defaults.
     } finally {
+      _refreshing = false;
       client?.close(force: true);
     }
   }
