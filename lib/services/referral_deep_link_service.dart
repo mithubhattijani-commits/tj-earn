@@ -22,10 +22,10 @@ import 'validation.dart';
 ///
 /// Task E (12 Nov 2026): deferred attribution — if the app was installed
 /// after a referral click (no link reaches the app), the first launch asks
-/// GET https://nigraantv.xyz/api/ref/match for a code matched to this
-/// device (fingerprint/IP, valid 7 days). A matched code is stored as
-/// pending the same way. The sign-up form also prefills the code from the
-/// pending code or the clipboard.
+/// GET https://nigraan-admin-api.mithubhattijani.workers.dev/api/ref/match for a
+/// code matched to this device (fingerprint/IP, valid 7 days). A matched
+/// code is stored as pending the same way. The sign-up form also prefills
+/// the code from the pending code or the clipboard.
 ///
 /// All operations are best-effort and never block the UI. Timeouts bound
 /// every step per the APP ROBUSTNESS RULE.
@@ -33,7 +33,8 @@ class ReferralDeepLinkService {
   static const _pendingKey = 'pending_referral_code';
   // Task E (12 Nov 2026): deferred attribution (first launch only).
   static const _deferredCheckedKey = 'deferred_referral_checked';
-  static const _deferredMatchUrl = 'https://nigraantv.xyz/api/ref/match';
+  static const _deferredMatchUrl =
+      'https://nigraan-admin-api.mithubhattijani.workers.dev/api/ref/match';
 
   ReferralDeepLinkService._();
   static final ReferralDeepLinkService instance =
@@ -88,7 +89,8 @@ class ReferralDeepLinkService {
 
   /// Deferred attribution (Task E, 12 Nov 2026).
   ///
-  /// On FIRST launch only, asks GET https://nigraantv.xyz/api/ref/match
+  /// On FIRST launch only, asks GET
+  /// https://nigraan-admin-api.mithubhattijani.workers.dev/api/ref/match
   /// whether this device clicked a referral link recently. The website
   /// matches the request (fingerprint/IP) against referral clicks from
   /// the last 7 days and returns the code, if any. A matched code is
