@@ -5,6 +5,7 @@ import '../services/startup_bundle_service.dart';
 import '../services/supabase_service.dart';
 import '../services/referral_deep_link_service.dart';
 import '../services/updater_service.dart';
+import '../services/unity_ads_service.dart';
 import 'admin_screen.dart';
 import 'articles_tab.dart';
 import 'referral_tab.dart';
@@ -141,10 +142,20 @@ class _MainShellState extends State<MainShell> {
           ),
         ],
       ),
-      body: IndexedStack(
-        index: _index,
-        children: [_tab(0), _tab(1), _tab(2), _tab(3), _tab(4)],
-      ),
+      body: Column(
+        children: [
+          Expanded(
+            child: IndexedStack(
+                index: _index,
+                children: [_tab(0), _tab(1), _tab(2), _tab(3), _tab(4)],
+              ),
+            ),
+          // Unity banner ad (BP_Banner_Android) in the mounted shell,
+          // above the bottom navigation bar. The Adsterra banner in
+          // the orphan home_tab.dart is untouched.
+          const UnityBannerAdWidget(),
+      ],
+    ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _index,
         onTap: (i) => setState(() => _index = i),
