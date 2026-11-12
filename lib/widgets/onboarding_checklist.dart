@@ -6,7 +6,7 @@ import 'package:tj_earn/l10n/app_localizations.dart';
 
 /// New-user onboarding checklist (Roz Dhan-style welcome tasks).
 ///
-/// Shows 5 tasks: profile, checkin, quiz, spin, referral.
+/// Shows 4 tasks: profile, checkin, quiz, referral.
 /// Completing all earns the onboarding bonus (default 100 coins).
 /// Hidden once all tasks are complete.
 class OnboardingChecklist extends StatefulWidget {
@@ -28,7 +28,7 @@ class _OnboardingChecklistState extends State<OnboardingChecklist> {
     // checklist renders INSTANTLY from local cache; a background refresh
     // updates it silently. initState never awaits the network.
     _completed = StartupBundleService.onboardingCompleted;
-    _allDone = _completed.length >= 5;
+    _allDone = _completed.length >= 4;
     _settled = StartupBundleService.hasCache;
     StartupBundleService.refreshInBackground();
     StartupBundleService.refreshDone.addListener(_onRefresh);
@@ -41,7 +41,7 @@ class _OnboardingChecklistState extends State<OnboardingChecklist> {
     setState(() {
       _completed = completed;
       _settled = true;
-      _allDone = completed.length >= 5;
+      _allDone = completed.length >= 4;
     });
   }
 
@@ -60,7 +60,6 @@ class _OnboardingChecklistState extends State<OnboardingChecklist> {
       ('profile', t.onboardingProfile, Icons.person),
       ('checkin', t.onboardingCheckin, Icons.check_circle),
       ('quiz', t.onboardingQuiz, Icons.quiz),
-      ('spin', t.onboardingSpin, Icons.casino),
       ('referral', t.onboardingReferral, Icons.share),
     ];
 
