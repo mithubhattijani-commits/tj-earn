@@ -6,7 +6,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'supabase_service.dart';
 import 'validation.dart';
@@ -57,31 +56,34 @@ class ReferralDeepLinkService {
       // the last 7 days. Fire-and-forget — never blocks startup.
       unawaited(checkDeferredReferral());
 
-      // 1. Web: ?ref=CODE in the URL (covers first launch from a link).
+      // 1. Web: read ?ref= from the current URL.
       if (kIsWeb) {
-        final code = extractCodeFromUri(Uri.base);
-        if (code != null) await _storePendingCode(code);
+        final ref = Uri.base.queryParameters['ref'];
+        if (ref != null && ref.isNotEmpty) {
+          await _storePendingCode(ref);
+        }
       }
 
-      // 2. Native: link that launched the app (cold start).
-      final initialLink = await _appLinks
-          .getInitialLink()
-          .timeout(const Duration(seconds: 5));
-      if (initialLink != null) {
-        final code = extractCodeFromUri(initialLink);
-        if (code != null) await _storePendingCode(code);
-      } else {
-        // 3. Fresh install: no app link on this boot — check the clipboard
-        // for a copied referral code/link before we give up.
-        await _checkClipboardForCode();
+      // 2. Mobile: check if app was launched via a deep link.
+      try {
+        final initialLink = await _appLinks.getInitialLink().timeout(
+          const Duration(seconds: 5),
+        );
+        if (initialLink != null) {
+          _handleIncomingUri(initialLink);
+        }
+      } catch (_) {
+        // Best-effort: ignore failures.
       }
 
-      // 4. Warm starts: listen for new links while the app is alive.
-      _linkSubscription = _appLinks.uriLinkStream.listen((uri) async {
-        final code = extractCodeFromUri(uri);
-        if (code != null) await _storePendingCode(code);
-      });
-    } catch (_) {}
+      // 3. Mobile: listen for links while app is running.
+      _linkSubscription = _appLinks.uriLinkStream.listen(
+        _handleIncomingUri,
+        onError: (_) {},
+      );
+    } catch (_) {
+      // Never let deep link init break the app.
+    }
   }
 
   /// Deferred attribution (Task E, 12 Nov 2026).
@@ -100,16 +102,23 @@ class ReferralDeepLinkService {
   Future<String?> checkDeferredReferral() {
     final inFlight = _deferredCheckFuture;
     if (inFlight != null) return inFlight;
-    return _deferredCheckFuture = _checkDeferredReferral().whenComplete(
-      () => _deferredCheckFuture = null,
-    );
+    _deferredCheckFuture = _runDeferredCheck();
+    return _deferredCheckFuture!;
+  }
+
+  Future<String?> _runDeferredCheck() async {
+    try {
+      return await _checkDeferredReferral();
+    } finally {
+      _deferredCheckFuture = null;
+    }
   }
 
   Future<String?> _checkDeferredReferral() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       if (prefs.getBool(_deferredCheckedKey) == true) {
-        return getPendingCode();
+        return await getPendingCode();
       }
       if (kIsWeb) {
         // Web attribution comes from the ?ref= parameter (see init),
@@ -164,37 +173,31 @@ class ReferralDeepLinkService {
     return null;
   }
 
-  /// Extracts a valid referral code from a link (?ref=CODE), if present.
-  /// Returns null for links without a valid code.
-  /// Also accepts the ?referral= variant that the v1.0.18 website uses.
-  static String? extractCodeFromUri(Uri uri) {
-    final candidates = <String?>[
-      uri.queryParameters['ref'],
-      uri.queryParameters['referral'],
-    ];
-    for (final candidate in candidates) {
-      if (candidate == null) continue;
-      final code = candidate.trim().toUpperCase();
-      if (isValidReferralCode(code)) return code;
-    }
-    return null;
+  /// Extracts the referral code from an incoming URI and stores it.
+  void _handleIncomingUri(Uri uri) {
+    try {
+      // Accept ?ref=CODE on any nigraantv.xyz/earn/ link.
+      final ref = uri.queryParameters['ref'];
+      if (ref != null && ref.isNotEmpty) {
+        unawaited(_storePendingCode(ref));
+      }
+    } catch (_) {}
   }
 
-  /// Stores [rawCode] as pending, if it is a valid referral code.
-  /// Never overwrites an existing pending code: the first source wins.
+  /// Validates and stores a referral code as pending.
   Future<void> _storePendingCode(String rawCode) async {
     try {
       final code = rawCode.trim().toUpperCase();
       if (!isValidReferralCode(code)) return;
       final prefs = await SharedPreferences.getInstance();
+      // Don't overwrite an existing pending code.
       if (prefs.getString(_pendingKey) == null) {
         await prefs.setString(_pendingKey, code);
       }
     } catch (_) {}
   }
 
-  /// The code waiting to be applied after the user signs in, if any.
-  /// Never throws.
+  /// Returns the pending referral code, or null if none.
   Future<String?> getPendingCode() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -206,7 +209,7 @@ class ReferralDeepLinkService {
     }
   }
 
-  /// Clears any pending code. Never throws.
+  /// Clears the pending referral code (after successful apply or if invalid).
   Future<void> clearPendingCode() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -233,13 +236,15 @@ class ReferralDeepLinkService {
     } catch (_) {}
   }
 
-  /// Applies the pending code (or a clipboard code) to the signed-in user
-  /// via SupabaseService.applyReferral, which calls the DEPLOYED
-  /// apply-referral function (immediate credit — no pending-bonus path).
-  /// Returns the applied code on success, null otherwise.
-  /// Never throws.
+  /// Called after successful sign-in/sign-up. Auto-applies the pending
+  /// referral code if one exists. Returns the applied code, or null.
+  ///
+  /// This is best-effort: if the code was already applied, is invalid,
+  /// or is the user's own code, the server rejects it and we clear it.
   Future<String?> autoApplyPendingCode() async {
     var code = await getPendingCode();
+    // Fallback: check clipboard for a referral code (user may have copied
+    // it from the website download page before installing).
     if (code == null && !kIsWeb) {
       code = await _checkClipboardForCode();
       if (code != null) {
@@ -254,39 +259,37 @@ class ReferralDeepLinkService {
       await clearPendingCode();
       return code;
     } catch (_) {
+      // Server rejected (duplicate, self-referral, invalid, etc.).
+      // Clear so we don't retry forever.
       await clearPendingCode();
       return null;
     }
   }
 
-  /// Checks the system clipboard for a code or link containing one.
-  /// Returns the code, or null. Never throws.
+  /// Checks the clipboard for a valid referral code pattern.
+  /// Used as fallback when the user copied the code from the website.
   Future<String?> _checkClipboardForCode() async {
     try {
-      final data = await Clipboard.getData(Clipboard.kTextPlain);
-      final text = data?.text;
-      if (text == null) return null;
-      if (isValidReferralCode(text)) return text.trim().toUpperCase();
-      final extracted = _extractCodeFromFlexibleString(text);
-      if (extracted == null) return null;
-      if (isValidReferralCode(extracted)) return extracted;
+      final data = await Clipboard.getData(Clipboard.kTextPlain).timeout(
+        const Duration(seconds: 5),
+      );
+      final text = data?.text?.trim().toUpperCase() ?? '';
+      // Check if clipboard contains a valid code (exact or embedded in link).
+      if (isValidReferralCode(text)) return text;
+      // Try to extract from a referral link.
+      final match = RegExp(r'[?&]ref=([A-Z0-9]{8})').firstMatch(text);
+      if (match != null) {
+        final extracted = match.group(1)!;
+        if (isValidReferralCode(extracted)) return extracted;
+      }
       return null;
     } catch (_) {
       return null;
     }
   }
 
-  /// Extracts a valid referral code from free text: accepts a bare code, a
-  /// full link (https://nigraantv.xyz/earn/?ref=CODE), or any text with an
-  /// 8-char code in it. Returns null if nothing valid is found.
-  String? _extractCodeFromFlexibleString(String text) {
-    final tokens = text.split(RegExp(r'[^A-Za-z0-9]'));
-    for (final token in tokens) {
-      final candidate = token.trim().toUpperCase();
-      if (candidate.length == 8 && isValidReferralCode(candidate)) {
-        return candidate;
-      }
-    }
-    return null;
+  void dispose() {
+    _linkSubscription?.cancel();
+    _linkSubscription = null;
   }
 }
