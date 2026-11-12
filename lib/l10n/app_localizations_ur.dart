@@ -464,55 +464,6 @@ class AppLocalizationsUr extends AppLocalizations {
   String get tasksTitle => 'میرے ٹاسکس';
 
   @override
-  String get streakTitle => 'روزانہ اسٹریک';
-
-  @override
-  String get checkinTitle => 'روزانہ چیک ان';
-
-  @override
-  String get checkinButton => 'چیک ان کریں';
-
-  @override
-  String get checkinDone => 'چیک ان ہو گیا \u2713';
-
-  @override
-  String checkinStreak(Object count) => '$count دن کی اسٹریک';
-
-  @override
-  String checkinTodayPays(Object day, Object coins) =>
-      'دن $day: ابھی چیک ان کریں اور +$coins کوئنز پائیں';
-
-  @override
-  String checkinComeBack(Object coins) =>
-      'کل واپس آئیں اور +$coins کوئنز پائیں';
-
-  @override
-  String checkinEarned(Object coins, Object day) =>
-      '+$coins کوئنز ملے! دن $day کی اسٹریک';
-
-  @override
-  String get checkinAlreadyDone => 'آج پہلے ہی چیک ان ہو چکا ہے';
-
-  @override
-  String streakDays(Object count) => '$count دن کی اسٹریک';
-
-  @override
-  String get streakKeepGoing => 'اسٹریک جاری رکھنے کے لیے کل چیک اِن کریں!';
-
-  @override
-  String streakMilestone(Object coins) => 'اسٹریک سنگ میل! +$coins کوئنز بونس!';
-
-  @override
-  String streakNext(Object days) => 'اگلا بونس $days دن پر';
-
-  @override
-  String streakAtRisk(Object days) =>
-      'آپ کی $days دن کی اسٹریک خطرے میں ہے! اسے جاری رکھنے کے لیے آج چیک اِن کریں۔';
-
-  @override
-  String get streakCheckedInToday => 'آج چیک اِن ہو گیا ہے۔ کل دوبارہ آئیں!';
-
-  @override
   String onboardingTitle(Object coins) => 'شروع کریں - $coins بونس کمائیں!';
 
   @override
@@ -520,12 +471,6 @@ class AppLocalizationsUr extends AppLocalizations {
 
   @override
   String get onboardingProfile => 'اپنا ڈسپلے نام سیٹ کریں';
-
-  @override
-  String get onboardingCheckin => 'پہلا چیک اِن مکمل کریں';
-
-  @override
-  String get onboardingQuiz => 'پہلا کوئز مکمل کریں';
 
   @override
   String get onboardingReferral => 'اپنا ریفرل لنک شیئر کریں';
@@ -544,21 +489,6 @@ class AppLocalizationsUr extends AppLocalizations {
 
   @override
   String referralMilestoneReached(Object coins) => 'سنگ میل حاصل! +$coins کوئنز!';
-
-  @override
-  String get leaderboardTitle => 'ہفتہ وار لیڈر بورڈ';
-
-  @override
-  String get leaderboardSubtitle => 'اس ہفتے کے ٹاپ کمانے والے';
-
-  @override
-  String leaderboardYourRank(Object rank) => 'آپ کی رینک: #$rank';
-
-  @override
-  String get leaderboardEmpty => 'اس ہفتے ابھی کوئی کمائی نہیں۔ پہلے بنیں!';
-
-  @override
-  String get leaderboardYou => 'آپ';
 
   @override
   String get helpSupport => 'مدد اور سپورٹ';
