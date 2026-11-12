@@ -5,7 +5,6 @@ import 'package:tj_earn/l10n/app_localizations.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-
 import 'app_navigator.dart';
 import 'config.dart';
 import 'screens/auth_screen.dart';
@@ -20,163 +19,224 @@ import 'services/unity_ads_service.dart';
 import 'services/updater_service.dart';
 import 'theme.dart';
 
-/// Language choice, persisted locally. Default language is English
-/// (Task D, 12 Nov 2026); Urdu is second — it applies only when the
-/// user previously chose it. Any other or missing saved value falls
-/// back to English.
-final ValueNotifier<Locale> appLocale =
-    ValueNotifier(const Locale('en'));
+/// Language choice, persisted locally. Defaults to English.
+/// Default language is English (Task D, 12 Nov 2026); Urdu is second —
+/// it applies only when the user previously chose it. Any other or
+/// missing saved value falls back to English.
+final ValueNotifier<Locale> appLocale = ValueNotifier(const Locale('en'));
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
   final prefs = await SharedPreferences.getInstance();
   final saved = prefs.getString('language');
   // Default language is English: only a saved 'ur' switches to Urdu.
   appLocale.value =
       saved == 'ur' ? const Locale('ur') : const Locale('en');
-
   // ROOT-CAUSE FIX (Jaani, 2 Nov 2026): runApp is called IMMEDIATELY.
   // Nothing network-related runs before the first frame anymore — the
   // old code awaited SupabaseService.init() here, and a stalled network
   // hung the app on a black screen until Android raised ANR. Supabase
   // init now happens inside _BootGate with a hard 15s timeout.
-  runApp(
-    ValueListenableBuilder<Locale>(
-      valueListenable: appLocale,
-      builder: (context, locale, _) => _TjEarnApp(locale: locale),
-    ),
-  );
-
-  // Leave no trace of the unmounted webview's resources when the app
-  // is terminated: stop the ad callbacks.
-  // Remote Config init (v1, 10 Nov 2026; polling per Task D, 12 Nov 2026):
-  // loads the local cache (fast), then fetches fresh from the network
-  // in the background with an 8s timeout, and polls every ~60s — nothing
-  // here may block the first frame.
+  // Remote Config (Jaani, 2 Nov 2026; polling per Task D, 12 Nov 2026):
+  // fire-and-forget, NOT awaited. init() loads the local cache (fast)
+  // and refreshes from the network in the background with an 8s timeout,
+  // then polls every ~60s — nothing here may block the first frame
+  // (APP ROBUSTNESS RULE).
   unawaited(RemoteConfigService.instance.init());
-
-  // Startup bundle: fire-and-forget snapshot fetch. It is the only
-  // network call in main() that touches the first paint.
-  // It must be monitored by the DIAGNOSTIC MODE check in _BootGate.
-  unawaited(StartupBundleService.fetch());
-
-  // Referral deep link bootstrap (Jaani, 3 Nov 2026): capture a
-  // referral code passed in the launch Intent (?ref=CODE), or if the app
-  // was already running, handle the link when it arrives. Stored as
-  // pending and auto-applied after the user signs in.
-  // Both calls are fire-and-forget and never block the first frame.
-  try {
-    await ReferralDeepLinkService.init();
-    unawaited(ReferralDeepLinkService.startListening());
-  } catch (_) {
-    // Deep-link bootstrap must never block startup.
-  }
-
-  // Update check's own restore: restarts an interrupted download with
-  // the same consistent state it was in, and shows a Continue snackbar
-  // at the top. Async void, safe because it never throws.
-  unawaited(UpdaterService.restoreDownloadState());
-
-  // Unity Ads: fire-and-forget init in the background.
-  // Never touches the first frame.
-  unawaited(UnityAdsService.init());
+  // Referral deep linking (Jaani, 3 Nov 2026): fire-and-forget, NOT
+  // awaited. Captures ?ref=CODE from incoming links (app_links on mobile,
+  // Uri.base on web) and stores it as pending. The code is auto-applied
+  // after the user signs in — no manual entry needed. Best-effort.
+  unawaited(ReferralDeepLinkService.instance.init());
+  // Cache-first startup (Jaani, 2 Nov 2026 — PERMANENT hang fix): load
+  // the last-known balance/onboarding from local disk BEFORE the
+  // first frame, so every card renders INSTANTLY from cache. A single
+  // background refresh updates the data silently after login.
+  await StartupBundleService.initCache();
+  runApp(TjEarnApp(prefs: prefs));
 }
 
-/// The root of the app.
-class _TjEarnApp extends StatefulWidget {
-  final Locale locale;
-  const _TjEarnApp({required this.locale});
-
+class TjEarnApp extends StatefulWidget {
+  final SharedPreferences prefs;
+  const TjEarnApp({super.key, required this.prefs});
   @override
-  State<_TjEarnApp> createState() => _TjEarnAppState();
+  State<TjEarnApp> createState() => _TjEarnAppState();
 }
 
-class _TjEarnAppState extends State<_TjEarnApp> {
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'TJ Earn',
-      theme: buildTheme(),
-      debugShowCheckedModeBanner: false,
-      locale: widget.locale,
-      supportedLocales: const [Locale('en'), Locale('ur')],
-      localizationsDelegates: const [
-        AppLocalizations.delegate,
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-      ],
-      home: const _BootGate(),
-    );
-  }
-}
-
-/// The boot gate: decides which screen is shown.
-class _BootGate extends StatefulWidget {
-  const _BootGate();
-
-  @override
-  State<_BootGate> createState() => _BootGateState();
-}
-
-class _BootGateState extends State<_BootGate> {
-  /// Hard 15s boot timeout: if Supabase doesn't answer quickly, the app
-  /// falls back to the auth screen instead of a black screen.
-  static const Duration bootTimeout = Duration(seconds: 15);
-
-  bool _ready = false;
-  bool _signedIn = false;
+class _TjEarnAppState extends State<TjEarnApp> {
+  late Future<bool> _boot;
+  static bool _appOpenAttempted = false;
 
   @override
   void initState() {
     super.initState();
-    _initSupabase();
+    _boot = _bootApp();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Background-update re-attach (Jaani, 3 Nov 2026): if a previous
+      // session left an APK download in-flight, restore its banner and
+      // polling; if it finished, show the install prompt. Fire-and-forget,
+      // never blocks startup, never throws.
+      unawaited(UpdaterService.restoreDownloadState());
+    });
   }
 
-  /// First frame first: waits for Supabase, and updates the root's
-  /// navigation logic.
-  Future<void> _initSupabase() async {
+  /// Boots the backend connection. Returns true when Supabase is
+  /// configured AND initialized. Never throws and never hangs:
+  /// [SupabaseService.init] has a 15s hard timeout.
+  Future<bool> _bootApp() async {
+    if (!AppConfig.isConfigured) return false;
     try {
-      await SupabaseService.init()
-          .timeout(bootTimeout)
-          .catchError((e) => debugPrint('Supabase init error: $e'));
-      if (!mounted) return;
-      setState(() {
-        _signedIn = SupabaseService.isSignedIn;
-        _ready = true;
-      });
+      await SupabaseService.init();
+      return true;
     } catch (_) {
-      if (!mounted) return;
-      // Reason: Supabase took too long to respond OR threw an error.
-      // We still show the auth screen instead of a black screen.
-      setState(() => _ready = true);
+      return false;
     }
+  }
+
+  void _retryBoot() {
+    setState(() {
+      _boot = _bootApp();
+    });
+  }
+
+  /// Dual-ad system, ANR-safe (Jaani, 2 Nov 2026): UnityAds.initialize()
+  /// executes natively on Android's main thread, and on a slow device the
+  /// first init can stall it long enough for Android to raise ANR — so init
+  /// + the App Open show happen exactly once per cold start, after the first
+  /// frame plus an idle delay, never inside build() (the old code also
+  /// re-ran on every rebuild, stacking duplicate ad shows). Fire-and-forget:
+  /// the Watch Ad screen re-tries a late init and explains when ads are
+  /// unavailable.
+  void _scheduleAppOpenAd() {
+    if (_appOpenAttempted) return;
+    _appOpenAttempted = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Future.delayed(const Duration(seconds: 3), () {
+        // ignore: unawaited_futures
+        UnityAdsService.init().then((_) {
+          // ignore: unawaited_futures
+          UnityAdsService.showAppOpenAd();
+        });
+      });
+    });
+  }
+
+  Future<void> _changeLocale(Locale locale) async {
+    appLocale.value = locale;
+    await widget.prefs.setString('language', locale.languageCode);
   }
 
   @override
   Widget build(BuildContext context) {
-    if (!_ready) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
-    }
-    return _signedIn
-        ? MainShell(locale: widgetLocale, onLocaleChanged: _changeLocale)
-        : const AuthScreen();
+    return ValueListenableBuilder<Locale>(
+      valueListenable: appLocale,
+      builder: (context, locale, _) {
+        return MaterialApp(
+          title: 'TJ Earn',
+          // Global key for the updater (Jaani, 3 Nov 2026): the download
+          // banner + install prompt must survive navigation.
+          navigatorKey: appNavigatorKey,
+          locale: locale,
+          localizationsDelegates: [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: AppLocalizations.supportedLocales,
+          theme: TjEarnTheme.dark,
+          home: FutureBuilder<bool>(
+            future: _boot,
+            builder: (context, snapshot) {
+              if (!snapshot.hasData) {
+                // Brief local-only loading; never a network wait.
+                return const Scaffold(
+                  body: Center(child: CircularProgressIndicator()),
+                );
+              }
+              if (snapshot.data == true) {
+                _scheduleAppOpenAd();
+                return AuthGate(onLocaleChanged: _changeLocale);
+              }
+              return ConfigErrorScreen(onRetry: _retryBoot);
+            },
+          ),
+        );
+      },
+    );
   }
+}
 
-  Locale get widgetLocale => appLocale.value;
+/// Shown when Supabase is not configured (or init failed / timed out).
+/// The app never shows a fake balance or a fake logged-in state in this
+/// condition. A retry button re-runs the bounded boot.
+class ConfigErrorScreen extends StatelessWidget {
+  final VoidCallback onRetry;
+  const ConfigErrorScreen({super.key, required this.onRetry});
 
-  /// Language changes come from the Settings tab: the dropdown
-  /// updates [appLocale], which rebuilds _TjEarnApp. This callback is
-  /// still needed because MainShell only holds the locale for itself.
-  void _changeLocale(Locale locale) {
-    appLocale.value = locale;
-    unawaited(
-      SharedPreferences.getInstance().then(
-        (prefs) => prefs.setString('language', locale.languageCode),
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('TJ Earn')),
+      body: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text(
+              'Connection failed',
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Could not reach the TJ Earn server. Check your internet '
+              'connection and try again. No balance is shown until the '
+              'connection works.',
+            ),
+            const SizedBox(height: 24),
+            FilledButton.icon(
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Retry'),
+            ),
+          ],
+        ),
       ),
+    );
+  }
+}
+
+class AuthGate extends StatelessWidget {
+  final void Function(Locale locale) onLocaleChanged;
+  const AuthGate({super.key, required this.onLocaleChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<AuthState>(
+      stream: Supabase.instance.client.auth.onAuthStateChange,
+      builder: (context, snapshot) {
+        final session = snapshot.data?.session ??
+            Supabase.instance.client.auth.currentSession;
+        if (session == null) {
+          AdminStatus.reset();
+          StartupBundleService.reset();
+          return const AuthScreen();
+        }
+        // Cache-first startup (Jaani, 2 Nov 2026 — PERMANENT hang fix):
+        // ONE background call refreshes balance, onboarding,
+        // and the admin flag. The UI already rendered from local cache,
+        // so this never blocks — widgets update via refreshDone.
+        StartupBundleService.refreshInBackground();
+        // Register device for anti-fraud (silent, never blocks).
+        // DeviceService.register runs fully in background (Jaani, 2 Nov 2026):
+        // it never touches UI, so it doesn't need the queue — fire-and-forget.
+        unawaited(DeviceService.register().catchError((_) {}));
+        return MainShell(
+          locale: appLocale.value,
+          onLocaleChanged: onLocaleChanged,
+        );
+      },
     );
   }
 }
