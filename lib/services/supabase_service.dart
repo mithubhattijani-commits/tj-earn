@@ -354,23 +354,6 @@ class SupabaseService {  static SupabaseClient get client => Supabase.instance.c
     }
   }
 
-  /// Claims the daily spin-wheel reward.
-  ///
-  /// The `claim-spin` Edge Function picks a weighted-random reward
-  /// server-side. Returns reward_coins and spins_remaining.
-  static Future<Map<String, dynamic>> claimSpin() async {
-    final res = await _invoke('claim-spin');
-    final data = res.data;
-    if (res.status != 200) {
-      final message =
-          data is Map && data['error'] is String ? data['error'] : 'failed';
-      if (res.status == 409 && data is Map<String, dynamic>) return data;
-      throw Exception('claim-spin failed: $message');
-    }
-    if (data is Map<String, dynamic>) return data;
-    throw Exception('claim-spin returned an unexpected response');
-  }
-
   /// Records an onboarding task completion.
   ///
   /// The `claim-onboarding` Edge Function validates the task key and pays
