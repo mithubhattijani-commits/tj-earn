@@ -855,18 +855,11 @@ AppLocalizations lookupAppLocalizations(Locale locale) {
   String streakNext(Object days);
   String streakAtRisk(Object days);
   String get streakCheckedInToday;
-  String get spinTitle;
-  String get spinSubtitle;
-  String get spinButton;
-  String spinWon(Object coins);
-  String get spinUsed;
-  String get spinSpinning;
   String onboardingTitle(Object coins);
   String get onboardingSubtitle;
   String get onboardingProfile;
   String get onboardingCheckin;
   String get onboardingQuiz;
-  String get onboardingSpin;
   String get onboardingReferral;
   String onboardingComplete(Object coins);
   String onboardingProgress(Object done, Object total);
