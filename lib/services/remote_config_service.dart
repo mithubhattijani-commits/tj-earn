@@ -79,6 +79,61 @@ class ForceUpdateConfig {
   }
 }
 
+/// Per-zone ad ON/OFF switches from the website admin panel
+/// (tj-earn.json "ads" object). Doner pattern, 14 Nov 2026.
+/// Every switch defaults to true (fail-open): a missing key or an
+/// older config never hides an ad. When a zone is false its banner
+/// slot renders nothing (zero height).
+///
+/// MASTER SWITCH: ads_enabled (default true) gates ALL Unity ads at
+/// once — when false, no Unity ad shows anywhere regardless of the
+/// zones. The user flips it from the admin panel with no new build.
+/// rewarded_enabled gates the opt-in rewarded video the same way.
+class AdsConfig {
+  const AdsConfig({
+    this.adsEnabled = true,
+    this.bannerHome = true,
+    this.bannerArticles = true,
+    this.bannerReferral = true,
+    this.bannerWithdraw = true,
+    this.bannerSettings = true,
+    this.bannerAdmin = true,
+    this.bannerWatchAd = true,
+    this.bannerArticleReader = true,
+    this.bannerTasks = true,
+    this.rewardedEnabled = true,
+  });
+
+  final bool adsEnabled;
+  final bool bannerHome;
+  final bool bannerArticles;
+  final bool bannerReferral;
+  final bool bannerWithdraw;
+  final bool bannerSettings;
+  final bool bannerAdmin;
+  final bool bannerWatchAd;
+  final bool bannerArticleReader;
+  final bool bannerTasks;
+  final bool rewardedEnabled;
+
+  static bool _on(Map<String, dynamic> j, String key) =>
+      j[key] is bool ? j[key] as bool : true;
+
+  factory AdsConfig.fromJson(Map<String, dynamic> j) => AdsConfig(
+        adsEnabled: _on(j, 'ads_enabled'),
+        bannerHome: _on(j, 'banner_home'),
+        bannerArticles: _on(j, 'banner_articles'),
+        bannerReferral: _on(j, 'banner_referral'),
+        bannerWithdraw: _on(j, 'banner_withdraw'),
+        bannerSettings: _on(j, 'banner_settings'),
+        bannerAdmin: _on(j, 'banner_admin'),
+        bannerWatchAd: _on(j, 'banner_watch_ad'),
+        bannerArticleReader: _on(j, 'banner_article_reader'),
+        bannerTasks: _on(j, 'banner_tasks'),
+        rewardedEnabled: _on(j, 'rewarded_enabled'),
+      );
+}
+
 class RemoteConfig {
   const RemoteConfig({
     this.displayName = 'TJ Earn',
@@ -86,6 +141,7 @@ class RemoteConfig {
     this.announcement = const AnnouncementConfig(),
     this.sponsoredAd = const SponsoredAdConfig(),
     this.forceUpdate = const ForceUpdateConfig(),
+    this.ads = const AdsConfig(),
   });
 
   final String displayName;
@@ -93,6 +149,7 @@ class RemoteConfig {
   final AnnouncementConfig announcement;
   final SponsoredAdConfig sponsoredAd;
   final ForceUpdateConfig forceUpdate;
+  final AdsConfig ads;
 
   factory RemoteConfig.fromJson(Map<String, dynamic> j) {
     return RemoteConfig(
@@ -115,6 +172,9 @@ class RemoteConfig {
               j['force_update'] as Map<String, dynamic>,
             )
           : const ForceUpdateConfig(),
+      ads: j['ads'] is Map<String, dynamic>
+          ? AdsConfig.fromJson(j['ads'] as Map<String, dynamic>)
+          : const AdsConfig(),
     );
   }
 }

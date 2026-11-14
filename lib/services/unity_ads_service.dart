@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 
 import 'package:unity_ads_plugin/unity_ads_plugin.dart';
 
+import 'remote_config_service.dart';
+
 /// Unity Ads rewarded video integration for TJ Earn.
 ///
 /// - Game ID: 800417967 (Android, "TJ Earn" project)
@@ -31,7 +33,23 @@ class UnityAdsService {
   /// ADS BACK ON (Jaani, 2 Nov 2026): the v1.0.9 diagnostic (ads fully
   /// off) proved the ANR is NOT ad-related — kill-switch lifted on his
   /// explicit order ("ads phir ON kar dein ge").
-  static const bool adsEnabled = true;
+  ///
+  /// MASTER SWITCH (14 Nov 2026, Doner pattern): read live from the
+  /// website admin panel (tj-earn.json "ads.ads_enabled", default
+  /// true = fail-open) — the user turns ALL Unity ads off from the
+  /// panel with no new build. The per-zone switches gate individual
+  /// screens on top of this. Before the first config fetch the
+  /// bundled default is all-true, so ads behave exactly as today.
+  static bool get adsEnabled =>
+      RemoteConfigService.instance.config.ads.adsEnabled;
+
+  /// Rewarded-video kill-switch (tj-earn.json
+  /// "ads.rewarded_enabled", default true = fail-open). The rewarded
+  /// flow itself is unchanged and stays opt-in only; when this is
+  /// false the Watch Ad button's load simply fails, as if no ad
+  /// was available.
+  static bool get rewardedEnabled =>
+      RemoteConfigService.instance.config.ads.rewardedEnabled;
 
   static bool _initialized = false;
   static bool _initFailed = false;
@@ -92,7 +110,7 @@ class UnityAdsService {
   /// Load the rewarded video ad. Call before showing; also called
   /// automatically after each show so the next ad is ready.
   static Future<bool> loadRewardedAd() async {
-    if (!_initialized) return false;
+    if (!_initialized || !rewardedEnabled) return false;
     try {
       final completer = Completer<bool>();
       UnityAds.load(
@@ -119,7 +137,7 @@ class UnityAdsService {
   /// and earned the reward, [UnityAdResult.skipped] when they skipped
   /// early, [UnityAdResult.failed] on error.
   static Future<UnityAdResult> showRewardedAd() async {
-    if (!_initialized) return UnityAdResult.failed;
+    if (!_initialized || !rewardedEnabled) return UnityAdResult.failed;
     try {
       final completer = Completer<UnityAdResult>();
       UnityAds.showVideoAd(
@@ -278,6 +296,33 @@ class _UnityBannerAdWidgetState extends State<UnityBannerAdWidget> {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// A Unity banner slot gated by one per-zone remote-config switch.
+///
+/// The [zone] selector reads the zone from the current remote config
+/// (e.g. `(ads) => ads.bannerHome`). When the zone is off — or the
+/// master switch is off — the slot renders nothing (zero height);
+/// when it is on, the inner [UnityBannerAdWidget] renders the banner
+/// and itself shrinks to nothing while loading or on failure.
+/// Rebuilds automatically when the remote config refreshes (60s poll).
+/// Place it in a quiet bottom slot — never over content, never
+/// blocking a button. Doner pattern, 14 Nov 2026.
+class ZonedUnityBanner extends StatelessWidget {
+  const ZonedUnityBanner({super.key, required this.zone});
+
+  final bool Function(AdsConfig) zone;
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<RemoteConfig>(
+      valueListenable: RemoteConfigService.instance.notifier,
+      builder: (context, config, _) {
+        if (!zone(config.ads)) return const SizedBox.shrink();
+        return const UnityBannerAdWidget();
+      },
     );
   }
 }

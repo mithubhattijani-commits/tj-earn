@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:tj_earn/l10n/app_localizations.dart';
 
+import '../services/unity_ads_service.dart';
 import '../widgets/onboarding_checklist.dart';
 
 /// Dedicated My Tasks screen.
@@ -16,9 +17,17 @@ class OnboardingScreen extends StatelessWidget {
     final t = AppLocalizations.of(context)!;
     return Scaffold(
       appBar: AppBar(title: Text(t.tasksTitle)),
-      body: const SingleChildScrollView(
-        padding: EdgeInsets.all(24),
-        child: OnboardingChecklist(),
+      body: Column(
+        children: [
+          const Expanded(
+            child: SingleChildScrollView(
+              padding: EdgeInsets.all(24),
+              child: OnboardingChecklist(),
+            ),
+          ),
+          // Unity banner (BP_Banner_Android), passive bottom slot.
+          const ZonedUnityBanner(zone: (ads) => ads.bannerTasks),
+        ],
       ),
     );
   }

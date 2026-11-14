@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 import '../services/supabase_service.dart';
+import '../services/unity_ads_service.dart';
 
 /// In-app article reader (Jaani, 3 Nov 2026).
 /// Opens the nigraantv.xyz article in a WebView. A countdown enforces the
@@ -183,6 +184,10 @@ class _ArticleReaderScreenState extends State<ArticleReaderScreen> {
               ),
             ),
           ),
+          // Unity banner (BP_Banner_Android), passive bottom slot
+          // BELOW the claim bar — never over the article or the
+          // Claim button.
+          const ZonedUnityBanner(zone: (ads) => ads.bannerArticleReader),
         ],
       ),
     );
