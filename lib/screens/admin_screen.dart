@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:tj_earn/l10n/app_localizations.dart';
 
 import '../services/supabase_service.dart';
+import '../services/unity_ads_service.dart';
 
 /// Admin panel: referrals queue, referral stats and a read-only ledger
 /// viewer. Three tabs; every row comes from the admin Edge Functions.
@@ -35,11 +36,20 @@ class _AdminScreenState extends State<AdminScreen> {
             ],
           ),
         ),
-        body: const TabBarView(
+        body: Column(
           children: [
-            _ReferralsTab(),
-            _StatsTab(),
-            _LedgerTab(),
+            const Expanded(
+              child: TabBarView(
+                children: [
+                  _ReferralsTab(),
+                  _StatsTab(),
+                  _LedgerTab(),
+                ],
+              ),
+            ),
+            // Unity banner (BP_Banner_Android), passive bottom slot
+            // below the admin tabs — never over content or buttons.
+            const ZonedUnityBanner(zone: (ads) => ads.bannerAdmin),
           ],
         ),
       ),

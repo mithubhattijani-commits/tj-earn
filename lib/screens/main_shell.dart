@@ -278,9 +278,20 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
             ),
           ),
           // Unity banner ad (BP_Banner_Android) in the mounted shell,
-          // above the bottom navigation bar. The Adsterra banner in
+          // above the bottom navigation bar — one slot shared by all 5
+          // tabs, gated per tab by the remote-config zone for the
+          // active tab (tj-earn.json "ads"). The Adsterra banner in
           // the orphan home_tab.dart is untouched.
-          const UnityBannerAdWidget(),
+          ZonedUnityBanner(
+            zone: (ads) => switch (_index) {
+              0 => ads.bannerHome,
+              1 => ads.bannerArticles,
+              2 => ads.bannerReferral,
+              3 => ads.bannerWithdraw,
+              4 => ads.bannerSettings,
+              _ => true,
+            },
+          ),
         ],
       ),
       bottomNavigationBar: BottomNavigationBar(

@@ -104,7 +104,10 @@ class _WatchAdScreenState extends State<WatchAdScreen> {
     final t = AppLocalizations.of(context)!;
     return Scaffold(
       appBar: AppBar(title: Text(t.watchAdTile)),
-      body: SingleChildScrollView(
+      body: Column(
+        children: [
+          Expanded(
+            child: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -189,6 +192,13 @@ class _WatchAdScreenState extends State<WatchAdScreen> {
             ),
           ],
         ),
+            ),
+          ),
+          // Unity banner (BP_Banner_Android), passive bottom slot
+          // below the scrollable content — never over the Watch Ad
+          // button. The rewarded video itself is unchanged (opt-in).
+          const ZonedUnityBanner(zone: (ads) => ads.bannerWatchAd),
+        ],
       ),
     );
   }
