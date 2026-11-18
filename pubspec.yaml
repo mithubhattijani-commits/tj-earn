@@ -6,7 +6,7 @@ publish_to: 'none'
 # cash comes only from reading/check-in/referrals (Unity ticket
 # #00945584). versionCode 26 is higher than the live v1.0.24/vc25, so the
 # updater prompts users to update.
-version: 1.0.25+26
+version: 1.0.26+27
 
 environment:
   sdk: ^3.13.7
