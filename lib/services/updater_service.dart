@@ -35,8 +35,30 @@ import 'validation.dart';
 /// progress, auto-resumes on network interruption, follows redirects
 /// natively (this is why the MethodChannel path replaced the old
 /// HttpClient download — no 302 workarounds needed).
+
+/// Resolves the effective total size of an in-flight APK download.
+///
+/// DownloadManager reports `COLUMN_TOTAL_SIZE_BYTES` as -1 while the
+/// total is unknown (headers not in yet, or the server omits
+/// Content-Length). A -1/0 reported total must NEVER be displayed or
+/// used as a divisor: fall back to [knownTotal] (the APK's HTTP
+/// Content-Length, fetched before the download starts) when available,
+/// else 0 meaning "unknown".
+int resolveDownloadTotal({required int reportedTotal, int? knownTotal}) {
+  if (reportedTotal > 0) return reportedTotal;
+  if (knownTotal != null && knownTotal > 0) return knownTotal;
+  return 0;
+}
+
+/// Formats a byte count as megabytes with one decimal, e.g. `12.3`.
+String formatMegabytes(int bytes) =>
+    (bytes / 1048576.0).toStringAsFixed(1);
+
 class DownloadProgress {
+  /// Bytes downloaded so far.
   final int downloaded;
+
+  /// Total bytes as reported by DownloadManager; -1 or 0 when unknown.
   final int total;
   final bool stalled;
 
@@ -45,6 +67,60 @@ class DownloadProgress {
     required this.total,
     required this.stalled,
   });
+
+  /// Effective total: the reported total when known, else [knownTotal]
+  /// (APK Content-Length), else 0 (unknown).
+  int effectiveTotal(int? knownTotal) =>
+      resolveDownloadTotal(reportedTotal: total, knownTotal: knownTotal);
+
+  /// Whole-percent completion, 0-100. 0 while the total is unknown —
+  /// never a fake number.
+  int percent({int? knownTotal}) {
+    final int t = effectiveTotal(knownTotal);
+    if (t <= 0) return 0;
+    final int p = ((downloaded / t) * 100).round();
+    if (p < 0) return 0;
+    if (p > 100) return 100;
+    return p;
+  }
+
+  /// 0.0-1.0 fraction for a determinate progress bar, or null while the
+  /// total is unknown (indeterminate bar).
+  double? fraction({int? knownTotal}) {
+    final int t = effectiveTotal(knownTotal);
+    if (t <= 0) return null;
+    final double f = downloaded / t;
+    if (f < 0.0) return 0.0;
+    if (f > 1.0) return 1.0;
+    return f;
+  }
+
+  /// Bytes still to download, 0 while the total is unknown.
+  int remainingBytes({int? knownTotal}) {
+    final int t = effectiveTotal(knownTotal);
+    if (t <= 0) return 0;
+    final int r = t - downloaded;
+    return r < 0 ? 0 : r;
+  }
+
+  /// Main progress line, e.g. `12.3 / 25.0 MB • 49%`. While the total
+  /// is unknown: `12.3 MB downloaded` — the downloaded amount is real
+  /// even when the total is not.
+  String mainLine({int? knownTotal}) {
+    final int t = effectiveTotal(knownTotal);
+    if (t <= 0) return '${formatMegabytes(downloaded)} MB downloaded';
+    return '${formatMegabytes(downloaded)} / ${formatMegabytes(t)} MB'
+        ' • ${percent(knownTotal: knownTotal)}%';
+  }
+
+  /// Remaining line, e.g. `12.7 MB remaining`, or null while the total
+  /// is unknown.
+  String? remainingLine({int? knownTotal}) {
+    final int t = effectiveTotal(knownTotal);
+    if (t <= 0) return null;
+    return '${formatMegabytes(remainingBytes(knownTotal: knownTotal))}'
+        ' MB remaining';
+  }
 }
 
 /// Global update-download state (Jaani, 3 Nov 2026). Lives outside any
@@ -69,6 +145,12 @@ class UpdateDownloadState {
   String? versionName;
   String? notes;
 
+  /// Known APK size in bytes (HTTP Content-Length, fetched before the
+  /// download starts) — the fallback total when DownloadManager reports
+  /// the total as unknown (-1). Persisted with the download id for
+  /// cold-start re-attach.
+  int? knownTotalBytes;
+
   bool get isActive => downloadId != null;
 
   void reset() {
@@ -76,10 +158,64 @@ class UpdateDownloadState {
     versionCode = null;
     versionName = null;
     notes = null;
+    knownTotalBytes = null;
     progress.value = const DownloadProgress(
       downloaded: 0,
       total: 0,
       stalled: false,
+    );
+  }
+}
+
+/// Shared live progress view (Jaani, 18 Nov 2026): the progress bar,
+/// the `downloaded / total MB • %` line and the `MB remaining` line.
+/// Used by BOTH the bottom banner and the update progress dialog, so
+/// the two can never disagree — they render the same notifier through
+/// this one widget. [knownTotal] is the APK Content-Length fallback
+/// for when DownloadManager reports the total as unknown; it is fixed
+/// before the banner/dialog are shown, so a plain value (not a
+/// notifier) is enough.
+class DownloadProgressView extends StatelessWidget {
+  final ValueNotifier<DownloadProgress> progress;
+  final int? knownTotal;
+  final String? stalledText;
+
+  const DownloadProgressView({
+    super.key,
+    required this.progress,
+    this.knownTotal,
+    this.stalledText,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<DownloadProgress>(
+      valueListenable: progress,
+      builder: (BuildContext ctx, DownloadProgress p, Widget? _) {
+        final String? remaining = p.remainingLine(knownTotal: knownTotal);
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            LinearProgressIndicator(value: p.fraction(knownTotal: knownTotal)),
+            const SizedBox(height: 8.0),
+            Text(p.mainLine(knownTotal: knownTotal)),
+            if (remaining != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 4.0),
+                child: Text(remaining),
+              ),
+            if (p.stalled && stalledText != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 4.0),
+                child: Text(
+                  stalledText!,
+                  style: const TextStyle(color: Colors.orange),
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 }
@@ -97,11 +233,6 @@ class _DownloadProgressBanner extends StatelessWidget {
     required this.localizations,
   });
 
-  static String _mb(int bytes) {
-    final double mb = bytes / 1048576.0;
-    return mb.toStringAsFixed(1);
-  }
-
   @override
   Widget build(BuildContext context) {
     final t = localizations;
@@ -117,37 +248,23 @@ class _DownloadProgressBanner extends StatelessWidget {
         borderRadius: BorderRadius.circular(12.0),
         child: Padding(
           padding: const EdgeInsets.all(16.0),
-          child: ValueListenableBuilder<DownloadProgress>(
-            valueListenable: progress,
-            builder: (BuildContext ctx, DownloadProgress p, Widget? _) {
-              final int rawPct =
-                  p.total > 0 ? ((p.downloaded / p.total) * 100).round() : 0;
-              final int pct = rawPct < 0 ? 0 : (rawPct > 100 ? 100 : rawPct);
-              final double? barValue =
-                  p.total > 0 ? p.downloaded / p.total : null;
-              return Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Text(
-                    title,
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 8.0),
-                  LinearProgressIndicator(value: barValue),
-                  const SizedBox(height: 8.0),
-                  Text('${_mb(p.downloaded)} / ${_mb(p.total)} MB \u2022 $pct%'),
-                  if (p.stalled)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 4.0),
-                      child: Text(
-                        stalledText,
-                        style: const TextStyle(color: Colors.orange),
-                      ),
-                    ),
-                ],
-              );
-            },
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text(
+                title,
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8.0),
+              DownloadProgressView(
+                progress: progress,
+                // Set before the banner is shown (download start or
+                // cold-start restore); see UpdateDownloadState.
+                knownTotal: UpdateDownloadState.instance.knownTotalBytes,
+                stalledText: stalledText,
+              ),
+            ],
           ),
         ),
       ),
@@ -164,6 +281,7 @@ class UpdaterService {
   static const _prefsCodeKey = 'tj_earn_update_version_code';
   static const _prefsNameKey = 'tj_earn_update_version_name';
   static const _prefsNotesKey = 'tj_earn_update_notes';
+  static const _prefsTotalKey = 'tj_earn_update_total_bytes';
 
   /// Website manifest (Doner-style, Jaani 3 Nov 2026). Published by the
   /// parent with the stable APK download link; the Supabase app_versions
@@ -201,7 +319,33 @@ class UpdaterService {
         'versionName': (data['versionName'] as String?) ?? 'v$code',
         'url': url,
         'notes': (data['notes'] as String?) ?? '',
+        // Optional APK size in bytes (manifest-pinned fallback total
+        // when DownloadManager reports the total as unknown).
+        'size': (data['size'] as int?) ?? (data['sizeBytes'] as int?),
       };
+    } catch (_) {
+      return null;
+    } finally {
+      client?.close(force: true);
+    }
+  }
+
+  /// Fetches the APK size (HTTP Content-Length) with a HEAD request.
+  /// Used as the fallback total when DownloadManager reports the total
+  /// as unknown (-1). Returns null on ANY failure (no network, no
+  /// Content-Length, redirect trouble). Never throws; a missing size
+  /// only means percent/remaining stay hidden, never a broken update.
+  static Future<int?> _fetchApkSize(String apkUrl) async {
+    HttpClient? client;
+    try {
+      client = HttpClient()
+        ..connectionTimeout = const Duration(seconds: 8);
+      final request = await client.headUrl(Uri.parse(apkUrl));
+      final response =
+          await request.close().timeout(const Duration(seconds: 10));
+      await response.drain<void>().timeout(const Duration(seconds: 5));
+      final length = response.headers.contentLength;
+      return length > 0 ? length : null;
     } catch (_) {
       return null;
     } finally {
@@ -228,7 +372,15 @@ class UpdaterService {
   }
 
   static OverlayEntry? _banner;
-  static bool _polling = false;
+
+  /// Poll-loop generation (Jaani, 18 Nov 2026). The old `bool _polling`
+  /// guard could strand a download with NO poll loop: if a loop was
+  /// still alive for a previous (stale) download id when a new download
+  /// started, the new poll returned immediately and the old loop kept
+  /// polling the id it started with. Every download start now bumps
+  /// the epoch; a loop exits as soon as its epoch is superseded, and a
+  /// fresh loop always starts for the new download.
+  static int _pollEpoch = 0;
 
   /// Cold-start re-attach (Jaani, 3 Nov 2026): called once after the
   /// first frame. If a previous session left a download in-flight, the
@@ -244,6 +396,7 @@ class UpdaterService {
       state.versionCode = prefs.getInt(_prefsCodeKey);
       state.versionName = prefs.getString(_prefsNameKey);
       state.notes = prefs.getString(_prefsNotesKey);
+      state.knownTotalBytes = prefs.getInt(_prefsTotalKey);
       final st = await _downloadStatus(id);
       final s = st['status'] as String?;
       if (s == 'running' || s == 'pending' || s == 'paused') {
@@ -306,6 +459,7 @@ class UpdaterService {
         versionCode: latestCode,
         versionName: latest['versionName'] as String?,
         notes: latest['notes'] as String?,
+        knownTotalBytes: latest['size'] as int?,
       );
     } catch (_) {
       // Update checks must never break the app: fail silently.
@@ -409,6 +563,7 @@ class UpdaterService {
       versionCode: latestCode,
       versionName: latest['versionName'] as String?,
       notes: latest['notes'] as String?,
+      knownTotalBytes: latest['size'] as int?,
     );
   }
 
@@ -436,6 +591,7 @@ class UpdaterService {
     int? versionCode,
     String? versionName,
     String? notes,
+    int? knownTotalBytes,
   }) async {
     final localizations = AppLocalizations.of(context);
     final isUrdu = localizations?.localeName == 'ur';
@@ -470,6 +626,15 @@ class UpdaterService {
     }
     final state = UpdateDownloadState.instance;
     if (state.isActive) return; // a download is already running
+    // Known APK size for live percent/remaining when DownloadManager
+    // reports the total as unknown (-1): manifest size first, else a
+    // HEAD Content-Length lookup. Fail-soft — a missing size only hides
+    // the percent, never blocks the download.
+    final int? knownTotal =
+        (knownTotalBytes != null && knownTotalBytes > 0)
+            ? knownTotalBytes
+            : await _fetchApkSize(apkUrl);
+    state.knownTotalBytes = knownTotal;
     int? downloadId;
     try {
       downloadId = await _channel.invokeMethod<int>(
@@ -480,6 +645,7 @@ class UpdaterService {
       downloadId = null;
     }
     if (downloadId == null) {
+      state.knownTotalBytes = null;
       _globalSnack(errorMessage);
       return;
     }
@@ -494,6 +660,7 @@ class UpdaterService {
     );
     await _saveState();
     _showBanner();
+    _showProgressDialog(versionName: versionName);
     _globalSnack(
       isUrdu
           ? 'اپ ڈیٹ بیک گراؤنڈ میں ڈاؤن لوڈ ہو رہی ہے — آپ ایپ استعمال کرتے رہیں۔'
@@ -505,59 +672,88 @@ class UpdaterService {
     unawaited(_pollLoop());
   }
 
-  /// Global poll loop: exactly one runs at a time ([_polling] guard).
-  /// Drives [UpdateDownloadState.progress]; on completion the install
-  /// prompt is shown through the global navigator.
+  /// Global poll loop: one live loop per download generation
+  /// ([_pollEpoch]). Drives [UpdateDownloadState.progress] with REAL
+  /// numbers from DownloadManager; on completion the install prompt is
+  /// shown through the global navigator.
+  ///
+  /// ROOT-CAUSE NOTE (Jaani, 18 Nov 2026): the old loop could NEVER
+  /// deliver a single update. Dart sends the download id as a 32-bit
+  /// int; the Kotlin side read it with `call.argument<Long>`, which
+  /// throws (Integer cannot be cast to Long — Kotlin has no implicit
+  /// Int→Long conversion) on EVERY call, so `downloadStatus` always
+  /// answered QUERY_FAILED, the loop swallowed it with `continue`,
+  /// and the banner sat at its initial `0.0 / 0.0 MB • 0%` while
+  /// DownloadManager finished the download and the native receiver
+  /// fired the installer on its own. Fixed in MainActivity.kt
+  /// (accept any Number id) — and this loop no longer hides a broken
+  /// channel: a status failure still keeps polling (the system
+  /// download runs regardless), but the loop now (a) polls
+  /// immediately instead of waiting 2s for the first sample, (b)
+  /// substitutes the known APK size when the reported total is
+  /// unknown (-1), and (c) can never be stranded by a stale guard.
   static Future<void> _pollLoop() async {
-    if (_polling) return;
-    _polling = true;
-    try {
-      final state = UpdateDownloadState.instance;
-      int lastBytes = 0;
-      DateTime lastChange = DateTime.now();
-      // Poll DownloadManager for completion (max ~10 minutes).
-      for (var i = 0; i < 300; i++) {
-        final id = state.downloadId;
-        if (id == null) break;
-        await Future.delayed(const Duration(seconds: 2));
-        late final Map<String, dynamic> st;
-        try {
-          st = await _downloadStatus(id);
-        } catch (_) {
-          continue;
-        }
-        final s = st['status'] as String?;
-        final int downloaded = (st['bytesDownloaded'] as num?)?.toInt() ?? 0;
-        final int total = (st['bytesTotal'] as num?)?.toInt() ?? 0;
-        final DateTime now = DateTime.now();
-        if (downloaded > lastBytes) {
-          lastBytes = downloaded;
-          lastChange = now;
-        }
-        final bool stalled = (s == 'running' || s == 'pending') &&
-            now.difference(lastChange).inSeconds >= 60;
-        state.progress.value = DownloadProgress(
-          downloaded: downloaded,
-          total: total,
-          stalled: stalled,
-        );
-        if (s == 'success') {
-          await _onDownloadSuccess(st);
-          break;
-        } else if (s == 'failed' || s == 'not_found') {
-          await _onDownloadFailed();
-          break;
-        }
-        // running/pending/paused -> keep polling; banner shows live progress.
+    final int epoch = ++_pollEpoch;
+    final state = UpdateDownloadState.instance;
+    int lastBytes = 0;
+    DateTime lastChange = DateTime.now();
+    // Poll DownloadManager for completion (max ~10 minutes).
+    for (var i = 0; i < 300; i++) {
+      if (epoch != _pollEpoch) return; // superseded by a newer download
+      final id = state.downloadId;
+      if (id == null) break;
+      // First sample immediately — a fast download must not go
+      // unobserved for 2s; later samples every 2s.
+      if (i > 0) await Future.delayed(const Duration(seconds: 2));
+      if (epoch != _pollEpoch) return;
+      if (state.downloadId != id) continue; // id changed; re-read it
+      late final Map<String, dynamic> st;
+      try {
+        st = await _downloadStatus(id);
+      } catch (_) {
+        // Channel hiccup (or a broken native side): keep polling —
+        // the system download runs regardless, and the native
+        // receiver + cold-start re-attach remain as fallbacks.
+        continue;
       }
-      // Poll window exhausted (very slow network): hide the banner but
-      // leave the system download running — its notification keeps the
-      // user informed, and the next cold start re-attaches automatically.
-      if (state.downloadId != null) {
-        _hideBanner();
+      final s = st['status'] as String?;
+      final int downloaded = (st['bytesDownloaded'] as num?)?.toInt() ?? 0;
+      final int rawTotal = (st['bytesTotal'] as num?)?.toInt() ?? 0;
+      // -1/0 total = unknown: substitute the known APK size so the
+      // percent, total and remaining are real numbers, not 0%.
+      final int total = resolveDownloadTotal(
+        reportedTotal: rawTotal,
+        knownTotal: state.knownTotalBytes,
+      );
+      final DateTime now = DateTime.now();
+      if (downloaded > lastBytes) {
+        lastBytes = downloaded;
+        lastChange = now;
       }
-    } finally {
-      _polling = false;
+      final bool stalled = (s == 'running' || s == 'pending') &&
+          now.difference(lastChange).inSeconds >= 60;
+      state.progress.value = DownloadProgress(
+        downloaded: downloaded < 0 ? 0 : downloaded,
+        total: total,
+        stalled: stalled,
+      );
+      if (s == 'success') {
+        await _onDownloadSuccess(st);
+        return;
+      } else if (s == 'failed' || s == 'not_found') {
+        await _onDownloadFailed();
+        return;
+      }
+      // running/pending/paused/unknown -> keep polling; banner and
+      // progress dialog show live progress.
+    }
+    // Poll window exhausted (very slow network): hide the banner and
+    // the progress dialog but leave the system download running — its
+    // notification keeps the user informed, and the next cold start
+    // re-attaches automatically.
+    if (state.downloadId != null) {
+      _hideBanner();
+      _hideProgressDialog();
     }
   }
 
@@ -567,6 +763,7 @@ class UpdaterService {
     final vNotes = state.notes;
     final vCode = state.versionCode;
     _hideBanner();
+    _hideProgressDialog();
     state.reset();
     await _clearSavedState();
     // Don't prompt when the newer build is already installed (e.g. the
@@ -593,6 +790,7 @@ class UpdaterService {
             'Something went wrong. Please try again.';
     final state = UpdateDownloadState.instance;
     _hideBanner();
+    _hideProgressDialog();
     state.reset();
     await _clearSavedState();
     _globalSnack(message);
@@ -682,6 +880,80 @@ class UpdaterService {
     _banner = null;
   }
 
+  /// The live update progress dialog (Jaani, 18 Nov 2026): shown when
+  /// a download starts, it renders the SAME [DownloadProgressView] as
+  /// the banner — percent 0–100, MB downloaded, total MB and MB
+  /// remaining, updating live from [UpdateDownloadState.progress].
+  /// "Hide" (or tapping outside) dismisses the dialog; the banner
+  /// keeps showing the same live numbers underneath.
+  static bool _progressDialogOpen = false;
+  static BuildContext? _progressDialogContext;
+
+  static void _showProgressDialog({String? versionName}) {
+    if (_progressDialogOpen) return;
+    final ctx = appNavigatorKey.currentContext;
+    if (ctx == null) return; // banner still shows progress
+    final t = AppLocalizations.of(ctx);
+    final isUrdu = t?.localeName == 'ur';
+    final title = t?.downloading ?? 'Downloading update…';
+    final stalledText =
+        t?.downloadStalled ?? 'Stalled — check your connection';
+    final hideLabel = isUrdu ? 'چھپائیں' : 'Hide';
+    _progressDialogOpen = true;
+    unawaited(
+      showDialog<void>(
+        context: ctx,
+        barrierDismissible: true,
+        builder: (dialogCtx) {
+          _progressDialogContext = dialogCtx;
+          return AlertDialog(
+            title: Text(title),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                if (versionName != null && versionName.isNotEmpty) ...<Widget>[
+                  Text(
+                    versionName,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 12.0),
+                ],
+                DownloadProgressView(
+                  progress: UpdateDownloadState.instance.progress,
+                  knownTotal: UpdateDownloadState.instance.knownTotalBytes,
+                  stalledText: stalledText,
+                ),
+              ],
+            ),
+            actions: <Widget>[
+              TextButton(
+                onPressed: () => Navigator.of(dialogCtx).pop(),
+                child: Text(hideLabel),
+              ),
+            ],
+          );
+        },
+      ).then((_) {
+        _progressDialogOpen = false;
+        _progressDialogContext = null;
+      }),
+    );
+  }
+
+  /// Dismisses the progress dialog if it is open (success, failure, or
+  /// poll-window exhaustion). No-op otherwise; never throws.
+  static void _hideProgressDialog() {
+    if (!_progressDialogOpen) return;
+    final dialogCtx = _progressDialogContext;
+    if (dialogCtx == null) return;
+    try {
+      Navigator.of(dialogCtx).pop();
+    } catch (_) {
+      // Dialog already gone; the .then() above clears the flag.
+    }
+  }
+
   static Future<void> _saveState() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -695,6 +967,8 @@ class UpdaterService {
       if (name != null) await prefs.setString(_prefsNameKey, name);
       final n = state.notes;
       if (n != null) await prefs.setString(_prefsNotesKey, n);
+      final total = state.knownTotalBytes;
+      if (total != null) await prefs.setInt(_prefsTotalKey, total);
     } catch (_) {
       // Best-effort: without the record the download still completes
       // in DownloadManager; only the re-attach is lost.
@@ -710,6 +984,7 @@ class UpdaterService {
       await prefs.remove(_prefsCodeKey);
       await prefs.remove(_prefsNameKey);
       await prefs.remove(_prefsNotesKey);
+      await prefs.remove(_prefsTotalKey);
     } catch (_) {
       // Best-effort.
     }

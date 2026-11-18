@@ -11,11 +11,20 @@ import '../services/remote_config_service.dart';
 import '../services/supabase_service.dart';
 import '../services/unity_ads_service.dart';
 
-/// Arrow Puzzle play screen (v1.0.27, maze redesign 18 Nov 2026) —
-/// follows the user's Level 51 screenshot: white background, Level
-/// title, arrows-left chip, 3 hearts, difficulty chip, dense maze
-/// board of thin colourful tangled arrow paths, hint bulb + ruler
-/// (Power) tools at the bottom, Unity banner.
+/// Arrow Puzzle play screen (v1.0.29, navy monochrome rebuild) —
+/// follows the user's Level 51 screen recording: white background,
+/// Level title, arrows-left chip, 3 hearts, difficulty chip, dense
+/// maze board of thin NAVY (#14122E) tangled arrow paths, hint bulb +
+/// ruler (Power) tools at the bottom, Unity banner. Exiting arrows
+/// leave a light-blue (#6F7DAC) trail along their exit ray for
+/// ~700ms; while Power is armed a faint light-blue grid (#D9DEEF)
+/// overlays the board.
+///
+/// Rules (user-confirmed): tap an arrow — it exits if its path is
+/// clear, otherwise it costs 1 heart (3 hearts per attempt). Hint
+/// highlights a safe move (2 free/day, then coins). Power: the next
+/// tapped arrow exits in any direction ignoring blocking, no heart
+/// lost, and its exit path is revealed — consumed on that tap.
 ///
 /// Rules (user-confirmed): tap an arrow — it exits if its path is
 /// clear, otherwise it costs 1 heart (3 hearts per attempt). Hint
@@ -29,6 +38,18 @@ import '../services/unity_ads_service.dart';
 /// sits behind the remote-config flag (default OFF, Unity ticket
 /// 00946156) — while it is off, the coin prices are the only live
 /// path and the Watch Ad button is hidden entirely.
+/// Navy monochrome board colours (v1.0.29, sampled from the user's
+/// Level 51 screen recording with PIL — anti-aliased, so ±small
+/// variance on the samples).
+///
+/// [arrowNavy] is the single colour of every arrow on the board.
+/// [exitTrailBlue] is the light slate blue of the exit trail left
+/// when an arrow slides out, and of the hint highlight.
+/// [powerGridColor] is the faint grid shown while Power is armed.
+const Color arrowNavy = Color(0xFF14122E);
+const Color exitTrailBlue = Color(0xFF6F7DAC);
+const Color powerGridColor = Color(0xFFD9DEEF);
+
 class ArrowPuzzlePlayScreen extends StatefulWidget {
   const ArrowPuzzlePlayScreen({
     super.key,
@@ -188,20 +209,30 @@ class _ArrowPuzzlePlayScreenState extends State<ArrowPuzzlePlayScreen> {
         return;
       case TapKind.cleared:
         setState(() => _hintCell = null);
+        _showExitTrail(result.revealedPath);
         if (_game.isWon) _onWin();
       case TapKind.blocked:
         _heartsLost++;
         _flashShake(cellIndex);
         if (_game.isGameOver) _onLose();
       case TapKind.powerCleared:
-        setState(() => _revealedPath = result.revealedPath);
-        _revealTimer?.cancel();
-        _revealTimer = Timer(const Duration(milliseconds: 700), () {
-          if (mounted) setState(() => _revealedPath = []);
-        });
+        _showExitTrail(result.revealedPath);
         if (_game.isWon) _onWin();
     }
     setState(() {});
+  }
+
+  /// Highlights the exited arrow's exit ray in light blue, fading
+  /// after ~700ms. Used for EVERY exit — a normal tap as well as a
+  /// Power tap — matching the recording, where the arrow slides out
+  /// along a straight light-blue line.
+  void _showExitTrail(List<int> path) {
+    if (path.isEmpty) return;
+    setState(() => _revealedPath = path);
+    _revealTimer?.cancel();
+    _revealTimer = Timer(const Duration(milliseconds: 700), () {
+      if (mounted) setState(() => _revealedPath = []);
+    });
   }
 
   void _flashShake(int cellIndex) {
@@ -641,16 +672,16 @@ class _ArrowPuzzlePlayScreenState extends State<ArrowPuzzlePlayScreen> {
     final isHint = _hintCell == index;
     final isRevealed = _revealedPath.contains(index);
     final isShake = _shakeCell == index;
-    // Maze board: cells are transparent — the thin colourful lines flow
+    // Maze board: cells are transparent — the thin navy lines flow
     // across cell borders into one tangled maze on white. Only the
-    // transient states tint a cell.
+    // transient states tint a cell, in the light exit-trail blue.
     final Color? bg;
     if (isShake) {
       bg = Colors.red.shade100;
     } else if (isRevealed) {
-      bg = Colors.lightBlue.shade100;
+      bg = exitTrailBlue.withValues(alpha: 0.45);
     } else if (isHint) {
-      bg = Colors.amber.shade50;
+      bg = exitTrailBlue.withValues(alpha: 0.18);
     } else {
       bg = null;
     }
@@ -659,7 +690,7 @@ class _ArrowPuzzlePlayScreenState extends State<ArrowPuzzlePlayScreen> {
       child = const CustomPaint(painter: _StoneDotPainter());
     } else if (arrow != null) {
       child = CustomPaint(
-        painter: _MazeArrowPainter(
+        painter: MazeArrowPainter(
           direction: arrow.direction,
           colorIndex: arrow.colorIndex,
           cellIndex: index,
@@ -675,7 +706,7 @@ class _ArrowPuzzlePlayScreenState extends State<ArrowPuzzlePlayScreen> {
         child: Container(
           decoration: BoxDecoration(
             border: isHint
-                ? Border.all(color: Colors.amber, width: 3)
+                ? Border.all(color: exitTrailBlue, width: 3)
                 : null,
             borderRadius: BorderRadius.circular(4),
           ),
@@ -863,15 +894,31 @@ class _ArrowPuzzlePlayScreenState extends State<ArrowPuzzlePlayScreen> {
                 padding: const EdgeInsets.all(8),
                 child: AspectRatio(
                   aspectRatio: 1,
-                  child: GridView.builder(
-                    physics: const NeverScrollableScrollPhysics(),
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: size,
-                      crossAxisSpacing: 0,
-                      mainAxisSpacing: 0,
-                    ),
-                    itemCount: size * size,
-                    itemBuilder: (context, index) => _buildCell(index),
+                  child: Stack(
+                    children: [
+                      GridView.builder(
+                        physics: const NeverScrollableScrollPhysics(),
+                        gridDelegate:
+                            SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: size,
+                          crossAxisSpacing: 0,
+                          mainAxisSpacing: 0,
+                        ),
+                        itemCount: size * size,
+                        itemBuilder: (context, index) => _buildCell(index),
+                      ),
+                      // While Power (ruler) is armed, a faint
+                      // light-blue grid overlays the whole board.
+                      // Pointer-transparent: taps still reach the
+                      // cells underneath.
+                      if (_game.powerArmed)
+                        Positioned.fill(
+                          child: PowerGridOverlay(
+                            key: const ValueKey('power-grid-overlay'),
+                            boardSize: size,
+                          ),
+                        ),
+                    ],
                   ),
                 ),
               ),
@@ -915,13 +962,14 @@ class _ArrowPuzzlePlayScreenState extends State<ArrowPuzzlePlayScreen> {
 }
 
 /// Draws one arrow as a thin winding maze path (see [mazePathPoints]):
-/// a thin colourful polyline (6-colour palette, stable per arrow) that
+/// a thin NAVY polyline (one colour for every arrow, v1.0.29) that
 /// starts on one cell edge, turns once or twice at right angles, and
 /// ends with an arrowhead on the exit edge. Neighbouring cells' lines
 /// meet at shared edges, so the board reads as one tangled maze.
-/// [highlight] (hint) draws the line amber.
-class _MazeArrowPainter extends CustomPainter {
-  _MazeArrowPainter({
+/// [highlight] (hint) draws the line in the light exit-trail blue.
+/// [colorIndex] is accepted for stability and ignored for colour.
+class MazeArrowPainter extends CustomPainter {
+  MazeArrowPainter({
     required this.direction,
     required this.colorIndex,
     required this.cellIndex,
@@ -930,28 +978,24 @@ class _MazeArrowPainter extends CustomPainter {
   });
 
   final Direction direction;
+
+  /// Retained for stability/determinism; the navy rebuild draws
+  /// every arrow in [arrowNavy] regardless of this value.
   final int colorIndex;
   final int cellIndex;
   final int boardSize;
   final bool highlight;
 
-  // Approved look (user-approved mockup v3, 18 Nov 2026): colourful
-  // arrows, one palette colour per arrow, stable via colorIndex.
-  static final _palette = <Color>[
-    Colors.red,
-    Colors.orange,
-    Colors.amber.shade700,
-    Colors.green,
-    Colors.blue,
-    Colors.purple,
-  ];
+  /// The colour an arrow is drawn in: the single navy for every
+  /// arrow, or the light exit-trail blue for a highlighted (hint)
+  /// arrow. Independent of [colorIndex] by design.
+  static Color colorFor({required bool highlight}) =>
+      highlight ? exitTrailBlue : arrowNavy;
 
   @override
   void paint(Canvas canvas, Size size) {
     final s = size.shortestSide;
-    final color = highlight
-        ? Colors.amber.shade700
-        : _palette[colorIndex % _palette.length];
+    final color = colorFor(highlight: highlight);
     // Inset only a hair: neighbouring cells' lines must meet at the
     // shared edge so the maze reads as long interlocking paths, not
     // isolated squiggles. (A bigger inset visibly breaks the paths.)
@@ -1014,12 +1058,56 @@ class _MazeArrowPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _MazeArrowPainter old) =>
+  bool shouldRepaint(covariant MazeArrowPainter old) =>
       old.direction != direction ||
-      old.colorIndex != colorIndex ||
       old.cellIndex != cellIndex ||
       old.boardSize != boardSize ||
       old.highlight != highlight;
+}
+
+/// Faint light-blue grid over the whole board while Power (ruler) is
+/// armed (v1.0.29, from the user's recording): 1px [powerGridColor]
+/// lines at every cell boundary, above the board and below the
+/// HUD/tools. Pointer-transparent so taps still reach the cells.
+class PowerGridOverlay extends StatelessWidget {
+  const PowerGridOverlay({super.key, required this.boardSize});
+
+  final int boardSize;
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: CustomPaint(
+        painter: _PowerGridPainter(boardSize: boardSize),
+      ),
+    );
+  }
+}
+
+class _PowerGridPainter extends CustomPainter {
+  const _PowerGridPainter({required this.boardSize});
+
+  final int boardSize;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = powerGridColor
+      ..strokeWidth = 1.0
+      ..style = PaintingStyle.stroke;
+    final stepX = size.width / boardSize;
+    final stepY = size.height / boardSize;
+    for (var i = 0; i <= boardSize; i++) {
+      final x = i * stepX;
+      canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
+      final y = i * stepY;
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _PowerGridPainter old) =>
+      old.boardSize != boardSize;
 }
 
 /// A stone blocker on the maze board: a small dark dot.

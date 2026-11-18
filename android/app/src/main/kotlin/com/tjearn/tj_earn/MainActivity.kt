@@ -111,8 +111,25 @@ class MainActivity : FlutterActivity() {
                         }
                     }
                     "downloadStatus" -> {
-                        val downloadId = call.argument<Long>("downloadId")
-                            ?: call.argument<Int>("downloadId")?.toLong()
+                        // ROOT-CAUSE FIX (Jaani, 18 Nov 2026): Dart ints
+                        // arrive over the MethodChannel as 32-bit ints
+                        // (java.lang.Integer) — `call.argument<Long>` does
+                        // NOT convert them, it throws (Integer cannot be
+                        // cast to Long; Kotlin has no implicit Int->Long
+                        // conversion), so EVERY status poll failed with
+                        // QUERY_FAILED and the Dart banner sat at
+                        // `0.0 / 0.0 MB • 0%` for the whole download while
+                        // DownloadManager finished it in the background.
+                        // Read the raw argument as a Number instead, so
+                        // Int, Long, or any other numeric form works.
+                        val rawId = (call.arguments as? Map<*, *>)
+                            ?.get("downloadId")
+                        val downloadId: Long? = when (rawId) {
+                            is Long -> rawId
+                            is Int -> rawId.toLong()
+                            is Number -> rawId.toLong()
+                            else -> null
+                        }
                         if (downloadId == null) {
                             result.error("NO_ID", "Missing download ID", null)
                             return@setMethodCallHandler
@@ -122,17 +139,22 @@ class MainActivity : FlutterActivity() {
                             val query = DownloadManager.Query().setFilterById(downloadId)
                             val cursor = dm.query(query)
                             if (cursor.moveToFirst()) {
-                                val statusIdx = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS)
-                                val downloadedIdx = cursor.getColumnIndex(
-                                    DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR
-                                )
-                                val totalIdx = cursor.getColumnIndex(
-                                    DownloadManager.COLUMN_TOTAL_SIZE_BYTES
-                                )
-                                val uriIdx = cursor.getColumnIndex(
-                                    DownloadManager.COLUMN_LOCAL_URI
-                                )
-                                val status = when (cursor.getInt(statusIdx)) {
+                                // Defensive column reads: a missing column
+                                // (-1 index) used to throw inside this
+                                // handler and fail the whole status call.
+                                fun longCol(name: String, default: Long): Long {
+                                    val idx = cursor.getColumnIndex(name)
+                                    return if (idx >= 0) cursor.getLong(idx) else default
+                                }
+                                fun stringCol(name: String): String {
+                                    val idx = cursor.getColumnIndex(name)
+                                    return if (idx >= 0) {
+                                        cursor.getString(idx) ?: ""
+                                    } else {
+                                        ""
+                                    }
+                                }
+                                val status = when (longCol(DownloadManager.COLUMN_STATUS, -1).toInt()) {
                                     DownloadManager.STATUS_SUCCESSFUL -> "success"
                                     DownloadManager.STATUS_FAILED -> "failed"
                                     DownloadManager.STATUS_RUNNING -> "running"
@@ -142,9 +164,18 @@ class MainActivity : FlutterActivity() {
                                 }
                                 val map = mapOf(
                                     "status" to status,
-                                    "bytesDownloaded" to cursor.getLong(downloadedIdx),
-                                    "bytesTotal" to cursor.getLong(totalIdx),
-                                    "localUri" to (cursor.getString(uriIdx) ?: ""),
+                                    "bytesDownloaded" to longCol(
+                                        DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR, 0L
+                                    ),
+                                    // -1 while the total is unknown; the
+                                    // Dart side substitutes the known APK
+                                    // size (Content-Length) for display.
+                                    "bytesTotal" to longCol(
+                                        DownloadManager.COLUMN_TOTAL_SIZE_BYTES, -1L
+                                    ),
+                                    "localUri" to stringCol(
+                                        DownloadManager.COLUMN_LOCAL_URI
+                                    ),
                                 )
                                 cursor.close()
                                 result.success(map)
