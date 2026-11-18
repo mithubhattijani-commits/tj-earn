@@ -136,14 +136,7 @@ class _DownloadProgressBanner extends StatelessWidget {
                   const SizedBox(height: 8.0),
                   LinearProgressIndicator(value: barValue),
                   const SizedBox(height: 8.0),
-                  // Total size unknown (DownloadManager reports -1):
-                  // show the downloaded amount only — never a negative
-                  // total or a fake 0% while bytes are flowing.
-                  Text(
-                    p.total > 0
-                        ? '${_mb(p.downloaded)} / ${_mb(p.total)} MB \u2022 $pct%'
-                        : '${_mb(p.downloaded)} MB downloaded',
-                  ),
+                  Text('${_mb(p.downloaded)} / ${_mb(p.total)} MB \u2022 $pct%'),
                   if (p.stalled)
                     Padding(
                       padding: const EdgeInsets.only(top: 4.0),
@@ -535,14 +528,7 @@ class UpdaterService {
         }
         final s = st['status'] as String?;
         final int downloaded = (st['bytesDownloaded'] as num?)?.toInt() ?? 0;
-        // DownloadManager reports COLUMN_TOTAL_SIZE_BYTES as -1 while
-        // the total size is unknown (headers not in yet, or the server
-        // omits Content-Length — the GitHub release URL 302-redirects,
-        // and the total can stay unknown for the whole download on some
-        // devices). Clamp to 0 ("unknown") so the banner never shows a
-        // negative size or a permanently-0% bar while bytes are flowing.
-        final int rawTotal = (st['bytesTotal'] as num?)?.toInt() ?? 0;
-        final int total = rawTotal > 0 ? rawTotal : 0;
+        final int total = (st['bytesTotal'] as num?)?.toInt() ?? 0;
         final DateTime now = DateTime.now();
         if (downloaded > lastBytes) {
           lastBytes = downloaded;
