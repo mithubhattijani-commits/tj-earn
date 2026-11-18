@@ -152,10 +152,12 @@ class EarnRatesConfig {
 ///       "interstitial_min_gap_minutes": 3,
 ///       "ad_coins_per_ad": 10,              // Ad Coins per watched ad
 ///       "ad_coins_daily_cap": 100,          // max Ad Coins/day
-///       "ads_for_rewards_enabled": false    // Unity ticket 00946156 —
-///                                            // stays FALSE until Unity
-///                                            // approves; the coin-only
-///                                            // economy is the safe default
+///       "ads_for_rewards_enabled": false    // default OFF in code; the
+///                                            // v1.0.27 RELEASED config
+///                                            // sets it ON per user order
+///                                            // 18 Nov ~14:54 (Unity
+///                                            // ticket 00946156 still
+///                                            // Open — risk accepted)
 ///     }
 ///   }
 ///

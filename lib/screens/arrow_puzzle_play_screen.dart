@@ -802,12 +802,19 @@ class _ArrowPuzzlePlayScreenState extends State<ArrowPuzzlePlayScreen> {
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.navigation, size: 16),
+                      const Icon(
+                        Icons.navigation,
+                        size: 16,
+                        color: Color(0xFF1F2937),
+                      ),
                       const SizedBox(width: 4),
                       Text(
                         // Arrows left (the reference's "152"), not moves.
                         '${_game.arrowsLeft}',
-                        style: const TextStyle(fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF1F2937),
+                        ),
                       ),
                     ],
                   ),
@@ -829,7 +836,10 @@ class _ArrowPuzzlePlayScreenState extends State<ArrowPuzzlePlayScreen> {
                     color: Colors.grey.shade200,
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: Text(difficulty),
+                  child: Text(
+                    difficulty,
+                    style: const TextStyle(color: Color(0xFF1F2937)),
+                  ),
                 ),
               ],
             ),
@@ -846,7 +856,8 @@ class _ArrowPuzzlePlayScreenState extends State<ArrowPuzzlePlayScreen> {
               ),
             ),
           Expanded(
-            child: Center(
+            child: Align(
+              alignment: Alignment.topCenter,
               child: Container(
                 constraints: const BoxConstraints(maxWidth: 420),
                 padding: const EdgeInsets.all(8),
@@ -941,8 +952,10 @@ class _MazeArrowPainter extends CustomPainter {
     final color = highlight
         ? Colors.amber.shade700
         : _palette[colorIndex % _palette.length];
-    // Inset slightly so arrowheads at the cell edge are not clipped.
-    const inset = 0.02;
+    // Inset only a hair: neighbouring cells' lines must meet at the
+    // shared edge so the maze reads as long interlocking paths, not
+    // isolated squiggles. (A bigger inset visibly breaks the paths.)
+    const inset = 0.005;
     final points = mazePathPoints(
       cellIndex: cellIndex,
       direction: direction,
@@ -957,7 +970,7 @@ class _MazeArrowPainter extends CustomPainter {
         .toList(growable: false);
     final stroke = Paint()
       ..color = color
-      ..strokeWidth = (s * 0.065).clamp(2.0, 3.5)
+      ..strokeWidth = (s * 0.075).clamp(2.5, 4.0)
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round
       ..style = PaintingStyle.stroke;

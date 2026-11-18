@@ -547,19 +547,32 @@ void main() {
       );
     });
 
-    test('flag off grants nothing; flag on still grants nothing yet', () async {
+    test('flag off grants nothing; flag on grants only on a completed ad',
+        () async {
       // Flag OFF: the service refuses before any ad is considered —
       // the Watch Ad button is hidden and the grant path is dead.
       expect(
         await GameRewardAdService.tryGrantAdCoins(adsEnabled: false),
         AdGrantResult.disabled,
       );
-      // Flag ON: no rewarded placement exists in this build (Unity
-      // ticket 00946156 pending), so the grant is unavailable — the
-      // UI shows "ad not available" and no coins are ever credited.
+      // Flag ON + ad completed: granted (the caller then claims from
+      // the server; the client never credits Ad Coins itself).
       expect(
-        await GameRewardAdService.tryGrantAdCoins(adsEnabled: true),
-        AdGrantResult.unavailable,
+        await GameRewardAdService.tryGrantAdCoins(
+          adsEnabled: true,
+          showRewardedAd: () async => true,
+        ),
+        AdGrantResult.granted,
+      );
+      // Flag ON + ad skipped/failed (or no dashboard placement):
+      // failed — the UI shows "ad not available" and no coins are
+      // ever credited without a completed ad view.
+      expect(
+        await GameRewardAdService.tryGrantAdCoins(
+          adsEnabled: true,
+          showRewardedAd: () async => false,
+        ),
+        AdGrantResult.failed,
       );
     });
   });

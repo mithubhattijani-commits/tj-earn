@@ -6,7 +6,7 @@ publish_to: 'none'
 # maze board (tangled colourful paths, user-approved mockup v3).
 # versionCode 28 is higher than the live v1.0.26/vc27, so the
 # updater prompts users to update.
-version: 1.0.27+28
+version: 1.0.28+29
 
 environment:
   sdk: ^3.13.7
