@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tj_earn/l10n/app_localizations.dart';
 
 import '../services/referral_deep_link_service.dart';
@@ -11,22 +12,28 @@ import '../services/updater_service.dart';
 import '../services/unity_ads_service.dart';
 import 'admin_screen.dart';
 import 'articles_tab.dart';
+import 'games_screen.dart';
 import 'referral_tab.dart';
 import 'settings_tab.dart';
 import 'withdraw_tab.dart';
-import 'watch_ad_screen.dart';
 
 /// v1.0.20 shell (Jaani, 3 Nov 2026): website <-> app integration.
 ///
 /// Built on the PROVEN v1.0.19 shell (no ANR on Jaani's phone).
 /// Five tabs:
-/// - Home: balance display + Watch Ad button (v1.0.17 code, unchanged)
-/// - Articles: read nigraantv.xyz articles, earn +10 coins each (cap 5/day)
-///   via the SAME submit-reading Edge Function the website uses — shared
-///   balance, shared cap. This is why the app exists: grow website audience.
+/// - Home: balance display + daily check-in (compliant model, v1.0.25)
+/// - Articles: read nigraantv.xyz articles, earn +5 coins each (cap
+///   200/day, unique articles only) via the `submit-reading` Edge
+///   Function. This is why the app exists: grow website audience.
 /// - Refer: simple referral (code/share/apply/direct list/claim)
-/// - Withdraw: payout request form + history
+/// - Withdraw: payout request form + history (min 10,000 coins = Rs 100)
 /// - Settings: language, Check for Update, admin panel, logout, support
+///
+/// Compliant model (v1.0.25, Unity ticket #00945584): NO coin ever comes
+/// from an ad. The Watch Ad screen and the Unity rewarded placement are
+/// removed. Ads that remain are non-rewarded only: the Unity banner in
+/// this shell, interstitials between articles, App Open on cold start,
+/// and the Adsterra banner on Home.
 ///
 /// Doner-style update (Jaani, 3 Nov 2026 — "jesy Doner update hoti ha
 /// wesy"): admin + update icons always visible in the AppBar (like
@@ -96,6 +103,45 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _maybeForceUpdate();
     });
+    // Compliant-model notice (v1.0.25): once, after the update, tell the
+    // user coins now come only from reading — old balance is safe.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _maybeShowModelNotice();
+    });
+  }
+
+  /// Shows the one-time compliant-model notice (v1.0.25).
+  ///
+  /// Guarded by a SharedPreferences flag, so it appears exactly once per
+  /// install after the update — never on every launch. The body text is
+  /// the user's exact approved wording, identical in both locales.
+  Future<void> _maybeShowModelNotice() async {
+    const flag = 'compliant_model_notice_shown_v1';
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (prefs.getBool(flag) == true) return;
+      if (!mounted) return;
+      final t = AppLocalizations.of(context);
+      await showDialog<void>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text(t?.modelNoticeTitle ?? 'TJ Earn update'),
+          content: Text(
+            t?.modelNoticeBody ??
+                'Coins ab sirf articles parhne se milen ge — aap ka purana balance mehfooz hai.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text(t?.modelNoticeOk ?? 'Theek hai'),
+            ),
+          ],
+        ),
+      );
+      await prefs.setBool(flag, true);
+    } catch (_) {
+      // Never break startup for a notice — silent if anything fails.
+    }
   }
 
   @override
@@ -325,6 +371,9 @@ class _HomeTab extends StatefulWidget {
 
 class _HomeTabState extends State<_HomeTab> {
   late Future<int> _balance;
+  bool _checkingIn = false;
+  String? _checkinMessage;
+  bool _checkinIsError = false;
 
   @override
   void initState() {
@@ -344,12 +393,51 @@ class _HomeTabState extends State<_HomeTab> {
     }
   }
 
-  /// Manual refresh (pull-to-refresh + after returning from Watch Ad).
+  /// Manual refresh (pull-to-refresh + after check-in).
   void _reloadBalance() {
     if (!mounted) return;
     setState(() {
       _balance = _loadBalance();
     });
+  }
+
+  /// Daily check-in (compliant model, v1.0.25): replaces the removed
+  /// Watch Ad button. Coins come from the `claim-checkin` Edge Function
+  /// (server amount is authoritative); the button only renders the
+  /// result. A 409 (already checked in today) is returned as data by
+  /// [SupabaseService.claimCheckin], not thrown.
+  Future<void> _doCheckin() async {
+    if (_checkingIn) return;
+    setState(() {
+      _checkingIn = true;
+      _checkinMessage = null;
+      _checkinIsError = false;
+    });
+    try {
+      final t = AppLocalizations.of(context)!;
+      final Map<String, dynamic> res =
+          await SupabaseService.claimCheckin();
+      if (!mounted) return;
+      final Object? coins = res['coins'];
+      final bool already = res['already'] == true;
+      setState(() {
+        _checkinMessage = already
+            ? t.checkinAlready
+            : (coins is int
+                ? t.checkinDone(coins)
+                : t.checkinDoneNoCoins);
+      });
+      _reloadBalance();
+    } catch (_) {
+      if (!mounted) return;
+      final t = AppLocalizations.of(context)!;
+      setState(() {
+        _checkinMessage = t.checkinFailed;
+        _checkinIsError = true;
+      });
+    } finally {
+      if (mounted) setState(() => _checkingIn = false);
+    }
   }
 
   /// Rs equivalent of a coin balance (1 coin = Rs 0.01), formatted
@@ -446,23 +534,96 @@ class _HomeTabState extends State<_HomeTab> {
             _balanceCard(t),
             const SizedBox(height: 24),
             FilledButton.icon(
-              onPressed: () {
-                Navigator.of(context)
-                    .push(
-                      MaterialPageRoute(
-                        builder: (_) => const WatchAdScreen(),
-                      ),
+              onPressed: _checkingIn ? null : _doCheckin,
+              icon: _checkingIn
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                    .then((_) {
-                      // Refresh balance after returning from Watch Ad
-                      _reloadBalance();
-                    });
-              },
-              icon: const Icon(Icons.play_circle_outline),
-              label: Text(t.watchAdTile),
+                  : const Icon(Icons.event_available),
+              label: Text(
+                _checkingIn ? t.checkinChecking : t.checkinButton,
+              ),
               style: FilledButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 16),
               ),
+            ),
+            if (_checkinMessage != null) ...[
+              const SizedBox(height: 12),
+              Text(
+                _checkinMessage!,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: _checkinIsError
+                      ? Theme.of(context).colorScheme.error
+                      : Colors.green.shade700,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+            // Play & Earn (RapidoReach wall, v1.0.25): shown only when
+            // the server enables it in remote config — the wall needs
+            // the `rapidoreach-wall-url` Edge Function deployed and
+            // RAPIDOREACH_APP_ID / RAPIDOREACH_APP_KEY set. Listens to
+            // the config notifier so the tile appears without a restart
+            // once the operator flips the switch.
+            ValueListenableBuilder<RemoteConfig>(
+              valueListenable: RemoteConfigService.instance.notifier,
+              builder: (context, config, _) {
+                if (!config.rapidoreach.enabled) {
+                  return const SizedBox.shrink();
+                }
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const SizedBox(height: 16),
+                    Card(
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(12),
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const GamesScreen(),
+                            ),
+                          );
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.all(20),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.sports_esports,
+                                size: 40,
+                                color:
+                                    Theme.of(context).colorScheme.primary,
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      t.gamesTitle,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleMedium,
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(t.gamesSubtitle),
+                                  ],
+                                ),
+                              ),
+                              const Icon(Icons.chevron_right),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              },
             ),
           ],
         ),

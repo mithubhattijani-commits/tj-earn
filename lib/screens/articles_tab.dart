@@ -4,14 +4,20 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
+import '../services/remote_config_service.dart';
 import '../services/supabase_service.dart';
+import '../services/unity_ads_service.dart';
 import 'article_reader_screen.dart';
 
 /// "Read Articles" tab (Jaani, 3 Nov 2026): website <-> app integration.
 /// Lists latest nigraantv.xyz articles. Tapping one opens it in an in-app
 /// WebView; after the minimum read time the user can claim the reading
-/// reward (5 coins, cap 5/day) via the same `submit-reading` Edge Function
-/// the website uses — so the balance is shared.
+/// reward (5 coins per UNIQUE article, cap 200/day — compliant model,
+/// v1.0.25) via the `submit-reading` Edge Function.
+///
+/// Opening an article may also show a NON-REWARDED interstitial video
+/// (every Nth open, min gap — remote-config earn rates). The ad is never
+/// a condition for any coin grant.
 ///
 /// Bilingual (Jaani, 6 Nov 2026): the feed carries both Urdu and English
 /// articles (English ones have en:true). Filter chips at the top of the
@@ -187,6 +193,22 @@ class _ArticlesTabState extends State<ArticlesTab> {
                           ],
                         ),
                         onTap: () async {
+                          // Non-rewarded interstitial between articles
+                          // (compliant model, v1.0.25): gated by the
+                          // remote-config earn rates. Fire-and-forget —
+                          // the reader opens immediately; the ad never
+                          // gates any coin grant.
+                          final rates = RemoteConfigService
+                              .instance.config.earnRates;
+                          unawaited(
+                            UnityAdsService.maybeShowArticleInterstitial(
+                              everyNthArticle:
+                                  rates.interstitialEveryNthArticle,
+                              minGap: Duration(
+                                minutes: rates.interstitialMinGapMinutes,
+                              ),
+                            ),
+                          );
                           final claimed =
                               await Navigator.of(context).push<bool>(
                             MaterialPageRoute(

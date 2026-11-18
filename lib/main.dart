@@ -105,8 +105,9 @@ class _TjEarnAppState extends State<TjEarnApp> {
   /// + the App Open show happen exactly once per cold start, after the first
   /// frame plus an idle delay, never inside build() (the old code also
   /// re-ran on every rebuild, stacking duplicate ad shows). Fire-and-forget:
-  /// the Watch Ad screen re-tries a late init and explains when ads are
-  /// unavailable.
+  /// ads are best-effort — a failed init only means no ads this session,
+  /// never a broken app. (Compliant model, v1.0.25: App Open is
+  /// non-rewarded; there is no Watch Ad screen anymore.)
   void _scheduleAppOpenAd() {
     if (_appOpenAttempted) return;
     _appOpenAttempted = true;

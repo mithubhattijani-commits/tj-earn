@@ -79,6 +79,81 @@ class ForceUpdateConfig {
   }
 }
 
+/// Earn rates (compliant model, v1.0.25) — server-driven coin + ad
+/// frequency tuning, so rates can change without a rebuild.
+///
+/// JSON shape in tj-earn.json (all optional — every key falls back to
+/// the bundled default when missing or malformed):
+///   "earn_rates": {
+///     "read_reward_coins": 5,              // coins per unique article
+///     "read_daily_cap": 200,               // unique articles/day
+///     "interstitial_every_nth_article": 5, // show after every Nth open
+///     "interstitial_min_gap_minutes": 3,   // min gap between shows
+///     "checkin_coins": 10                  // daily check-in coins
+///   }
+///
+/// Server truth: the Edge Functions enforce the same values from
+/// app_config (`read_article_coins`, `read_article_daily_cap`,
+/// `read_min_dwell_seconds`, `daily_checkin_coins`). These remote-config
+/// values only drive the APP's display + ad frequency — the server
+/// never trusts them.
+class EarnRatesConfig {
+  const EarnRatesConfig({
+    this.readRewardCoins = 5,
+    this.readDailyCap = 200,
+    this.interstitialEveryNthArticle = 5,
+    this.interstitialMinGapMinutes = 3,
+    this.checkinCoins = 10,
+  });
+
+  final int readRewardCoins;
+  final int readDailyCap;
+  final int interstitialEveryNthArticle;
+  final int interstitialMinGapMinutes;
+  final int checkinCoins;
+
+  static int _asInt(Object? v, int fallback) {
+    if (v is int) return v;
+    if (v is num) return v.toInt();
+    if (v is String) return int.tryParse(v.trim()) ?? fallback;
+    return fallback;
+  }
+
+  factory EarnRatesConfig.fromJson(Map<String, dynamic> j) {
+    int clamp(int v, int min, int max) =>
+        v < min ? min : (v > max ? max : v);
+    return EarnRatesConfig(
+      readRewardCoins:
+          clamp(_asInt(j['read_reward_coins'], 5), 0, 100),
+      readDailyCap: clamp(_asInt(j['read_daily_cap'], 200), 1, 1000),
+      interstitialEveryNthArticle:
+          clamp(_asInt(j['interstitial_every_nth_article'], 5), 1, 100),
+      interstitialMinGapMinutes:
+          clamp(_asInt(j['interstitial_min_gap_minutes'], 3), 0, 60),
+      checkinCoins: clamp(_asInt(j['checkin_coins'], 10), 0, 100),
+    );
+  }
+}
+
+/// Play & Earn wall switch (RapidoReach, v1.0.25).
+///
+/// JSON shape in tj-earn.json (optional — defaults to disabled):
+///   "rapidoreach": { "enabled": true }
+///
+/// Enable ONLY after the `rapidoreach-wall-url` Edge Function is
+/// deployed and RAPIDOREACH_APP_ID / RAPIDOREACH_APP_KEY are set as
+/// function secrets. Until then the Games tile stays hidden (fail-soft)
+/// — the wall cannot sign a UID without the server side in place.
+class RapidoreachConfig {
+  const RapidoreachConfig({this.enabled = false});
+
+  final bool enabled;
+
+  factory RapidoreachConfig.fromJson(Map<String, dynamic> j) {
+    return RapidoreachConfig(enabled: j['enabled'] == true);
+  }
+}
+
 class RemoteConfig {
   const RemoteConfig({
     this.displayName = 'TJ Earn',
@@ -86,6 +161,8 @@ class RemoteConfig {
     this.announcement = const AnnouncementConfig(),
     this.sponsoredAd = const SponsoredAdConfig(),
     this.forceUpdate = const ForceUpdateConfig(),
+    this.earnRates = const EarnRatesConfig(),
+    this.rapidoreach = const RapidoreachConfig(),
   });
 
   final String displayName;
@@ -93,6 +170,8 @@ class RemoteConfig {
   final AnnouncementConfig announcement;
   final SponsoredAdConfig sponsoredAd;
   final ForceUpdateConfig forceUpdate;
+  final EarnRatesConfig earnRates;
+  final RapidoreachConfig rapidoreach;
 
   factory RemoteConfig.fromJson(Map<String, dynamic> j) {
     return RemoteConfig(
@@ -115,6 +194,16 @@ class RemoteConfig {
               j['force_update'] as Map<String, dynamic>,
             )
           : const ForceUpdateConfig(),
+      earnRates: j['earn_rates'] is Map<String, dynamic>
+          ? EarnRatesConfig.fromJson(
+              j['earn_rates'] as Map<String, dynamic>,
+            )
+          : const EarnRatesConfig(),
+      rapidoreach: j['rapidoreach'] is Map<String, dynamic>
+          ? RapidoreachConfig.fromJson(
+              j['rapidoreach'] as Map<String, dynamic>,
+            )
+          : const RapidoreachConfig(),
     );
   }
 }

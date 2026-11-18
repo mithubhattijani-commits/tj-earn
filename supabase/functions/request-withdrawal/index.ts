@@ -1,7 +1,11 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
 
-const MIN_WITHDRAWAL_COINS = 20000;
+// Minimum withdrawal: 10,000 coins = Rs 100 (changed 11 Nov 2026 —
+// Jaani: "Ye 100 ropay kardo". The deployed function was set to 10000
+// then; this repo copy is kept in sync so a future redeploy cannot
+// regress the minimum back to 20000).
+const MIN_WITHDRAWAL_COINS = 10000;
 const MAX_PENDING = 2;
 const RAILS = ['jazzcash', 'easypaisa', 'bank'];
 
@@ -13,8 +17,9 @@ function maskAccount(account: string): string {
 
 /// Creates a withdrawal request in `pending` status.
 ///
-/// Re-validates everything server-side: minimum (20,000 coins), whole
-/// rupees (multiple of 100 coins), sufficient balance, pending-request cap.
+/// Re-validates everything server-side: minimum (10,000 coins = Rs 100),
+/// whole rupees (multiple of 100 coins), sufficient balance,
+/// pending-request cap.
 /// Only the masked account is stored (see README: full payout details are
 /// a Stage 3 decision — MVP payouts are manual and the admin obtains the
 /// full account from the user for the transfer).

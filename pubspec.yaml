@@ -2,9 +2,11 @@ name: tj_earn
 description: "TJ Earn - rewards app (Flutter + Supabase). Stage 1 foundation: auth, server-side wallet, withdrawals, in-app updater."
 publish_to: 'none'
 
-# v1.0.24+25 (Task D, 12 Nov 2026): versionCode 25 is higher than the live
-# v1.0.23/vc24, so the updater prompts users to update.
-version: 1.0.24+25
+# v1.0.25+26 (compliant model, 17 Nov 2026): rewarded ads removed —
+# cash comes only from reading/check-in/referrals (Unity ticket
+# #00945584). versionCode 26 is higher than the live v1.0.24/vc25, so the
+# updater prompts users to update.
+version: 1.0.25+26
 
 environment:
   sdk: ^3.13.7

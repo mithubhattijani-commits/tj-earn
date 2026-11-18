@@ -10,7 +10,6 @@ import '../theme.dart';
 import '../widgets/adsterra_app_banner.dart';
 import '../widgets/onboarding_checklist.dart';
 import 'onboarding_screen.dart';
-import 'watch_ad_screen.dart';
 
 /// Home dashboard: server-side balance + quick actions.
 ///
@@ -283,7 +282,10 @@ class _HomeTabState extends State<HomeTab> {
           // Server-driven sponsored ad (Remote Config). Zero height when
           // the server disables it — no layout shift, no placeholder.
           const SponsoredAdCard(),
-          // Rewards — dedicated screens for each engagement feature
+          // Rewards — dedicated screens for each engagement feature.
+          // Compliant model (v1.0.25): the Watch Ad tile is REMOVED —
+          // no coin ever comes from an ad (Unity ticket #00945584).
+          // Daily check-in lives on the mounted Home tab in main_shell.
           Text(t.rewardsSection,
               style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 12),
@@ -299,11 +301,6 @@ class _HomeTabState extends State<HomeTab> {
                 icon: Icons.checklist,
                 label: t.tasksTitle,
                 onTap: () => _open(const OnboardingScreen()),
-              ),
-              _rewardTile(
-                icon: Icons.play_circle_outline,
-                label: t.watchAdTile,
-                onTap: () => _open(const WatchAdScreen()),
               ),
             ],
           ),
