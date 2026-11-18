@@ -634,4 +634,118 @@ class AppLocalizationsEn extends AppLocalizations {
   String referAutoApplied(String code) {
     return 'Referral $code applied! 🎉';
   }
+
+  @override
+  String get arrowPuzzleAdCoins => 'Ad Coins';
+
+  @override
+  String arrowPuzzleAdCoinsBalance(Object coins) {
+    return 'Ad Coins: $coins';
+  }
+
+  @override
+  String arrowPuzzleAdCoinsEarned(Object coins) {
+    return '+$coins Ad Coins';
+  }
+
+  @override
+  String get arrowPuzzleAdDailyCapReached => 'Daily Ad Coin limit reached';
+
+  @override
+  String get arrowPuzzleAdNotAvailable =>
+      'Ads for rewards are not available yet';
+
+  @override
+  String get arrowPuzzleAlreadyClaimed => 'Already claimed — replay for fun';
+
+  @override
+  String arrowPuzzleBuyHintCoins(Object coins) {
+    return 'Hint — $coins coins';
+  }
+
+  @override
+  String arrowPuzzleBuyLifeCoins(Object coins) {
+    return 'Extra life — $coins coins';
+  }
+
+  @override
+  String arrowPuzzleBuyPowerCoins(Object coins) {
+    return 'Power — $coins coins';
+  }
+
+  @override
+  String arrowPuzzleBuyWithAdCoins(Object coins) {
+    return 'Use $coins Ad Coins';
+  }
+
+  @override
+  String arrowPuzzleCoinsEarned(Object coins) {
+    return '+$coins coins';
+  }
+
+  @override
+  String get arrowPuzzleDailyChallenge => 'Daily Challenge';
+
+  @override
+  String get arrowPuzzleDailyDone => 'Done for today';
+
+  @override
+  String arrowPuzzleFreeHintsLeft(Object count) {
+    return '$count free hints left';
+  }
+
+  @override
+  String get arrowPuzzleGameOver => 'Out of lives!';
+
+  @override
+  String get arrowPuzzleHint => 'Hint';
+
+  @override
+  String arrowPuzzleLevel(Object level) {
+    return 'Level $level';
+  }
+
+  @override
+  String get arrowPuzzleLevelComplete => 'Level Complete!';
+
+  @override
+  String get arrowPuzzleLevelLocked => 'Locked';
+
+  @override
+  String get arrowPuzzleMoves => 'Moves';
+
+  @override
+  String get arrowPuzzleNewGame => 'New Game';
+
+  @override
+  String get arrowPuzzleNextLevel => 'Next Level';
+
+  @override
+  String get arrowPuzzleNotEnoughCoins => 'Not enough coins';
+
+  @override
+  String get arrowPuzzlePlay => 'Play';
+
+  @override
+  String get arrowPuzzlePower => 'Power';
+
+  @override
+  String get arrowPuzzlePowerActive => 'Power active — tap an arrow';
+
+  @override
+  String get arrowPuzzleReplay => 'Replay';
+
+  @override
+  String get arrowPuzzleSubtitle => 'Clear the arrows, earn coins';
+
+  @override
+  String get arrowPuzzleTitle => 'Arrow Puzzle';
+
+  @override
+  String get arrowPuzzleWatchAd => 'Watch ad';
+
+  @override
+  String arrowPuzzleWatchAdGetCoins(Object coins) {
+    return 'Watch Ad — Get $coins Ad Coins';
+  }
 }

@@ -168,6 +168,32 @@ class UnityAdsService {
     await showInterstitialAd();
   }
 
+  /// Levels completed since the last level interstitial (session counter).
+  static int _levelsCompletedSinceAd = 0;
+
+  /// Gated Arrow Puzzle interstitial (v1.0.27) — mirror of
+  /// [maybeShowArticleInterstitial].
+  ///
+  /// Call once per completed level (fire-and-forget), AFTER the win
+  /// dialog is dismissed. Same non-rewarded placement, same gates:
+  /// every Nth completed level + min gap since the last interstitial
+  /// of either kind (the gap is shared, so articles and levels never
+  /// stack ads). The ad is never a condition for the coin grant.
+  static Future<void> maybeShowLevelInterstitial({
+    required int everyNthLevel,
+    required Duration minGap,
+  }) async {
+    if (!adsEnabled || !_initialized) return;
+    if (everyNthLevel <= 0) return;
+    _levelsCompletedSinceAd++;
+    if (_levelsCompletedSinceAd < everyNthLevel) return;
+    final last = _lastInterstitialShownAt;
+    if (last != null && DateTime.now().difference(last) < minGap) return;
+    _levelsCompletedSinceAd = 0;
+    _lastInterstitialShownAt = DateTime.now();
+    await showInterstitialAd();
+  }
+
   /// Show the App Open ad on cold start (dual-ad system).
   ///
   /// Call once after [init] completes, before showing home content.
