@@ -30,15 +30,15 @@ void main() {
       );
     });
 
-    test('rejects below the Rs 200 minimum', () {
+    test('rejects below the Rs 100 minimum', () {
       expect(
         validateWithdrawal(
-            amountCoins: 19900, balanceCoins: 50000, pendingCount: 0),
+            amountCoins: 9900, balanceCoins: 50000, pendingCount: 0),
         'amount_min',
       );
       expect(
         validateWithdrawal(
-            amountCoins: 20000, balanceCoins: 50000, pendingCount: 0),
+            amountCoins: 10000, balanceCoins: 50000, pendingCount: 0),
         isNull,
       );
     });

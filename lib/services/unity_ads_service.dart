@@ -3,24 +3,35 @@ import 'package:flutter/material.dart';
 
 import 'package:unity_ads_plugin/unity_ads_plugin.dart';
 
-/// Unity Ads rewarded video integration for TJ Earn.
+/// Unity Ads integration for TJ Earn (compliant model, v1.0.25).
 ///
+/// COMPLIANT MODEL (17 Nov 2026, Unity ticket #00945584): coins-to-cash
+/// via rewarded ads is PROHIBITED on self-serve Unity Ads — rewards for
+/// watching ads must be in-app virtual only, never cash. TJ Earn pays
+/// cash for READING, so NO coin may ever come from any ad view. There is
+/// deliberately no rewarded placement in this service anymore: no
+/// `BP_Rewarded_Android`, no reward callback, no coin grant path.
+///
+/// What remains (all non-rewarded, earning only):
 /// - Game ID: 800417967 (Android, "TJ Earn" project)
-/// - Rewarded placement: BP_Rewarded_Android (Active)
-/// - Banner placement: BP_Banner_Android (Active)
-/// - Rewards are COINS (virtual currency), never cash — per Unity policy.
-///   Coin grants happen server-side in the `claim-unity-reward` Edge
-///   Function; this service only shows the ad and reports the outcome.
+/// - Banner placement: BP_Banner_Android (Active) — passive bottom slot.
+/// - Interstitial placement: BP_Interstitial_Android (Active) — shown
+///   between articles via [maybeShowArticleInterstitial], gated by the
+///   remote-config earn rates (every Nth article, min gap). Never
+///   rewarded, never tied to any coin grant.
+/// - App Open placement: BP_AppOpen_Android (Active) — cold start only.
 ///
 /// Test mode is ON for development. Flip [testMode] to false for
 /// production builds.
 class UnityAdsService {
   static const String gameId = '800417967';
-  static const String rewardedPlacementId = 'BP_Rewarded_Android';
 
   /// Dual-ad system (Jaani, 2 Nov 2026): every app visit + every coin
   /// claim shows a Unity ad. Interstitial after claims, App Open on launch.
   /// Placement IDs follow the existing BP_ naming convention.
+  ///
+  /// Compliant model (v1.0.25): the rewarded placement is GONE — see the
+  /// class doc. Only the non-rewarded placements remain.
   static const String interstitialPlacementId = 'BP_Interstitial_Android';
   static const String appOpenPlacementId = 'BP_AppOpen_Android';
   static const String bannerPlacementId = 'BP_Banner_Android';
@@ -89,77 +100,19 @@ class UnityAdsService {
     }
   }
 
-  /// Load the rewarded video ad. Call before showing; also called
-  /// automatically after each show so the next ad is ready.
-  static Future<bool> loadRewardedAd() async {
-    if (!_initialized) return false;
-    try {
-      final completer = Completer<bool>();
-      UnityAds.load(
-        placementId: rewardedPlacementId,
-        onComplete: (placementId) {
-          if (!completer.isCompleted) completer.complete(true);
-        },
-        onFailed: (placementId, error, message) {
-          if (!completer.isCompleted) completer.complete(false);
-        },
-      );
-      return await completer.future.timeout(
-        const Duration(seconds: 15),
-        onTimeout: () => false,
-      );
-    } catch (_) {
-      return false;
-    }
-  }
+  /// Articles opened since the last interstitial (session counter).
+  static int _articlesOpenedSinceAd = 0;
 
-  /// Show the rewarded video ad.
-  ///
-  /// Returns [UnityAdResult.completed] when the user watched the full ad
-  /// and earned the reward, [UnityAdResult.skipped] when they skipped
-  /// early, [UnityAdResult.failed] on error.
-  static Future<UnityAdResult> showRewardedAd() async {
-    if (!_initialized) return UnityAdResult.failed;
-    try {
-      final completer = Completer<UnityAdResult>();
-      UnityAds.showVideoAd(
-        placementId: rewardedPlacementId,
-        onStart: (placementId) {},
-        onClick: (placementId) {},
-        onSkipped: (placementId) {
-          if (!completer.isCompleted) {
-            completer.complete(UnityAdResult.skipped);
-          }
-        },
-        onComplete: (placementId) {
-          if (!completer.isCompleted) {
-            completer.complete(UnityAdResult.completed);
-          }
-        },
-        onFailed: (placementId, error, message) {
-          if (!completer.isCompleted) {
-            completer.complete(UnityAdResult.failed);
-          }
-        },
-      );
-      final result = await completer.future.timeout(
-        const Duration(minutes: 5),
-        onTimeout: () => UnityAdResult.failed,
-      );
-      // Preload the next ad in the background (never blocks the UI).
-      unawaited(loadRewardedAd());
-      return result;
-    } catch (_) {
-      return UnityAdResult.failed;
-    }
-  }
+  /// When the last interstitial was shown (session state).
+  static DateTime? _lastInterstitialShownAt;
 
-  /// Show a non-rewarded interstitial ad (dual-ad system).
+  /// Show a non-rewarded interstitial ad between articles.
   ///
-  /// Fire-and-forget: call AFTER coins are granted, never before.
+  /// Fire-and-forget: call when an article is opened, never before a
+  /// coin grant (there is no link between ads and coins anymore).
   /// Never throws, never blocks the UI. If the ad isn't ready or fails,
-  /// it silently does nothing — the coins are already safe.
-  static Future<void> showClaimInterstitial() async {
+  /// it silently does nothing.
+  static Future<void> showInterstitialAd() async {
     if (!_initialized) return;
     try {
       await UnityAds.load(
@@ -187,8 +140,32 @@ class UnityAdsService {
         onTimeout: () {},
       );
     } catch (_) {
-      // Silently ignore — ads are best-effort, coins already granted.
+      // Silently ignore — ads are best-effort and never gate coins.
     }
+  }
+
+  /// Gated article interstitial (compliant model, v1.0.25).
+  ///
+  /// Call once per article open (fire-and-forget). Shows a non-rewarded
+  /// interstitial only when BOTH gates pass:
+  /// - at least [everyNthArticle] articles opened since the last show, and
+  /// - at least [minGap] since the last show.
+  /// Both values come from the remote-config earn rates, so the frequency
+  /// can be tuned without a rebuild. The counter counts OPENS, not
+  /// claims — the ad is never a condition for any coin grant.
+  static Future<void> maybeShowArticleInterstitial({
+    required int everyNthArticle,
+    required Duration minGap,
+  }) async {
+    if (!adsEnabled || !_initialized) return;
+    if (everyNthArticle <= 0) return;
+    _articlesOpenedSinceAd++;
+    if (_articlesOpenedSinceAd < everyNthArticle) return;
+    final last = _lastInterstitialShownAt;
+    if (last != null && DateTime.now().difference(last) < minGap) return;
+    _articlesOpenedSinceAd = 0;
+    _lastInterstitialShownAt = DateTime.now();
+    await showInterstitialAd();
   }
 
   /// Show the App Open ad on cold start (dual-ad system).
@@ -226,18 +203,6 @@ class UnityAdsService {
       // Silently ignore — app continues to home.
     }
   }
-}
-
-/// Outcome of showing a rewarded ad.
-enum UnityAdResult {
-  /// User watched the full ad — credit the reward server-side.
-  completed,
-
-  /// User skipped before the end — no reward.
-  skipped,
-
-  /// Ad failed to load or show — no reward, show retry.
-  failed,
 }
 
 /// Unity banner at the bottom of the shell, above the bottom navigation

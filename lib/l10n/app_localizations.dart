@@ -98,11 +98,239 @@ abstract class AppLocalizations {
     Locale('ur'),
   ];
 
+  /// No description provided for @about.
+  ///
+  /// In en, this message translates to:
+  /// **'About'**
+  String get about;
+
   /// No description provided for @accountNumber.
   ///
   /// In en, this message translates to:
   /// **'Account number / IBAN'**
   String get accountNumber;
+
+  /// No description provided for @adLimitReached.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily ad limit reached (10/day). Come back tomorrow!'**
+  String get adLimitReached;
+
+  /// No description provided for @adLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Ad could not be loaded. Please try again.'**
+  String get adLoadFailed;
+
+  /// No description provided for @adSkipped.
+  ///
+  /// In en, this message translates to:
+  /// **'Ad skipped — no coins earned. Watch the full ad to earn.'**
+  String get adSkipped;
+
+  /// No description provided for @adsLeftToday.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} ads left today'**
+  String adsLeftToday(Object count);
+
+  /// No description provided for @adminAccessRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Admin access required. Sign in with an admin account to view this panel.'**
+  String get adminAccessRequired;
+
+  /// No description provided for @adminApplyFilter.
+  ///
+  /// In en, this message translates to:
+  /// **'Apply'**
+  String get adminApplyFilter;
+
+  /// No description provided for @adminApprove.
+  ///
+  /// In en, this message translates to:
+  /// **'Approve'**
+  String get adminApprove;
+
+  /// No description provided for @adminCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get adminCancel;
+
+  /// No description provided for @adminCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Code'**
+  String get adminCode;
+
+  /// No description provided for @adminCoinsCredited.
+  ///
+  /// In en, this message translates to:
+  /// **'Coins credited'**
+  String get adminCoinsCredited;
+
+  /// No description provided for @adminConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm'**
+  String get adminConfirm;
+
+  /// No description provided for @adminConfirmRejectBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Reject this referral? The inviter will not receive the reward.'**
+  String get adminConfirmRejectBody;
+
+  /// No description provided for @adminConfirmRejectTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Reject referral?'**
+  String get adminConfirmRejectTitle;
+
+  /// No description provided for @adminDecisionDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Decision recorded.'**
+  String get adminDecisionDone;
+
+  /// No description provided for @adminDecisionFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not record the decision.'**
+  String get adminDecisionFailed;
+
+  /// No description provided for @adminInvited.
+  ///
+  /// In en, this message translates to:
+  /// **'Invited'**
+  String get adminInvited;
+
+  /// No description provided for @adminLedgerEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No ledger entries.'**
+  String get adminLedgerEmpty;
+
+  /// No description provided for @adminLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load admin data.'**
+  String get adminLoadFailed;
+
+  /// No description provided for @adminLoggedInAs.
+  ///
+  /// In en, this message translates to:
+  /// **'Logged in as:'**
+  String get adminLoggedInAs;
+
+  /// No description provided for @adminNavLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Admin'**
+  String get adminNavLabel;
+
+  /// No description provided for @adminNext.
+  ///
+  /// In en, this message translates to:
+  /// **'Next'**
+  String get adminNext;
+
+  /// No description provided for @adminNotAdminHint.
+  ///
+  /// In en, this message translates to:
+  /// **'This account is not an admin — log in with the admin email.'**
+  String get adminNotAdminHint;
+
+  /// No description provided for @adminPageOf.
+  ///
+  /// In en, this message translates to:
+  /// **'Page {page}'**
+  String adminPageOf(Object page);
+
+  /// No description provided for @adminPrev.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous'**
+  String get adminPrev;
+
+  /// No description provided for @adminReasonHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Reason (optional)'**
+  String get adminReasonHint;
+
+  /// No description provided for @adminReferralsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No referrals in this state.'**
+  String get adminReferralsEmpty;
+
+  /// No description provided for @adminReferrer.
+  ///
+  /// In en, this message translates to:
+  /// **'Referrer'**
+  String get adminReferrer;
+
+  /// No description provided for @adminRefresh.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh'**
+  String get adminRefresh;
+
+  /// No description provided for @adminReject.
+  ///
+  /// In en, this message translates to:
+  /// **'Reject'**
+  String get adminReject;
+
+  /// No description provided for @adminStatusAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get adminStatusAll;
+
+  /// No description provided for @adminTabLedger.
+  ///
+  /// In en, this message translates to:
+  /// **'Ledger'**
+  String get adminTabLedger;
+
+  /// No description provided for @adminTabReferrals.
+  ///
+  /// In en, this message translates to:
+  /// **'Referrals'**
+  String get adminTabReferrals;
+
+  /// No description provided for @adminTabStats.
+  ///
+  /// In en, this message translates to:
+  /// **'Stats'**
+  String get adminTabStats;
+
+  /// No description provided for @adminTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Admin panel'**
+  String get adminTitle;
+
+  /// No description provided for @adminTotalReferrers.
+  ///
+  /// In en, this message translates to:
+  /// **'Total referrers'**
+  String get adminTotalReferrers;
+
+  /// No description provided for @adminTypeFilter.
+  ///
+  /// In en, this message translates to:
+  /// **'Type filter (optional)'**
+  String get adminTypeFilter;
+
+  /// No description provided for @adminUnknownUser.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown user'**
+  String get adminUnknownUser;
 
   /// No description provided for @amountPkr.
   ///
@@ -116,10 +344,16 @@ abstract class AppLocalizations {
   /// **'TJ Earn'**
   String get appTitle;
 
+  /// No description provided for @appUpToDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Your app is up to date'**
+  String get appUpToDate;
+
   /// No description provided for @backToLogin.
   ///
   /// In en, this message translates to:
-  /// **'Back to login'**
+  /// **'Send reset link'**
   String get backToLogin;
 
   /// No description provided for @balance.
@@ -133,6 +367,78 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Could not load balance.'**
   String get balanceLoadFailed;
+
+  /// No description provided for @balanceRsApprox.
+  ///
+  /// In en, this message translates to:
+  /// **'≈ Rs {value}'**
+  String balanceRsApprox(Object value);
+
+  /// No description provided for @bonusClaimFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not claim bonus.'**
+  String get bonusClaimFailed;
+
+  /// No description provided for @bonusClaimed.
+  ///
+  /// In en, this message translates to:
+  /// **'Bonus claimed!'**
+  String get bonusClaimed;
+
+  /// Button to manually check for app updates
+  ///
+  /// In en, this message translates to:
+  /// **'Check for Update'**
+  String get checkForUpdate;
+
+  /// No description provided for @checkinAlready.
+  ///
+  /// In en, this message translates to:
+  /// **'Already checked in today — come back tomorrow!'**
+  String get checkinAlready;
+
+  /// No description provided for @checkinButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily Check-in'**
+  String get checkinButton;
+
+  /// No description provided for @checkinChecking.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking in…'**
+  String get checkinChecking;
+
+  /// No description provided for @checkinDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily check-in: +{coins} coins!'**
+  String checkinDone(Object coins);
+
+  /// No description provided for @checkinDoneNoCoins.
+  ///
+  /// In en, this message translates to:
+  /// **'Checked in!'**
+  String get checkinDoneNoCoins;
+
+  /// No description provided for @checkinFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Check-in failed. Please try again.'**
+  String get checkinFailed;
+
+  /// No description provided for @claimAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Claim all'**
+  String get claimAll;
+
+  /// No description provided for @claimTooSoon.
+  ///
+  /// In en, this message translates to:
+  /// **'Claiming too fast — please wait a moment and try again.'**
+  String get claimTooSoon;
 
   /// No description provided for @coins.
   ///
@@ -158,17 +464,17 @@ abstract class AppLocalizations {
   /// **'Display name'**
   String get displayName;
 
-  /// No description provided for @downloading.
-  ///
-  /// In en, this message translates to:
-  /// **'Downloading update…'**
-  String get downloading;
-
   /// No description provided for @downloadStalled.
   ///
   /// In en, this message translates to:
   /// **'Stalled — check your connection'**
   String get downloadStalled;
+
+  /// No description provided for @downloading.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloading update…'**
+  String get downloading;
 
   /// No description provided for @email.
   ///
@@ -191,7 +497,7 @@ abstract class AppLocalizations {
   /// No description provided for @errAmountMin.
   ///
   /// In en, this message translates to:
-  /// **'Minimum withdrawal is Rs 200 (20,000 coins).'**
+  /// **'Minimum withdrawal is Rs 100 (10,000 coins).'**
   String get errAmountMin;
 
   /// No description provided for @errAmountPositive.
@@ -215,26 +521,62 @@ abstract class AppLocalizations {
   /// No description provided for @forgotPassword.
   ///
   /// In en, this message translates to:
-  /// **'Forgot password?'**
+  /// **'Send reset link'**
   String get forgotPassword;
 
   /// No description provided for @forgotPasswordHint.
   ///
   /// In en, this message translates to:
-  /// **'Enter your email — we'll send you a password reset link.'**
+  /// **'Send reset link'**
   String get forgotPasswordHint;
 
   /// No description provided for @forgotPasswordSent.
   ///
   /// In en, this message translates to:
-  /// **'Reset link sent to your email. Please check your inbox.'**
+  /// **'Send reset link'**
   String get forgotPasswordSent;
 
   /// No description provided for @forgotPasswordTitle.
   ///
   /// In en, this message translates to:
-  /// **'Reset password'**
+  /// **'Send reset link'**
   String get forgotPasswordTitle;
+
+  /// No description provided for @gamesLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load Play & Earn. Check your connection and try again.'**
+  String get gamesLoadFailed;
+
+  /// No description provided for @gamesLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading Play & Earn…'**
+  String get gamesLoading;
+
+  /// No description provided for @gamesNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Coins are added to your balance by the server after an offer is completed.'**
+  String get gamesNote;
+
+  /// No description provided for @gamesSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Complete surveys & offers to earn coins'**
+  String get gamesSubtitle;
+
+  /// No description provided for @gamesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Play & Earn'**
+  String get gamesTitle;
+
+  /// No description provided for @gamesUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Play & Earn is not available yet. Please try again later.'**
+  String get gamesUnavailable;
 
   /// No description provided for @genericError.
   ///
@@ -266,6 +608,18 @@ abstract class AppLocalizations {
   /// **'Already have an account? Login'**
   String get haveAccount;
 
+  /// No description provided for @helpSupport.
+  ///
+  /// In en, this message translates to:
+  /// **'Help & Support'**
+  String get helpSupport;
+
+  /// No description provided for @helpSupportName.
+  ///
+  /// In en, this message translates to:
+  /// **'Jaani Bhatti — 03090808180'**
+  String get helpSupportName;
+
   /// No description provided for @historyEmpty.
   ///
   /// In en, this message translates to:
@@ -287,7 +641,7 @@ abstract class AppLocalizations {
   /// No description provided for @invalidEmail.
   ///
   /// In en, this message translates to:
-  /// **'Please enter a valid email address.'**
+  /// **'Send reset link'**
   String get invalidEmail;
 
   /// No description provided for @language.
@@ -320,11 +674,35 @@ abstract class AppLocalizations {
   /// **'Logout'**
   String get logout;
 
+  /// No description provided for @modelNoticeBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Coins ab sirf articles parhne se milen ge — aap ka purana balance mehfooz hai.'**
+  String get modelNoticeBody;
+
+  /// No description provided for @modelNoticeOk.
+  ///
+  /// In en, this message translates to:
+  /// **'Theek hai'**
+  String get modelNoticeOk;
+
+  /// No description provided for @modelNoticeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'How coins work now'**
+  String get modelNoticeTitle;
+
   /// No description provided for @noAccount.
   ///
   /// In en, this message translates to:
   /// **'No account yet? Register'**
   String get noAccount;
+
+  /// No description provided for @noInternetForUpdate.
+  ///
+  /// In en, this message translates to:
+  /// **'No internet connection — turn on internet to check for updates'**
+  String get noInternetForUpdate;
 
   /// No description provided for @offersEmpty.
   ///
@@ -338,17 +716,65 @@ abstract class AppLocalizations {
   /// **'Rewards & Offers'**
   String get offersTitle;
 
+  /// No description provided for @onboardingComplete.
+  ///
+  /// In en, this message translates to:
+  /// **'All done! +{coins} coins bonus!'**
+  String onboardingComplete(Object coins);
+
+  /// No description provided for @onboardingProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'Set your display name'**
+  String get onboardingProfile;
+
+  /// No description provided for @onboardingProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'{done}/{total} completed'**
+  String onboardingProgress(Object done, Object total);
+
+  /// No description provided for @onboardingReferral.
+  ///
+  /// In en, this message translates to:
+  /// **'Share your referral link'**
+  String get onboardingReferral;
+
+  /// No description provided for @onboardingSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Complete these tasks to earn your welcome bonus'**
+  String get onboardingSubtitle;
+
+  /// No description provided for @onboardingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Get Started - Earn {coins} Bonus!'**
+  String onboardingTitle(Object coins);
+
   /// No description provided for @password.
   ///
   /// In en, this message translates to:
   /// **'Password'**
   String get password;
 
+  /// No description provided for @pendingBonuses.
+  ///
+  /// In en, this message translates to:
+  /// **'Pending bonuses'**
+  String get pendingBonuses;
+
   /// No description provided for @pendingWithdrawals.
   ///
   /// In en, this message translates to:
   /// **'Your withdrawal requests'**
   String get pendingWithdrawals;
+
+  /// No description provided for @pleaseWait.
+  ///
+  /// In en, this message translates to:
+  /// **'Please wait…'**
+  String get pleaseWait;
 
   /// No description provided for @quickActions.
   ///
@@ -380,6 +806,234 @@ abstract class AppLocalizations {
   /// **'JazzCash'**
   String get railJazzcash;
 
+  /// No description provided for @referApplied.
+  ///
+  /// In en, this message translates to:
+  /// **'Referral recorded!'**
+  String get referApplied;
+
+  /// No description provided for @referApplyButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Apply code'**
+  String get referApplyButton;
+
+  /// No description provided for @referApplyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the code shared with you'**
+  String get referApplyHint;
+
+  /// No description provided for @referApplyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Have a referral code?'**
+  String get referApplyTitle;
+
+  /// No description provided for @referApproved.
+  ///
+  /// In en, this message translates to:
+  /// **'Approved'**
+  String get referApproved;
+
+  /// No description provided for @referCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Copied to clipboard'**
+  String get referCopied;
+
+  /// No description provided for @referCopy.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy'**
+  String get referCopy;
+
+  /// No description provided for @referErrDuplicate.
+  ///
+  /// In en, this message translates to:
+  /// **'You already have a referrer.'**
+  String get referErrDuplicate;
+
+  /// No description provided for @referErrInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'This code is not valid.'**
+  String get referErrInvalid;
+
+  /// No description provided for @referErrRate.
+  ///
+  /// In en, this message translates to:
+  /// **'Too many attempts. Please try again later.'**
+  String get referErrRate;
+
+  /// No description provided for @referErrSelf.
+  ///
+  /// In en, this message translates to:
+  /// **'You cannot use your own code.'**
+  String get referErrSelf;
+
+  /// No description provided for @referHistoryEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No referrals yet. Share your link to get started.'**
+  String get referHistoryEmpty;
+
+  /// No description provided for @referHistoryTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Referral history'**
+  String get referHistoryTitle;
+
+  /// No description provided for @referHow1.
+  ///
+  /// In en, this message translates to:
+  /// **'Share your code or link with friends.'**
+  String get referHow1;
+
+  /// No description provided for @referHow2.
+  ///
+  /// In en, this message translates to:
+  /// **'They create their account with your link. One person, one account.'**
+  String get referHow2;
+
+  /// No description provided for @referHow3.
+  ///
+  /// In en, this message translates to:
+  /// **'They register with your code.'**
+  String get referHow3;
+
+  /// No description provided for @referHow4.
+  ///
+  /// In en, this message translates to:
+  /// **'200 coins arrive in your wallet immediately.'**
+  String get referHow4;
+
+  /// No description provided for @referHowTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'How it works'**
+  String get referHowTitle;
+
+  /// No description provided for @referInvitedYou.
+  ///
+  /// In en, this message translates to:
+  /// **'Invited you'**
+  String get referInvitedYou;
+
+  /// No description provided for @referLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load referral info.'**
+  String get referLoadFailed;
+
+  /// No description provided for @referPending.
+  ///
+  /// In en, this message translates to:
+  /// **'Pending'**
+  String get referPending;
+
+  /// No description provided for @referRewardNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Each referral pays 200 coins (Rs 2) — credited to your wallet immediately when the invited person registers with your code. Rewards are coins, never cash.'**
+  String get referRewardNote;
+
+  /// No description provided for @referShare.
+  ///
+  /// In en, this message translates to:
+  /// **'Share'**
+  String get referShare;
+
+  /// No description provided for @referShareText.
+  ///
+  /// In en, this message translates to:
+  /// **'Join TJ Earn with my referral link and earn coins:'**
+  String get referShareText;
+
+  /// No description provided for @referStatusApproved.
+  ///
+  /// In en, this message translates to:
+  /// **'Approved'**
+  String get referStatusApproved;
+
+  /// No description provided for @referStatusEligible.
+  ///
+  /// In en, this message translates to:
+  /// **'Eligible'**
+  String get referStatusEligible;
+
+  /// No description provided for @referStatusPending.
+  ///
+  /// In en, this message translates to:
+  /// **'Pending'**
+  String get referStatusPending;
+
+  /// No description provided for @referStatusRejected.
+  ///
+  /// In en, this message translates to:
+  /// **'Rejected'**
+  String get referStatusRejected;
+
+  /// No description provided for @referSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Invite friends, earn coins'**
+  String get referSubtitle;
+
+  /// No description provided for @referTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Refer'**
+  String get referTab;
+
+  /// No description provided for @referTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Refer & Earn'**
+  String get referTitle;
+
+  /// No description provided for @referTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'Total invites'**
+  String get referTotal;
+
+  /// No description provided for @referYouInvited.
+  ///
+  /// In en, this message translates to:
+  /// **'You invited'**
+  String get referYouInvited;
+
+  /// No description provided for @referYourCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Your referral code'**
+  String get referYourCode;
+
+  /// No description provided for @referYourLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Your referral link'**
+  String get referYourLink;
+
+  /// No description provided for @referralMilestoneNext.
+  ///
+  /// In en, this message translates to:
+  /// **'{remaining} more for +{bonus} coins bonus!'**
+  String referralMilestoneNext(Object bonus, Object remaining);
+
+  /// No description provided for @referralMilestoneReached.
+  ///
+  /// In en, this message translates to:
+  /// **'Milestone reached! +{coins} coins!'**
+  String referralMilestoneReached(Object coins);
+
+  /// No description provided for @referralMilestoneTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Referral Milestones'**
+  String get referralMilestoneTitle;
+
   /// No description provided for @register.
   ///
   /// In en, this message translates to:
@@ -397,6 +1051,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Registration failed. Try a different email.'**
   String get registerFailed;
+
+  /// No description provided for @retry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get retry;
+
+  /// No description provided for @rewardEarned.
+  ///
+  /// In en, this message translates to:
+  /// **'You earned {coins} coins!'**
+  String rewardEarned(Object coins);
+
+  /// No description provided for @rewardsSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Rewards'**
+  String get rewardsSection;
 
   /// No description provided for @sendResetLink.
   ///
@@ -446,6 +1118,12 @@ abstract class AppLocalizations {
   /// **'Submit withdrawal request'**
   String get submitWithdrawal;
 
+  /// No description provided for @tasksTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'My Tasks'**
+  String get tasksTitle;
+
   /// No description provided for @typeCredit.
   ///
   /// In en, this message translates to:
@@ -470,11 +1148,23 @@ abstract class AppLocalizations {
   /// **'Withdrawal'**
   String get typeWithdrawal;
 
+  /// No description provided for @unityNotReady.
+  ///
+  /// In en, this message translates to:
+  /// **'Ads are not ready yet. Please try again in a moment.'**
+  String get unityNotReady;
+
   /// No description provided for @updateAvailable.
   ///
   /// In en, this message translates to:
   /// **'Update available'**
   String get updateAvailable;
+
+  /// No description provided for @updateInfoNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'Update info not found — try again later'**
+  String get updateInfoNotFound;
 
   /// No description provided for @updateLater.
   ///
@@ -500,6 +1190,42 @@ abstract class AppLocalizations {
   /// **'Wallet'**
   String get walletTitle;
 
+  /// No description provided for @watchAdButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Watch Ad'**
+  String get watchAdButton;
+
+  /// No description provided for @watchAdNote.
+  ///
+  /// In en, this message translates to:
+  /// **'One reward per completed ad. Daily limits apply.'**
+  String get watchAdNote;
+
+  /// No description provided for @watchAdRewardLine.
+  ///
+  /// In en, this message translates to:
+  /// **'Earn 10 coins per completed video'**
+  String get watchAdRewardLine;
+
+  /// No description provided for @watchAdSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Watch a short video ad and earn coins. Coins are credited after you finish the full ad.'**
+  String get watchAdSubtitle;
+
+  /// No description provided for @watchAdTile.
+  ///
+  /// In en, this message translates to:
+  /// **'Watch Ad\nEarn 10 Coins'**
+  String get watchAdTile;
+
+  /// No description provided for @watchAdTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Watch Ad & Earn Coins'**
+  String get watchAdTitle;
+
   /// No description provided for @withdrawTitle.
   ///
   /// In en, this message translates to:
@@ -518,233 +1244,23 @@ abstract class AppLocalizations {
   /// **'Withdrawal request submitted.'**
   String get withdrawalSubmitted;
 
-  /// No description provided for @referTab.
+  /// No description provided for @adminGroupByUser.
   ///
   /// In en, this message translates to:
-  /// **'Refer'**
-  String get referTab;
+  /// **'Group by user'**
+  String get adminGroupByUser;
 
-  /// No description provided for @referTitle.
+  /// No description provided for @adminTransactions.
   ///
   /// In en, this message translates to:
-  /// **'Refer & Earn'**
-  String get referTitle;
+  /// **'transactions'**
+  String get adminTransactions;
 
-  /// No description provided for @referSubtitle.
+  /// Shown when a referral code from a shared link is auto-applied after signup.
   ///
   /// In en, this message translates to:
-  /// **'Invite friends, earn coins'**
-  String get referSubtitle;
-
-  /// No description provided for @referYourCode.
-  ///
-  /// In en, this message translates to:
-  /// **'Your referral code'**
-  String get referYourCode;
-
-  /// No description provided for @referYourLink.
-  ///
-  /// In en, this message translates to:
-  /// **'Your referral link'**
-  String get referYourLink;
-
-  /// No description provided for @referCopy.
-  ///
-  /// In en, this message translates to:
-  /// **'Copy'**
-  String get referCopy;
-
-  /// No description provided for @referCopied.
-  ///
-  /// In en, this message translates to:
-  /// **'Copied to clipboard'**
-  String get referCopied;
-
-  /// No description provided for @referShare.
-  ///
-  /// In en, this message translates to:
-  /// **'Share'**
-  String get referShare;
-
-  /// No description provided for @referShareText.
-  ///
-  /// In en, this message translates to:
-  /// **'Join TJ Earn with my referral link and earn coins:'**
-  String get referShareText;
-
-  /// No description provided for @referTotal.
-  ///
-  /// In en, this message translates to:
-  /// **'Total invites'**
-  String get referTotal;
-
-  /// No description provided for @referPending.
-  ///
-  /// In en, this message translates to:
-  /// **'Pending'**
-  String get referPending;
-
-  /// No description provided for @referApproved.
-  ///
-  /// In en, this message translates to:
-  /// **'Approved'**
-  String get referApproved;
-
-  /// No description provided for @referHowTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'How it works'**
-  String get referHowTitle;
-
-  /// No description provided for @referHow1.
-  ///
-  /// In en, this message translates to:
-  /// **'Share your code or link with friends.'**
-  String get referHow1;
-
-  /// No description provided for @referHow2.
-  ///
-  /// In en, this message translates to:
-  /// **'They create their account with your link. One person, one account.'**
-  String get referHow2;
-
-  /// No description provided for @referHow3.
-  ///
-  /// In en, this message translates to:
-  /// **'After their account passes verification, the referral becomes eligible.'**
-  String get referHow3;
-
-  /// No description provided for @referHow4.
-  ///
-  /// In en, this message translates to:
-  /// **'Approved referral rewards arrive in your wallet as coins.'**
-  String get referHow4;
-
-  /// No description provided for @referRewardNote.
-  ///
-  /// In en, this message translates to:
-  /// **'Approved referrals pay 1,000 coins each (Rs 10) — paid only after the invited account passes verification and the admin approves the referral. Rewards are coins, never cash.'**
-  String get referRewardNote;
-
-  /// No description provided for @referHistoryTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Referral history'**
-  String get referHistoryTitle;
-
-  /// No description provided for @referHistoryEmpty.
-  ///
-  /// In en, this message translates to:
-  /// **'No referrals yet. Share your link to get started.'**
-  String get referHistoryEmpty;
-
-  /// No description provided for @referLoadFailed.
-  ///
-  /// In en, this message translates to:
-  /// **'Could not load referral info.'**
-  String get referLoadFailed;
-
-  /// No description provided for @referStatusPending.
-  ///
-  /// In en, this message translates to:
-  /// **'Pending'**
-  String get referStatusPending;
-
-  /// No description provided for @referStatusEligible.
-  ///
-  /// In en, this message translates to:
-  /// **'Eligible'**
-  String get referStatusEligible;
-
-  /// No description provided for @referStatusApproved.
-  ///
-  /// In en, this message translates to:
-  /// **'Approved'**
-  String get referStatusApproved;
-
-  /// No description provided for @referStatusRejected.
-  ///
-  /// In en, this message translates to:
-  /// **'Rejected'**
-  String get referStatusRejected;
-
-  /// No description provided for @referYouInvited.
-  ///
-  /// In en, this message translates to:
-  /// **'You invited'**
-  String get referYouInvited;
-
-  /// No description provided for @referInvitedYou.
-  ///
-  /// In en, this message translates to:
-  /// **'Invited you'**
-  String get referInvitedYou;
-
-  /// No description provided for @referApplyTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Have a referral code?'**
-  String get referApplyTitle;
-
-  /// No description provided for @referApplyHint.
-  ///
-  /// In en, this message translates to:
-  /// **'Enter the code shared with you'**
-  String get referApplyHint;
-
-  /// No description provided for @referApplyButton.
-  ///
-  /// In en, this message translates to:
-  /// **'Apply code'**
-  String get referApplyButton;
-
-  /// No description provided for @referApplied.
-  ///
-  /// In en, this message translates to:
-  /// **'Referral recorded!'**
-  String get referApplied;
-
-  /// No description provided for @referErrSelf.
-  ///
-  /// In en, this message translates to:
-  /// **'You cannot use your own code.'**
-  String get referErrSelf;
-
-  /// No description provided for @referErrDuplicate.
-  ///
-  /// In en, this message translates to:
-  /// **'You already have a referrer.'**
-  String get referErrDuplicate;
-
-  /// No description provided for @referErrInvalid.
-  ///
-  /// In en, this message translates to:
-  /// **'This code is not valid.'**
-  String get referErrInvalid;
-
-  /// No description provided for @referErrRate.
-  ///
-  /// In en, this message translates to:
-  /// **'Too many attempts. Please try again later.'**
-  String get referErrRate;
-
-  /// No description provided for @adminNavLabel.
-  ///
-  /// In en, this message translates to:
-  /// **'Admin'**
-  String get adminNavLabel;
-
-  /// No description provided for @adminLoggedInAs.
-  ///
-  /// In en, this message translates to:
-  /// **'Logged in as:'**
-  String get adminLoggedInAs;
-
-  /// No description provided for @adminNotAdminHint.
-  ///
-  /// In en, this message translates to:
-  /// **'This account is not an admin \u2014 log in with the admin email.'**
-  String get adminNotAdminHint;
+  /// **'Referral {code} applied! 🎉'**
+  String referAutoApplied(String code);
 }
 
 class _AppLocalizationsDelegate
@@ -779,60 +1295,4 @@ AppLocalizations lookupAppLocalizations(Locale locale) {
     'on GitHub with a reproducible sample app and the gen-l10n configuration '
     'that was used.',
   );
-
-  String balanceRsApprox(Object value);
-  String get adminTitle;
-  String get adminAccessRequired;
-  String get adminTabReferrals;
-  String get adminTabStats;
-  String get adminTabLedger;
-  String get adminStatusAll;
-  String get adminLoadFailed;
-  String get adminReferralsEmpty;
-  String get adminReferrer;
-  String get adminInvited;
-  String get adminCode;
-  String get adminApprove;
-  String get adminReject;
-  String get adminReasonHint;
-  String get adminConfirmRejectTitle;
-  String get adminConfirmRejectBody;
-  String get adminCancel;
-  String get adminConfirm;
-  String get adminDecisionDone;
-  String get adminDecisionFailed;
-  String get adminTotalReferrers;
-  String get adminCoinsCredited;
-  String get adminLedgerEmpty;
-  String get adminTypeFilter;
-  String get adminApplyFilter;
-  String adminPageOf(Object page);
-  String get adminPrev;
-  String get adminNext;
-  String get adminRefresh;
-  String get adminUnknownUser;
-  String get watchAdTitle;
-  String get watchAdSubtitle;
-  String get watchAdButton;
-  String get watchAdNote;
-  String get watchAdTile;
-  String get watchAdRewardLine;
-  String get pleaseWait;
-  String rewardEarned(Object coins);
-  String get rewardsSection;
-  String get adSkipped;
-  String get adLoadFailed;
-  String get unityNotReady;
-  String get tasksTitle;
-  String onboardingTitle(Object coins);
-  String get onboardingSubtitle;
-  String get onboardingProfile;
-  String get onboardingReferral;
-  String onboardingComplete(Object coins);
-  String onboardingProgress(Object done, Object total);
-  String get referralMilestoneTitle;
-  String referralMilestoneNext(Object remaining, Object bonus);
-  String referralMilestoneReached(Object coins);
-  String get helpSupport;
-  String get helpSupportName;
 }

@@ -10,7 +10,130 @@ class AppLocalizationsUr extends AppLocalizations {
   AppLocalizationsUr([String locale = 'ur']) : super(locale);
 
   @override
+  String get about => 'ہمارے بارے میں';
+
+  @override
   String get accountNumber => 'اکاؤنٹ نمبر / آئی بین';
+
+  @override
+  String get adLimitReached =>
+      'آج کے اشتہارات کی حد مکمل ہو گئی (10 روزانہ)۔ کل دوبارہ کوشش کریں۔';
+
+  @override
+  String get adLoadFailed => 'اشتہار لوڈ نہیں ہو سکا۔ دوبارہ کوشش کریں۔';
+
+  @override
+  String get adSkipped =>
+      'اشتہار چھوڑ دیا — کوئی کوئنز نہیں ملے۔ کمانے کے لیے مکمل اشتہار دیکھیں۔';
+
+  @override
+  String adsLeftToday(Object count) {
+    return 'آج $count اشتہارات باقی ہیں';
+  }
+
+  @override
+  String get adminAccessRequired =>
+      'ایڈمن رسائی درکار ہے۔ یہ پینل دیکھنے کے لیے ایڈمن اکاؤنٹ سے سائن ان کریں۔';
+
+  @override
+  String get adminApplyFilter => 'لگائیں';
+
+  @override
+  String get adminApprove => 'منظور کریں';
+
+  @override
+  String get adminCancel => 'منسوخ کریں';
+
+  @override
+  String get adminCode => 'کوڈ';
+
+  @override
+  String get adminCoinsCredited => 'دیے گئے کوائنز';
+
+  @override
+  String get adminConfirm => 'تصدیق کریں';
+
+  @override
+  String get adminConfirmRejectBody =>
+      'کیا یہ ریفرل مسترد کرنا ہے؟ بلانے والے کو انعام نہیں ملے گا۔';
+
+  @override
+  String get adminConfirmRejectTitle => 'ریفرل مسترد کریں؟';
+
+  @override
+  String get adminDecisionDone => 'فیصلہ محفوظ ہو گیا۔';
+
+  @override
+  String get adminDecisionFailed => 'فیصلہ محفوظ نہیں ہو سکا۔';
+
+  @override
+  String get adminInvited => 'مدعو';
+
+  @override
+  String get adminLedgerEmpty => 'لیجر میں کوئی اندراج نہیں۔';
+
+  @override
+  String get adminLoadFailed => 'ایڈمن ڈیٹا لوڈ نہیں ہو سکا۔';
+
+  @override
+  String get adminLoggedInAs => 'لاگ ان بطور:';
+
+  @override
+  String get adminNavLabel => 'ایڈمن';
+
+  @override
+  String get adminNext => 'اگلا';
+
+  @override
+  String get adminNotAdminHint =>
+      'یہ اکاؤنٹ ایڈمن نہیں ہے — ایڈمن ای میل سے لاگ ان کریں۔';
+
+  @override
+  String adminPageOf(Object page) {
+    return 'صفحہ $page';
+  }
+
+  @override
+  String get adminPrev => 'پچھلا';
+
+  @override
+  String get adminReasonHint => 'وجہ (اختیاری)';
+
+  @override
+  String get adminReferralsEmpty => 'اس حیثیت میں کوئی ریفرل نہیں۔';
+
+  @override
+  String get adminReferrer => 'ریفر کرنے والا';
+
+  @override
+  String get adminRefresh => 'تازہ کریں';
+
+  @override
+  String get adminReject => 'مسترد کریں';
+
+  @override
+  String get adminStatusAll => 'تمام';
+
+  @override
+  String get adminTabLedger => 'لیجر';
+
+  @override
+  String get adminTabReferrals => 'ریفرلز';
+
+  @override
+  String get adminTabStats => 'شماریات';
+
+  @override
+  String get adminTitle => 'ایڈمن پینل';
+
+  @override
+  String get adminTotalReferrers => 'کل ریفر کرنے والے';
+
+  @override
+  String get adminTypeFilter => 'قسم کا فلٹر (اختیاری)';
+
+  @override
+  String get adminUnknownUser => 'نامعلوم صارف';
 
   @override
   String get amountPkr => 'رقم (روپے، مکمل رقم)';
@@ -19,13 +142,57 @@ class AppLocalizationsUr extends AppLocalizations {
   String get appTitle => 'ٹی جے ارن';
 
   @override
-  String get backToLogin => 'لاگ ان پر واپس جائیں';
+  String get appUpToDate => 'آپ کا ایپ اپ ٹو ڈیٹ ہے';
+
+  @override
+  String get backToLogin => 'ری سیٹ لنک بھیجیں';
 
   @override
   String get balance => 'بیلنس';
 
   @override
   String get balanceLoadFailed => 'بیلنس لوڈ نہیں ہو سکا۔';
+
+  @override
+  String balanceRsApprox(Object value) {
+    return '≈ $value روپے';
+  }
+
+  @override
+  String get bonusClaimFailed => 'بونس حاصل نہیں ہو سکا۔';
+
+  @override
+  String get bonusClaimed => 'بونس مل گیا!';
+
+  @override
+  String get checkForUpdate => 'اپ ڈیٹ چیک کریں';
+
+  @override
+  String get checkinAlready => 'آج کا چیک اِن ہو چکا ہے — کل دوبارہ آئیں!';
+
+  @override
+  String get checkinButton => 'ڈیلی چیک اِن';
+
+  @override
+  String get checkinChecking => 'چیک اِن ہو رہا ہے…';
+
+  @override
+  String checkinDone(Object coins) {
+    return 'ڈیلی چیک اِن: +$coins کوئنز!';
+  }
+
+  @override
+  String get checkinDoneNoCoins => 'چیک اِن ہو گیا!';
+
+  @override
+  String get checkinFailed => 'چیک اِن ناکام رہا۔ دوبارہ کوشش کریں۔';
+
+  @override
+  String get claimAll => 'سب حاصل کریں';
+
+  @override
+  String get claimTooSoon =>
+      'بہت جلدی کلیم کر رہے ہیں — تھوڑا رک کر دوبارہ کوشش کریں۔';
 
   @override
   String get coins => 'کوائنز';
@@ -41,9 +208,10 @@ class AppLocalizationsUr extends AppLocalizations {
   String get displayName => 'نام';
 
   @override
-  String get downloading => 'اپ ڈیٹ ڈاؤن لوڈ ہو رہا ہے…';
-  @override
   String get downloadStalled => 'ڈاؤن لوڈ رک گیا ہے — اپنا انٹرنیٹ چیک کریں';
+
+  @override
+  String get downloading => 'اپ ڈیٹ ڈاؤن لوڈ ہو رہا ہے…';
 
   @override
   String get email => 'ای میل';
@@ -55,7 +223,7 @@ class AppLocalizationsUr extends AppLocalizations {
   String get errAmountExceedsBalance => 'رقم آپ کے بیلنس سے زیادہ ہے۔';
 
   @override
-  String get errAmountMin => 'کم از کم رقم 200 روپے (20,000 کوائنز) ہے۔';
+  String get errAmountMin => 'کم از کم رقم 100 روپے (10,000 کوائنز) ہے۔';
 
   @override
   String get errAmountPositive => 'صفر سے زیادہ رقم درج کریں۔';
@@ -67,16 +235,37 @@ class AppLocalizationsUr extends AppLocalizations {
   String get errTooManyPending => 'آپ کی پہلے سے 2 درخواستیں زیر التواء ہیں۔';
 
   @override
-  String get forgotPassword => 'پاسورڈ بھول گئے؟';
+  String get forgotPassword => 'ری سیٹ لنک بھیجیں';
 
   @override
-  String get forgotPasswordHint => 'اپنا ای میل درج کریں — ہم آپ کو پاسورڈ ری سیٹ کرنے کا لنک بھیجیں گے۔';
+  String get forgotPasswordHint => 'ری سیٹ لنک بھیجیں';
 
   @override
-  String get forgotPasswordSent => 'ری سیٹ لنک آپ کے ای میل پر بھیج دیا گیا ہے۔ اپنا ان باکس چیک کریں۔';
+  String get forgotPasswordSent => 'ری سیٹ لنک بھیجیں';
 
   @override
-  String get forgotPasswordTitle => 'پاسورڈ ری سیٹ کریں';
+  String get forgotPasswordTitle => 'ری سیٹ لنک بھیجیں';
+
+  @override
+  String get gamesLoadFailed =>
+      'پلے اینڈ ارن لوڈ نہیں ہو سکا۔ اپنا کنکشن چیک کریں اور دوبارہ کوشش کریں۔';
+
+  @override
+  String get gamesLoading => 'پلے اینڈ ارن لوڈ ہو رہا ہے…';
+
+  @override
+  String get gamesNote =>
+      'آفر مکمل ہونے کے بعد کوئنز سرور سے آپ کے بیلنس میں شامل ہو جائیں گے۔';
+
+  @override
+  String get gamesSubtitle => 'سروے اور آفرز مکمل کریں اور کوئنز کمائیں';
+
+  @override
+  String get gamesTitle => 'پلے اینڈ ارن';
+
+  @override
+  String get gamesUnavailable =>
+      'پلے اینڈ ارن ابھی دستیاب نہیں ہے۔ بعد میں دوبارہ کوشش کریں۔';
 
   @override
   String get genericError => 'کچھ غلط ہو گیا۔ دوبارہ کوشش کریں۔';
@@ -94,6 +283,12 @@ class AppLocalizationsUr extends AppLocalizations {
   String get haveAccount => 'پہلے سے اکاؤنٹ ہے؟ لاگ ان کریں';
 
   @override
+  String get helpSupport => 'مدد اور سپورٹ';
+
+  @override
+  String get helpSupportName => 'Jaani Bhatti — 03090808180';
+
+  @override
   String get historyEmpty => 'ابھی کوئی لین دین نہیں ہے۔';
 
   @override
@@ -104,7 +299,7 @@ class AppLocalizationsUr extends AppLocalizations {
       'سیٹنگز میں انسٹال کی اجازت دیں، پھر دوبارہ کوشش کریں۔';
 
   @override
-  String get invalidEmail => 'براہ کرم درست ای میل درج کریں۔';
+  String get invalidEmail => 'ری سیٹ لنک بھیجیں';
 
   @override
   String get language => 'زبان';
@@ -122,7 +317,21 @@ class AppLocalizationsUr extends AppLocalizations {
   String get logout => 'لاگ آؤٹ';
 
   @override
+  String get modelNoticeBody =>
+      'Coins ab sirf articles parhne se milen ge — aap ka purana balance mehfooz hai.';
+
+  @override
+  String get modelNoticeOk => 'ٹھیک ہے';
+
+  @override
+  String get modelNoticeTitle => 'کوئنز اب کیسے ملیں گے';
+
+  @override
   String get noAccount => 'اکاؤنٹ نہیں ہے؟ رجسٹر کریں';
+
+  @override
+  String get noInternetForUpdate =>
+      'انٹرنیٹ کنکشن نہیں ہے — چیک کرنے کے لیے انٹرنیٹ آن کریں';
 
   @override
   String get offersEmpty =>
@@ -132,10 +341,40 @@ class AppLocalizationsUr extends AppLocalizations {
   String get offersTitle => 'انعامات اور آفرز';
 
   @override
+  String onboardingComplete(Object coins) {
+    return 'سب مکمل! +$coins کوئنز بونس!';
+  }
+
+  @override
+  String get onboardingProfile => 'اپنا ڈسپلے نام سیٹ کریں';
+
+  @override
+  String onboardingProgress(Object done, Object total) {
+    return '$done/$total مکمل';
+  }
+
+  @override
+  String get onboardingReferral => 'اپنا ریفرل لنک شیئر کریں';
+
+  @override
+  String get onboardingSubtitle => 'ویلکم بونس کے لیے یہ کام مکمل کریں';
+
+  @override
+  String onboardingTitle(Object coins) {
+    return 'شروع کریں - $coins بونس کمائیں!';
+  }
+
+  @override
   String get password => 'پاس ورڈ';
 
   @override
+  String get pendingBonuses => 'زیر التواء بونس';
+
+  @override
   String get pendingWithdrawals => 'آپ کی درخواستیں';
+
+  @override
+  String get pleaseWait => 'براہ کرم انتظار کریں…';
 
   @override
   String get quickActions => 'فوری اقدامات';
@@ -153,6 +392,129 @@ class AppLocalizationsUr extends AppLocalizations {
   String get railJazzcash => 'جاز کیش';
 
   @override
+  String get referApplied => 'ریفرل محفوظ ہو گیا!';
+
+  @override
+  String get referApplyButton => 'کوڈ لگائیں';
+
+  @override
+  String get referApplyHint => 'جو کوڈ آپ کو ملا ہے وہ درج کریں';
+
+  @override
+  String get referApplyTitle => 'ریفرل کوڈ ہے؟';
+
+  @override
+  String get referApproved => 'منظور شدہ';
+
+  @override
+  String get referCopied => 'کلپ بورڈ میں کاپی ہو گیا';
+
+  @override
+  String get referCopy => 'کاپی کریں';
+
+  @override
+  String get referErrDuplicate => 'آپ کا ریفرر پہلے سے درج ہے۔';
+
+  @override
+  String get referErrInvalid => 'یہ کوڈ درست نہیں ہے۔';
+
+  @override
+  String get referErrRate =>
+      'بہت زیادہ کوششیں۔ براہ کرم بعد میں دوبارہ کوشش کریں۔';
+
+  @override
+  String get referErrSelf => 'آپ اپنا کوڈ استعمال نہیں کر سکتے۔';
+
+  @override
+  String get referHistoryEmpty =>
+      'ابھی کوئی ریفرل نہیں۔ شروع کرنے کے لیے اپنا لنک شیئر کریں۔';
+
+  @override
+  String get referHistoryTitle => 'ریفرل ہسٹری';
+
+  @override
+  String get referHow1 => 'اپنا کوڈ یا لنک دوستوں سے شیئر کریں۔';
+
+  @override
+  String get referHow2 =>
+      'وہ آپ کے لنک سے اکاؤنٹ بناتے ہیں۔ ایک شخص، ایک اکاؤنٹ۔';
+
+  @override
+  String get referHow3 => 'وہ آپ کے کوڈ سے رجسٹر کرتے ہیں۔';
+
+  @override
+  String get referHow4 => '200 کوائنز فوراً آپ کے wallet میں آ جاتے ہیں۔';
+
+  @override
+  String get referHowTitle => 'طریقہ کار';
+
+  @override
+  String get referInvitedYou => 'آپ کو مدعو کیا';
+
+  @override
+  String get referLoadFailed => 'ریفرل معلومات لوڈ نہیں ہو سکیں۔';
+
+  @override
+  String get referPending => 'زیر التواء';
+
+  @override
+  String get referRewardNote =>
+      'ہر ریفرل پر 200 کوائنز (2 روپے) ملتے ہیں — مدعو شخص کے آپ کے کوڈ سے رجسٹر ہوتے ہی فوراً آپ کے wallet میں آ جاتے ہیں۔ انعام کوائنز کی صورت میں ہوتا ہے، نقد نہیں۔';
+
+  @override
+  String get referShare => 'شیئر کریں';
+
+  @override
+  String get referShareText =>
+      'میرے ریفرل لنک سے TJ Earn جوائن کریں اور کوائنز کمائیں:';
+
+  @override
+  String get referStatusApproved => 'منظور شدہ';
+
+  @override
+  String get referStatusEligible => 'اہل';
+
+  @override
+  String get referStatusPending => 'زیر التواء';
+
+  @override
+  String get referStatusRejected => 'مسترد';
+
+  @override
+  String get referSubtitle => 'دوستوں کو بلائیں، کوائنز کمائیں';
+
+  @override
+  String get referTab => 'ریفر';
+
+  @override
+  String get referTitle => 'ریفر اینڈ ارن';
+
+  @override
+  String get referTotal => 'کل دعوتیں';
+
+  @override
+  String get referYouInvited => 'آپ نے مدعو کیا';
+
+  @override
+  String get referYourCode => 'آپ کا ریفرل کوڈ';
+
+  @override
+  String get referYourLink => 'آپ کا ریفرل لنک';
+
+  @override
+  String referralMilestoneNext(Object bonus, Object remaining) {
+    return '+$bonus کوئنز بونس کے لیے $remaining اور!';
+  }
+
+  @override
+  String referralMilestoneReached(Object coins) {
+    return 'سنگ میل حاصل! +$coins کوئنز!';
+  }
+
+  @override
+  String get referralMilestoneTitle => 'ریفرل سنگ میل';
+
+  @override
   String get register => 'رجسٹر';
 
   @override
@@ -160,6 +522,17 @@ class AppLocalizationsUr extends AppLocalizations {
 
   @override
   String get registerFailed => 'رجسٹریشن ناکام ہوئی۔ کوئی اور ای میل آزمائیں۔';
+
+  @override
+  String get retry => 'دوبارہ کوشش کریں';
+
+  @override
+  String rewardEarned(Object coins) {
+    return 'آپ نے $coins کوئنز حاصل کیے!';
+  }
+
+  @override
+  String get rewardsSection => 'انعامات';
 
   @override
   String get sendResetLink => 'ری سیٹ لنک بھیجیں';
@@ -186,6 +559,9 @@ class AppLocalizationsUr extends AppLocalizations {
   String get submitWithdrawal => 'درخواست جمع کریں';
 
   @override
+  String get tasksTitle => 'میرے ٹاسکس';
+
+  @override
   String get typeCredit => 'کریڈٹ';
 
   @override
@@ -198,7 +574,15 @@ class AppLocalizationsUr extends AppLocalizations {
   String get typeWithdrawal => 'رقم نکلوانا';
 
   @override
+  String get unityNotReady =>
+      'اشتہارات ابھی تیار نہیں ہیں۔ تھوڑی دیر بعد دوبارہ کوشش کریں۔';
+
+  @override
   String get updateAvailable => 'اپ ڈیٹ دستیاب ہے';
+
+  @override
+  String get updateInfoNotFound =>
+      'اپ ڈیٹ معلومات نہیں ملیں — بعد میں کوشش کریں';
 
   @override
   String get updateLater => 'بعد میں';
@@ -213,6 +597,26 @@ class AppLocalizationsUr extends AppLocalizations {
   String get walletTitle => 'والیٹ';
 
   @override
+  String get watchAdButton => 'اشتہار دیکھیں';
+
+  @override
+  String get watchAdNote =>
+      'ہر مکمل اشتہار پر ایک انعام۔ روزانہ حد لاگو ہوتی ہے۔';
+
+  @override
+  String get watchAdRewardLine => 'ہر مکمل ویڈیو پر 10 کوئنز ملیں گے';
+
+  @override
+  String get watchAdSubtitle =>
+      'مختصر ویڈیو اشتہار دیکھیں اور کوئنز حاصل کریں۔ مکمل اشتہار دیکھنے پر کوئنز ملتے ہیں۔';
+
+  @override
+  String get watchAdTile => 'ایڈ دیکھیں\n10 کوئنز پائیں';
+
+  @override
+  String get watchAdTitle => 'اشتہار دیکھیں اور کوئنز کمائیں';
+
+  @override
   String get withdrawTitle => 'رقم نکالیں';
 
   @override
@@ -222,277 +626,13 @@ class AppLocalizationsUr extends AppLocalizations {
   String get withdrawalSubmitted => 'درخواست جمع ہو گئی ہے۔';
 
   @override
-  String get referTab => 'ریفر';
+  String get adminGroupByUser => 'صارف کے حساب سے گروپ کریں';
 
   @override
-  String get referTitle => 'ریفر اینڈ ارن';
+  String get adminTransactions => 'لین دین';
 
   @override
-  String get referSubtitle => 'دوستوں کو بلائیں، کوائنز کمائیں';
-
-  @override
-  String get referYourCode => 'آپ کا ریفرل کوڈ';
-
-  @override
-  String get referYourLink => 'آپ کا ریفرل لنک';
-
-  @override
-  String get referCopy => 'کاپی کریں';
-
-  @override
-  String get referCopied => 'کلپ بورڈ میں کاپی ہو گیا';
-
-  @override
-  String get referShare => 'شیئر کریں';
-
-  @override
-  String get referShareText => 'میرے ریفرل لنک سے TJ Earn جوائن کریں اور کوائنز کمائیں:';
-
-  @override
-  String get referTotal => 'کل دعوتیں';
-
-  @override
-  String get referPending => 'زیر التواء';
-
-  @override
-  String get referApproved => 'منظور شدہ';
-
-  @override
-  String get referHowTitle => 'طریقہ کار';
-
-  @override
-  String get referHow1 => 'اپنا کوڈ یا لنک دوستوں سے شیئر کریں۔';
-
-  @override
-  String get referHow2 => 'وہ آپ کے لنک سے اکاؤنٹ بناتے ہیں۔ ایک شخص، ایک اکاؤنٹ۔';
-
-  @override
-  String get referHow3 => 'ان کے اکاؤنٹ کی تصدیق مکمل ہونے پر ریفرل اہل ہو جاتا ہے۔';
-
-  @override
-  String get referHow4 => 'منظور شدہ ریفرل انعام کوائنز کی صورت میں آپ کے wallet میں آتا ہے۔';
-
-  @override
-  String get referRewardNote => 'منظور شدہ ہر ریفرل پر 1,000 کوائنز ملتے ہیں (10 روپے) — صرف مدعو کیے گئے اکاؤنٹ کی تصدیق مکمل ہونے اور ایڈمن کی منظوری کے بعد۔ انعام کوائنز کی صورت میں ہوتا ہے، نقد نہیں۔';
-
-  @override
-  String get referHistoryTitle => 'ریفرل ہسٹری';
-
-  @override
-  String get referHistoryEmpty => 'ابھی کوئی ریفرل نہیں۔ شروع کرنے کے لیے اپنا لنک شیئر کریں۔';
-
-  @override
-  String get referLoadFailed => 'ریفرل معلومات لوڈ نہیں ہو سکیں۔';
-
-  @override
-  String get referStatusPending => 'زیر التواء';
-
-  @override
-  String get referStatusEligible => 'اہل';
-
-  @override
-  String get referStatusApproved => 'منظور شدہ';
-
-  @override
-  String get referStatusRejected => 'مسترد';
-
-  @override
-  String get referYouInvited => 'آپ نے مدعو کیا';
-
-  @override
-  String get referInvitedYou => 'آپ کو مدعو کیا';
-
-  @override
-  String get referApplyTitle => 'ریفرل کوڈ ہے؟';
-
-  @override
-  String get referApplyHint => 'جو کوڈ آپ کو ملا ہے وہ درج کریں';
-
-  @override
-  String get referApplyButton => 'کوڈ لگائیں';
-
-  @override
-  String get referApplied => 'ریفرل محفوظ ہو گیا!';
-
-  @override
-  String get referErrSelf => 'آپ اپنا کوڈ استعمال نہیں کر سکتے۔';
-
-  @override
-  String get referErrDuplicate => 'آپ کا ریفرر پہلے سے درج ہے۔';
-
-  @override
-  String get referErrInvalid => 'یہ کوڈ درست نہیں ہے۔';
-
-  @override
-  String get referErrRate => 'بہت زیادہ کوششیں۔ براہ کرم بعد میں دوبارہ کوشش کریں۔';
-
-  @override
-  String get adminNavLabel => 'ایڈمن';
-
-  @override
-  String get adminLoggedInAs => 'لاگ ان بطور:';
-
-  @override
-  String get adminNotAdminHint => 'یہ اکاؤنٹ ایڈمن نہیں ہے — ایڈمن ای میل سے لاگ ان کریں۔';
-
-  @override
-  String balanceRsApprox(Object value) => '≈ $value روپے';
-
-  @override
-  String get adminTitle => 'ایڈمن پینل';
-
-  @override
-  String get adminAccessRequired => 'ایڈمن رسائی درکار ہے۔ یہ پینل دیکھنے کے لیے ایڈمن اکاؤنٹ سے سائن ان کریں۔';
-
-  @override
-  String get adminTabReferrals => 'ریفرلز';
-
-  @override
-  String get adminTabStats => 'شماریات';
-
-  @override
-  String get adminTabLedger => 'لیجر';
-
-  @override
-  String get adminStatusAll => 'تمام';
-
-  @override
-  String get adminLoadFailed => 'ایڈمن ڈیٹا لوڈ نہیں ہو سکا۔';
-
-  @override
-  String get adminReferralsEmpty => 'اس حیثیت میں کوئی ریفرل نہیں۔';
-
-  @override
-  String get adminReferrer => 'ریفر کرنے والا';
-
-  @override
-  String get adminInvited => 'مدعو';
-
-  @override
-  String get adminCode => 'کوڈ';
-
-  @override
-  String get adminApprove => 'منظور کریں';
-
-  @override
-  String get adminReject => 'مسترد کریں';
-
-  @override
-  String get adminReasonHint => 'وجہ (اختیاری)';
-
-  @override
-  String get adminConfirmRejectTitle => 'ریفرل مسترد کریں؟';
-
-  @override
-  String get adminConfirmRejectBody => 'کیا یہ ریفرل مسترد کرنا ہے؟ بلانے والے کو انعام نہیں ملے گا۔';
-
-  @override
-  String get adminCancel => 'منسوخ کریں';
-
-  @override
-  String get adminConfirm => 'تصدیق کریں';
-
-  @override
-  String get adminDecisionDone => 'فیصلہ محفوظ ہو گیا۔';
-
-  @override
-  String get adminDecisionFailed => 'فیصلہ محفوظ نہیں ہو سکا۔';
-
-  @override
-  String get adminTotalReferrers => 'کل ریفر کرنے والے';
-
-  @override
-  String get adminCoinsCredited => 'دیے گئے کوائنز';
-
-  @override
-  String get adminLedgerEmpty => 'لیجر میں کوئی اندراج نہیں۔';
-
-  @override
-  String get adminTypeFilter => 'قسم کا فلٹر (اختیاری)';
-
-  @override
-  String get adminApplyFilter => 'لگائیں';
-
-  @override
-  String adminPageOf(Object page) => 'صفحہ $page';
-
-  @override
-  String get adminPrev => 'پچھلا';
-
-  @override
-  String get adminNext => 'اگلا';
-
-  @override
-  String get adminRefresh => 'تازہ کریں';
-
-  @override
-  String get adminUnknownUser => 'نامعلوم صارف';
-
-  @override
-  String get watchAdTitle => 'اشتہار دیکھیں اور کوئنز کمائیں';
-
-  @override
-  String get watchAdSubtitle => 'مختصر ویڈیو اشتہار دیکھیں اور کوئنز حاصل کریں۔ مکمل اشتہار دیکھنے پر کوئنز ملتے ہیں۔';
-
-  @override
-  String get watchAdButton => 'اشتہار دیکھیں';
-
-  @override
-  String get watchAdNote => 'ہر مکمل اشتہار پر ایک انعام۔ روزانہ حد لاگو ہوتی ہے۔';
-
-  @override
-  String get watchAdTile => 'ایڈ دیکھیں\n10 کوئنز پائیں';
-
-  @override
-  String get watchAdRewardLine => 'ہر مکمل ویڈیو پر 10 کوئنز ملیں گے';
-
-  @override
-  String get pleaseWait => 'براہ کرم انتظار کریں…';
-
-  @override
-  String rewardEarned(Object coins) => 'آپ نے $coins کوئنز حاصل کیے!';
-  String get rewardsSection => 'انعامات';
-
-  @override
-  String get adSkipped => 'اشتہار چھوڑ دیا — کوئی کوئنز نہیں ملے۔ کمانے کے لیے مکمل اشتہار دیکھیں۔';
-
-  @override
-  String get adLoadFailed => 'اشتہار لوڈ نہیں ہو سکا۔ دوبارہ کوشش کریں۔';
-
-  @override
-  String get unityNotReady => 'اشتہارات ابھی تیار نہیں ہیں۔ تھوڑی دیر بعد دوبارہ کوشش کریں۔';
-  String get tasksTitle => 'میرے ٹاسکس';
-
-  @override
-  String onboardingTitle(Object coins) => 'شروع کریں - $coins بونس کمائیں!';
-
-  @override
-  String get onboardingSubtitle => 'ویلکم بونس کے لیے یہ کام مکمل کریں';
-
-  @override
-  String get onboardingProfile => 'اپنا ڈسپلے نام سیٹ کریں';
-
-  @override
-  String get onboardingReferral => 'اپنا ریفرل لنک شیئر کریں';
-
-  @override
-  String onboardingComplete(Object coins) => 'سب مکمل! +$coins کوئنز بونس!';
-
-  @override
-  String onboardingProgress(Object done, Object total) => '$done/$total مکمل';
-
-  @override
-  String get referralMilestoneTitle => 'ریفرل سنگ میل';
-
-  @override
-  String referralMilestoneNext(Object bonus, Object remaining) => '+$bonus کوئنز بونس کے لیے $remaining اور!';
-
-  @override
-  String referralMilestoneReached(Object coins) => 'سنگ میل حاصل! +$coins کوئنز!';
-
-  @override
-  String get helpSupport => 'مدد اور سپورٹ';
-
-  @override
-  String get helpSupportName => 'Jaani Bhatti — 03090808180';
+  String referAutoApplied(String code) {
+    return 'ریفرل $code لگا دیا گیا! 🎉';
+  }
 }

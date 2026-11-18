@@ -203,96 +203,6 @@ class SupabaseService {  static SupabaseClient get client => Supabase.instance.c
     }
   }
 
-  /// Claims coins for a completed Unity rewarded video ad.
-  ///
-  /// The `claim-unity-reward` Edge Function verifies the caller's JWT,
-  /// enforces the daily cap and the 30-second anti-spam gap, then credits
-  /// coins server-side. Returns the coins credited and remaining claims
-  /// for today. Rewards are coins (virtual currency), never cash.
-  ///
-  /// RETRY (Jaani, 8 Nov 2026 — users watched full ads but got zero
-  /// coins): one network stall, 500, or 429 `too_soon` used to lose the
-  /// whole watch. The server call is idempotent (a replay inside the
-  /// same 30s bucket returns `duplicate:true` with coins), so retrying
-  /// is safe: up to 3 attempts, short backoff for transient failures,
-  /// and a 31s wait plus one retry for `too_soon`. `cap_reached` is
-  /// never retried. A 200 body carrying `error` is treated as failure.
-  static Future<Map<String, dynamic>> claimUnityReward() async {
-    const List<int> backoffSeconds = <int>[2, 5];
-    for (int attempt = 0; attempt < 3; attempt++) {
-      try {
-        final FunctionResponse res = await _invoke('claim-unity-reward');
-        final Object? data = res.data;
-        if (res.status == 200) {
-          if (data is Map && data['error'] is String) {
-            throw Exception('claim-unity-reward failed: ${data['error']}');
-          }
-          if (data is Map<String, dynamic>) return data;
-          throw Exception(
-              'claim-unity-reward returned an unexpected response');
-        }
-        final String message = data is Map && data['error'] is String
-            ? data['error'] as String
-            : 'failed';
-        if (message == 'cap_reached') {
-          throw Exception('claim-unity-reward failed: cap_reached');
-        }
-        if (message == 'too_soon' && attempt == 0) {
-          // Server enforces a 30s gap between claims: wait it out once,
-          // then retry. A later failure falls through to the backoff.
-          await Future<void>.delayed(const Duration(seconds: 31));
-          continue;
-        }
-        if (attempt < 2) {
-          await Future<void>.delayed(
-              Duration(seconds: backoffSeconds[attempt]));
-          continue;
-        }
-        throw Exception('claim-unity-reward failed: $message');
-      } on TimeoutException {
-        if (attempt < 2) {
-          await Future<void>.delayed(
-              Duration(seconds: backoffSeconds[attempt]));
-          continue;
-        }
-        rethrow;
-      }
-    }
-    throw Exception('claim-unity-reward failed: failed');
-  }
-
-  /// How many Unity rewarded ads the user can still claim today (0-10).
-  ///
-  /// Counts today's `unity_reward` rows in the own ledger (server cap is
-  /// 10/day, counted on the PKT day). Returns null when the count cannot
-  /// be determined — the caller then hides the counter instead of
-  /// showing a wrong number.
-  static Future<int?> getUnityAdsRemainingToday() async {
-    try {
-      final List<Map<String, dynamic>> rows = await getLedger();
-      final DateTime pktNow =
-          DateTime.now().toUtc().add(const Duration(hours: 5));
-      int used = 0;
-      for (final Map<String, dynamic> row in rows) {
-        if (row['type'] != 'unity_reward') continue;
-        final Object? createdAt = row['created_at'];
-        if (createdAt is! String) continue;
-        final DateTime? at = DateTime.tryParse(createdAt);
-        if (at == null) continue;
-        final DateTime pktAt = at.toUtc().add(const Duration(hours: 5));
-        if (pktAt.year == pktNow.year &&
-            pktAt.month == pktNow.month &&
-            pktAt.day == pktNow.day) {
-          used++;
-        }
-      }
-      final int remaining = 10 - used;
-      return remaining < 0 ? 0 : remaining;
-    } catch (_) {
-      return null;
-    }
-  }
-
   /// Claims the daily check-in streak.
   ///
   /// The `claim-streak` Edge Function tracks consecutive days and pays
@@ -314,12 +224,15 @@ class SupabaseService {  static SupabaseClient get client => Supabase.instance.c
   }
 
 
-  /// Claims the daily check-in with streak progression (Jaani, 3 Nov 2026).
+  /// Claims the daily check-in (compliant model, v1.0.25).
   ///
-  /// The `claim-checkin` Edge Function awards 10 coins on Day 1, +5 for each
-  /// consecutive day (15, 20, 25...), capped at 100/day. A missed day resets
-  /// the streak to Day 1. One claim per PKT day; 409 means already checked in
-  /// today (returned as data, not thrown, so the UI can render the state).
+  /// The `claim-checkin` Edge Function awards the daily check-in coins
+  /// (app_config `daily_checkin_coins`, approved 10/day) and tracks the
+  /// streak. One claim per PKT day; 409 means already checked in today
+  /// (returned as data, not thrown, so the UI can render the state).
+  /// Returns the server's payload: `coins`, `already`, streak fields.
+  /// The UI displays whatever `coins` the server returns — the server
+  /// amount is authoritative.
   static Future<Map<String, dynamic>> claimCheckin() async {
     final res = await _invoke('claim-checkin');
     final data = res.data;
@@ -332,6 +245,36 @@ class SupabaseService {  static SupabaseClient get client => Supabase.instance.c
     }
     if (data is Map<String, dynamic>) return data;
     throw Exception('claim-checkin returned an unexpected response');
+  }
+
+  /// Play & Earn wall URL (RapidoReach, v1.0.25).
+  ///
+  /// The signed wall URL comes from the `rapidoreach-wall-url` Edge
+  /// Function, which builds the RapidoReach UID server-side from the
+  /// caller's Supabase UUID (the App Key signs the UID, so it never
+  /// enters the app). The app opens the returned URL in a WebView;
+  /// completions credit through the `rapidoreach-postback` Edge
+  /// Function into the server ledger — nothing here grants coins.
+  /// Throws on any failure (function not deployed / not configured /
+  /// offline); callers render their fail-soft state.
+  static Future<String> getRapidoreachWallUrl() async {
+    final res = await _invoke(
+      'rapidoreach-wall-url',
+      method: HttpMethod.get,
+    );
+    if (res.status != 200) {
+      final data = res.data;
+      final message =
+          data is Map && data['error'] is String ? data['error'] : 'failed';
+      throw Exception('rapidoreach-wall-url failed: $message');
+    }
+    final data = res.data;
+    if (data is Map &&
+        data['wall_url'] is String &&
+        (data['wall_url'] as String).isNotEmpty) {
+      return data['wall_url'] as String;
+    }
+    throw Exception('rapidoreach-wall-url returned no URL');
   }
 
   /// Gets the user's current streak info (read-only).
@@ -535,15 +478,29 @@ class SupabaseService {  static SupabaseClient get client => Supabase.instance.c
     throw Exception('$name returned an unexpected response');
   }
 
+  /// Display fallback for the daily reading cap (compliant model,
+  /// v1.0.25: 200 unique articles/day). The SERVER is authoritative —
+  /// `submit-reading` enforces app_config `read_article_daily_cap`.
+  /// This constant is only used when the server does not report a
+  /// remaining count, so the UI never shows a stale 30/day or 5/day.
+  static const int _readDailyCap = 200;
+
   /// Article-reading reward (Jaani, 3 Nov 2026): website <-> app integration.
   ///
-  /// Calls the SAME Edge Functions the website /earn/ uses, so the balance
-  /// and the 5/day cap are shared between web and app. The server enforces
-  /// the cap and the minimum read time — the client only renders state.
+  /// Compliant model (v1.0.25): coins come ONLY from reading (5 coins per
+  /// UNIQUE article, cap 200/day — server-enforced in `submit-reading`
+  /// via app_config `read_article_coins` / `read_article_daily_cap`),
+  /// daily check-in and referrals. There is no rewarded-ad coin path
+  /// anymore: `claim-unity-reward` and the Unity rewarded placement are
+  /// removed (Unity ticket #00945584 — coins-to-cash via rewarded ads is
+  /// prohibited). The server enforces the cap and the minimum read time
+  /// (app_config `read_min_dwell_seconds`, 30s) — the client only
+  /// renders state and mirrors the same 30s countdown.
   ///
   /// [getReadingRemaining] returns how many reading claims are left today
-  /// (0-5). [submitReading] claims +10 coins for [articleId]; throws on
-  /// 429 (cap reached) or other failures.
+  /// (0-200). [submitReading] claims +5 coins for [articleId]; throws on
+  /// 429 (cap reached) or other failures. Re-reading an article the user
+  /// already claimed pays 0 — the server credits one article once per user.
 
   static Future<int> getReadingRemaining() async {
     final res = await _invoke('get-reading');
@@ -559,11 +516,11 @@ class SupabaseService {  static SupabaseClient get client => Supabase.instance.c
       // Fallback: derive from claimed count if provided.
       if (data['claimed_today'] is int) {
         final claimed = data['claimed_today'] as int;
-        final remaining = 5 - claimed;
-        return remaining < 0 ? 0 : (remaining > 5 ? 5 : remaining);
+        final remaining = _readDailyCap - claimed;
+        return remaining < 0 ? 0 : (remaining > _readDailyCap ? _readDailyCap : remaining);
       }
     }
-    return 5; // Unknown — let the claim attempt surface the real state.
+    return _readDailyCap; // Unknown — let the claim attempt surface the real state.
   }
 
   static Future<void> submitReading(String articleId) async {

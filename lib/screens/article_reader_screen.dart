@@ -11,6 +11,12 @@ import '../services/supabase_service.dart';
 /// "Claim +5 Coins" which calls the shared `submit-reading` Edge Function.
 /// Returns true if a reward was claimed (so the list can refresh).
 ///
+/// Compliant model (v1.0.25): 5 coins per UNIQUE article, cap 200/day
+/// (server-enforced via app_config). Before claiming, the reader also
+/// checks the user actually scrolled through the article (best-effort:
+/// a page that cannot scroll, or a JS failure, passes — the server's
+/// 30s dwell check remains the hard anti-farm gate).
+///
 /// Bilingual (Jaani, 6 Nov 2026): the site has no URL lang param — its
 /// language lives only in localStorage ('ntv-lang') and its own global
 /// setLang() switches the chrome live (verified in dist/index.html). A
@@ -84,11 +90,40 @@ class _ArticleReaderScreenState extends State<ArticleReaderScreen> {
     super.dispose();
   }
 
+  /// Best-effort scroll check: true when the user scrolled through the
+  /// article, or when the page is not meaningfully scrollable, or when
+  /// the check itself cannot run (fail open — the server's 30s dwell
+  /// check is the hard gate; this only stops zero-scroll claims).
+  Future<bool> _hasScrolled() async {
+    try {
+      final Object result =
+          await _controller.runJavaScriptReturningResult(
+        '(function(){var d=document.documentElement;'
+        'var max=Math.max(d.scrollHeight,'
+        'document.body?document.body.scrollHeight:0)-window.innerHeight;'
+        'if(max<=80) return true;'
+        'return (window.scrollY||d.scrollTop||0)>80;})()',
+      );
+      if (result is bool) return result;
+      return true;
+    } catch (_) {
+      return true;
+    }
+  }
+
   Future<void> _claim() async {
     setState(() {
       _claiming = true;
       _claimError = null;
     });
+    if (!await _hasScrolled()) {
+      if (!mounted) return;
+      setState(() {
+        _claimError = 'Please scroll through the article before claiming.';
+        _claiming = false;
+      });
+      return;
+    }
     try {
       await SupabaseService.submitReading(widget.articleId);
       if (!mounted) return;
@@ -114,7 +149,7 @@ class _ArticleReaderScreenState extends State<ArticleReaderScreen> {
       final msg = e.toString();
       setState(() {
         _claimError = msg.contains('429') || msg.contains('cap')
-            ? 'Daily reading limit reached (30/day).'
+            ? 'Daily reading limit reached (200/day).'
             : 'Could not claim. Try again.';
         _claiming = false;
       });

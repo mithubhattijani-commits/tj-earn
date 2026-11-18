@@ -7,14 +7,19 @@
 /// Coins per whole rupee. 1 coin = Rs 0.01, so 100 coins = Rs 1.
 const int coinsPerPkr = 100;
 
-/// Minimum withdrawal: 20,000 coins = Rs 200.
-const int minWithdrawalCoins = 20000;
+/// Minimum withdrawal: 10,000 coins = Rs 100.
+///
+/// Changed 11 Nov 2026 (Jaani: "Ye 100 ropay kardo") — the deployed
+/// `request-withdrawal` Edge Function and app_config
+/// `min_withdrawal_coins` were set to 10000 then; this constant is kept
+/// in sync so the app's instant validation matches the server.
+const int minWithdrawalCoins = 10000;
 
 /// Maximum number of pending withdrawal requests a user may hold at once.
 const int maxPendingWithdrawals = 2;
 
 /// Formats a coin amount as rupees, using integer math only (no floats).
-/// 20000 -> "Rs 200.00", 20050 -> "Rs 200.50", 5 -> "Rs 0.05".
+/// 10000 -> "Rs 100.00", 10050 -> "Rs 100.50", 5 -> "Rs 0.05".
 String formatCoinsAsPkr(int coins) {
   final negative = coins < 0;
   final abs = coins.abs();
@@ -23,7 +28,7 @@ String formatCoinsAsPkr(int coins) {
   return '${negative ? '-' : ''}Rs $rupees.${paisa.toString().padLeft(2, '0')}';
 }
 
-/// Converts whole rupees to coins. 200 -> 20000.
+/// Converts whole rupees to coins. 100 -> 10000.
 int pkrToCoins(int wholePkr) => wholePkr * coinsPerPkr;
 
 /// Builds the referral share link for a code. Pure function, unit-tested.
