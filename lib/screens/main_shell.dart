@@ -11,6 +11,7 @@ import '../services/supabase_service.dart';
 import '../services/updater_service.dart';
 import '../services/unity_ads_service.dart';
 import 'admin_screen.dart';
+import 'arrow_puzzle_home_screen.dart';
 import 'articles_tab.dart';
 import 'games_screen.dart';
 import 'referral_tab.dart';
@@ -568,59 +569,113 @@ class _HomeTabState extends State<_HomeTab> {
             // RAPIDOREACH_APP_ID / RAPIDOREACH_APP_KEY set. Listens to
             // the config notifier so the tile appears without a restart
             // once the operator flips the switch.
+            //
+            // Arrow Puzzle (v1.0.27): the in-app game, shown when the
+            // server enables it (`games.arrow_puzzle.enabled`).
+            // Both tiles listen to the same config notifier.
             ValueListenableBuilder<RemoteConfig>(
               valueListenable: RemoteConfigService.instance.notifier,
               builder: (context, config, _) {
-                if (!config.rapidoreach.enabled) {
+                if (!config.rapidoreach.enabled &&
+                    !config.arrowPuzzle.enabled) {
                   return const SizedBox.shrink();
                 }
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const SizedBox(height: 16),
-                    Card(
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(12),
-                        onTap: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => const GamesScreen(),
-                            ),
-                          );
-                        },
-                        child: Padding(
-                          padding: const EdgeInsets.all(20),
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.sports_esports,
-                                size: 40,
-                                color:
-                                    Theme.of(context).colorScheme.primary,
+                    if (config.rapidoreach.enabled) ...[
+                      const SizedBox(height: 16),
+                      Card(
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(12),
+                          onTap: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => const GamesScreen(),
                               ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      t.gamesTitle,
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .titleMedium,
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(t.gamesSubtitle),
-                                  ],
+                            );
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.all(20),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.sports_esports,
+                                  size: 40,
+                                  color:
+                                      Theme.of(context).colorScheme.primary,
                                 ),
-                              ),
-                              const Icon(Icons.chevron_right),
-                            ],
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        t.gamesTitle,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .titleMedium,
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(t.gamesSubtitle),
+                                    ],
+                                  ),
+                                ),
+                                const Icon(Icons.chevron_right),
+                              ],
+                            ),
                           ),
                         ),
                       ),
-                    ),
+                    ],
+                    if (config.arrowPuzzle.enabled) ...[
+                      const SizedBox(height: 16),
+                      Card(
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(12),
+                          onTap: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) =>
+                                    const ArrowPuzzleHomeScreen(),
+                              ),
+                            );
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.all(20),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.grid_4x4,
+                                  size: 40,
+                                  color:
+                                      Theme.of(context).colorScheme.primary,
+                                ),
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        t.arrowPuzzleTitle,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .titleMedium,
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(t.arrowPuzzleSubtitle),
+                                    ],
+                                  ),
+                                ),
+                                const Icon(Icons.chevron_right),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
                 );
               },

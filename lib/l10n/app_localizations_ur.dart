@@ -635,4 +635,120 @@ class AppLocalizationsUr extends AppLocalizations {
   String referAutoApplied(String code) {
     return 'ریفرل $code لگا دیا گیا! 🎉';
   }
+
+  @override
+  String get arrowPuzzleAdCoins => 'ایڈ کوئنز';
+
+  @override
+  String arrowPuzzleAdCoinsBalance(Object coins) {
+    return 'ایڈ کوئنز: $coins';
+  }
+
+  @override
+  String arrowPuzzleAdCoinsEarned(Object coins) {
+    return '+$coins ایڈ کوئنز';
+  }
+
+  @override
+  String get arrowPuzzleAdDailyCapReached =>
+      'ایڈ کوئنز کی روزانہ حد مکمل ہو گئی';
+
+  @override
+  String get arrowPuzzleAdNotAvailable =>
+      'انعامات کے لیے اشتہار ابھی دستیاب نہیں';
+
+  @override
+  String get arrowPuzzleAlreadyClaimed =>
+      'پہلے ہی مل چکے ہیں — دوبارہ مزے کے لیے کھیلیں';
+
+  @override
+  String arrowPuzzleBuyHintCoins(Object coins) {
+    return 'ہنٹ — $coins کوئنز';
+  }
+
+  @override
+  String arrowPuzzleBuyLifeCoins(Object coins) {
+    return 'اضافی دل — $coins کوئنز';
+  }
+
+  @override
+  String arrowPuzzleBuyPowerCoins(Object coins) {
+    return 'پاور — $coins کوئنز';
+  }
+
+  @override
+  String arrowPuzzleBuyWithAdCoins(Object coins) {
+    return '$coins ایڈ کوئنز استعمال کریں';
+  }
+
+  @override
+  String arrowPuzzleCoinsEarned(Object coins) {
+    return '+$coins کوئنز';
+  }
+
+  @override
+  String get arrowPuzzleDailyChallenge => 'روزانہ چیلنج';
+
+  @override
+  String get arrowPuzzleDailyDone => 'آج مکمل ہو گیا';
+
+  @override
+  String arrowPuzzleFreeHintsLeft(Object count) {
+    return '$count مفت ہنٹ باقی';
+  }
+
+  @override
+  String get arrowPuzzleGameOver => 'دل ختم ہو گئے!';
+
+  @override
+  String get arrowPuzzleHint => 'ہنٹ';
+
+  @override
+  String arrowPuzzleLevel(Object level) {
+    return 'لیول $level';
+  }
+
+  @override
+  String get arrowPuzzleLevelComplete => 'لیول مکمل!';
+
+  @override
+  String get arrowPuzzleLevelLocked => 'بند ہے';
+
+  @override
+  String get arrowPuzzleMoves => 'چالیں';
+
+  @override
+  String get arrowPuzzleNewGame => 'نیا گیم';
+
+  @override
+  String get arrowPuzzleNextLevel => 'اگلا لیول';
+
+  @override
+  String get arrowPuzzleNotEnoughCoins => 'کوئنز کم ہیں';
+
+  @override
+  String get arrowPuzzlePlay => 'کھیلیں';
+
+  @override
+  String get arrowPuzzlePower => 'پاور';
+
+  @override
+  String get arrowPuzzlePowerActive => 'پاور آن ہے — کسی تیر پر ٹیپ کریں';
+
+  @override
+  String get arrowPuzzleReplay => 'دوبارہ کھیلیں';
+
+  @override
+  String get arrowPuzzleSubtitle => 'تیر صاف کریں، کوئنز کمائیں';
+
+  @override
+  String get arrowPuzzleTitle => 'ایرو پزل';
+
+  @override
+  String get arrowPuzzleWatchAd => 'اشتہار دیکھیں';
+
+  @override
+  String arrowPuzzleWatchAdGetCoins(Object coins) {
+    return 'اشتہار دیکھیں — $coins ایڈ کوئنز حاصل کریں';
+  }
 }

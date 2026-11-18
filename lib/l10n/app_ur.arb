@@ -205,5 +205,36 @@
         "example": "SKD9FTHE"
       }
     }
-  }
+  },
+  "arrowPuzzleAdCoins": "ایڈ کوئنز",
+  "arrowPuzzleAdCoinsBalance": "ایڈ کوئنز: {coins}",
+  "arrowPuzzleAdCoinsEarned": "+{coins} ایڈ کوئنز",
+  "arrowPuzzleAdDailyCapReached": "ایڈ کوئنز کی روزانہ حد مکمل ہو گئی",
+  "arrowPuzzleAdNotAvailable": "انعامات کے لیے اشتہار ابھی دستیاب نہیں",
+  "arrowPuzzleAlreadyClaimed": "پہلے ہی مل چکے ہیں — دوبارہ مزے کے لیے کھیلیں",
+  "arrowPuzzleBuyHintCoins": "ہنٹ — {coins} کوئنز",
+  "arrowPuzzleBuyLifeCoins": "اضافی دل — {coins} کوئنز",
+  "arrowPuzzleBuyPowerCoins": "پاور — {coins} کوئنز",
+  "arrowPuzzleBuyWithAdCoins": "{coins} ایڈ کوئنز استعمال کریں",
+  "arrowPuzzleCoinsEarned": "+{coins} کوئنز",
+  "arrowPuzzleDailyChallenge": "روزانہ چیلنج",
+  "arrowPuzzleDailyDone": "آج مکمل ہو گیا",
+  "arrowPuzzleFreeHintsLeft": "{count} مفت ہنٹ باقی",
+  "arrowPuzzleGameOver": "دل ختم ہو گئے!",
+  "arrowPuzzleHint": "ہنٹ",
+  "arrowPuzzleLevel": "لیول {level}",
+  "arrowPuzzleLevelComplete": "لیول مکمل!",
+  "arrowPuzzleLevelLocked": "بند ہے",
+  "arrowPuzzleMoves": "چالیں",
+  "arrowPuzzleNewGame": "نیا گیم",
+  "arrowPuzzleNextLevel": "اگلا لیول",
+  "arrowPuzzleNotEnoughCoins": "کوئنز کم ہیں",
+  "arrowPuzzlePlay": "کھیلیں",
+  "arrowPuzzlePower": "پاور",
+  "arrowPuzzlePowerActive": "پاور آن ہے — کسی تیر پر ٹیپ کریں",
+  "arrowPuzzleReplay": "دوبارہ کھیلیں",
+  "arrowPuzzleSubtitle": "تیر صاف کریں، کوئنز کمائیں",
+  "arrowPuzzleTitle": "ایرو پزل",
+  "arrowPuzzleWatchAd": "اشتہار دیکھیں",
+  "arrowPuzzleWatchAdGetCoins": "اشتہار دیکھیں — {coins} ایڈ کوئنز حاصل کریں"
 }
