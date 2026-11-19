@@ -133,10 +133,9 @@ class UnityBridge {
   }
 
   /// `QuitToMenu` — `{}`. Sent when Flutter leaves the game
-  /// (back button / close). NOTE (Unity gap, 19 Nov 2026): nothing
-  /// in the Unity project subscribes to `OnQuitToMenuRequested`
-  /// yet, so this currently has no effect inside Unity — Flutter
-  /// still pops the screen itself.
+  /// (back button / close). Unity's bootstrap subscribes to
+  /// `OnQuitToMenuRequested` (fixed 19 Nov 2026 — it loads the
+  /// menu scene); Flutter still pops the screen itself.
   static void sendQuitToMenu() {
     send('QuitToMenu', {});
   }
@@ -145,13 +144,24 @@ class UnityBridge {
   /// (garage / "need Ad Coins?"). Unity shows the ad and reports
   /// `rewarded_completed` / `rewarded_failed` with the same
   /// `requestId`, which Flutter uses as the idempotency key for
-  /// the server claim. NOTE (Unity gap, 19 Nov 2026): nothing in
-  /// the Unity project subscribes to `OnRewardedAdRequested` yet,
-  /// so a sent request currently produces no ad and no event —
-  /// callers must time out (see the play screen) instead of
-  /// waiting forever.
+  /// the server claim. Unity's `UnityAdsManager` subscribes to
+  /// `OnRewardedAdRequested` (fixed 19 Nov 2026); the 30 s
+  /// timeout in the play screen stays as a safety net.
   static void sendShowRewardedAd(String requestId) {
     send('ShowRewardedAd', {'requestId': requestId});
+  }
+
+  /// `PowerupGranted` — `{powerupId}`. Sent after Flutter spends
+  /// Ad Coins server-side for a power-up (`spend-race-item`,
+  /// item `race_powerup_<id>`) — on a fresh spend AND on an
+  /// idempotent replay (the item WAS granted, so Unity still
+  /// applies the effect). NEVER sent on a failed spend (402 /
+  /// any error): nothing was granted, so Unity must apply
+  /// nothing. Unity applies the effect in the race (nitro: full
+  /// meter; shield: 20 s traffic pass-through) or holds it as a
+  /// pending grant for the next race if no race is active.
+  static void sendPowerupGranted(String powerupId) {
+    send('PowerupGranted', {'powerupId': powerupId});
   }
 }
 
@@ -164,12 +174,14 @@ enum UnityIncomingKind {
   rewardedFailed,
   interstitialShown,
   carLockedTapped,
+  powerupPurchaseRequested,
   unknown,
 }
 
 /// One parsed Unity→Flutter message. Exactly one of [raceResult]
 /// / [event] is non-null for known types; [carLocked] /
-/// [rewarded] carry the parsed `detail` payloads.
+/// [rewarded] / [powerupPurchase] carry the parsed `detail`
+/// payloads.
 class UnityIncoming {
   const UnityIncoming({
     required this.kind,
@@ -178,6 +190,7 @@ class UnityIncoming {
     this.carLocked,
     this.rewarded,
     this.raceStarted,
+    this.powerupPurchase,
   });
 
   final UnityIncomingKind kind;
@@ -186,6 +199,7 @@ class UnityIncoming {
   final CarLockedDetail? carLocked;
   final RewardedDetail? rewarded;
   final RaceStartedDetail? raceStarted;
+  final PowerupPurchaseDetail? powerupPurchase;
 
   /// Parses any string from `EmbedUnity.onMessageFromUnity`.
   /// Never throws; unknown / malformed input parses as
@@ -230,6 +244,12 @@ class UnityIncoming {
           kind: UnityIncomingKind.carLockedTapped,
           event: event,
           carLocked: CarLockedDetail.tryParse(event.detail),
+        );
+      case 'powerup_purchase_requested':
+        return UnityIncoming(
+          kind: UnityIncomingKind.powerupPurchaseRequested,
+          event: event,
+          powerupPurchase: PowerupPurchaseDetail.tryParse(event.detail),
         );
       default:
         return UnityIncoming(kind: UnityIncomingKind.unknown, event: event);

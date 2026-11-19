@@ -224,5 +224,9 @@
   "tjRacingBoth": "دونوں",
   "tjRacingRecalibrate": "ٹلٹ دوبارہ کیلیبریٹ کریں",
   "tjRacingUnlockPrompt": "{car} کو {coins} ایڈ کوئنز میں ان لاک کریں؟ آپ کے پاس {have} ہیں۔",
+  "tjRacingPowerupPrompt": "{item} کو {coins} ایڈ کوئنز میں خریدیں؟ آپ کے پاس {have} ہیں۔",
+  "tjRacingPowerupBuy": "خریدیں — {coins} ایڈ کوئنز",
+  "tjRacingPowerupBought": "پاور اپ خرید لیا!",
+  "tjRacingPowerupAlreadyOwned": "پہلے سے موجود ہے — کوئی کوئن نہیں کٹا",
   "tjRacingDone": "ہو گیا"
 }

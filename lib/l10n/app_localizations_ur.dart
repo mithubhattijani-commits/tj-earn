@@ -707,5 +707,22 @@ class AppLocalizationsUr extends AppLocalizations {
   }
 
   @override
+  String tjRacingPowerupPrompt(Object coins, Object have, Object item) {
+    return '$item کو $coins ایڈ کوئنز میں خریدیں؟ آپ کے پاس $have ہیں۔';
+  }
+
+  @override
+  String tjRacingPowerupBuy(Object coins) {
+    return 'خریدیں — $coins ایڈ کوئنز';
+  }
+
+  @override
+  String get tjRacingPowerupBought => 'پاور اپ خرید لیا!';
+
+  @override
+  String get tjRacingPowerupAlreadyOwned =>
+      'پہلے سے موجود ہے — کوئی کوئن نہیں کٹا';
+
+  @override
   String get tjRacingDone => 'ہو گیا';
 }

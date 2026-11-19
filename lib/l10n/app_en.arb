@@ -224,5 +224,9 @@
   "tjRacingBoth": "Both",
   "tjRacingRecalibrate": "Re-calibrate tilt",
   "tjRacingUnlockPrompt": "Unlock {car} for {coins} Ad Coins? You have {have}.",
+  "tjRacingPowerupPrompt": "Buy {item} for {coins} Ad Coins? You have {have}.",
+  "tjRacingPowerupBuy": "Buy — {coins} Ad Coins",
+  "tjRacingPowerupBought": "Power-up bought!",
+  "tjRacingPowerupAlreadyOwned": "Already owned — no coins charged",
   "tjRacingDone": "Done"
 }

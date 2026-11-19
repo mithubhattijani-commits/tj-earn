@@ -254,3 +254,39 @@ class CarLockedDetail {
     }
   }
 }
+
+/// `powerup_purchase_requested` detail (RaceHUD.cs pause panel):
+/// `{"powerupId":"nitro_boost","price":10}`. Flutter shows its
+/// own purchase dialog and spends Ad Coins server-side via
+/// `spend-race-item` (item `race_powerup_<id>`). Unity never
+/// spends anything itself — but after a successful spend Flutter
+/// sends `PowerupGranted` (`{powerupId}`) and Unity applies the
+/// effect in the race (nitro: full meter; shield: 20 s traffic
+/// pass-through) or holds it for the next race.
+class PowerupPurchaseDetail {
+  const PowerupPurchaseDetail({required this.powerupId, required this.price});
+
+  final String powerupId;
+  final int price;
+
+  static PowerupPurchaseDetail? tryParse(String detail) {
+    try {
+      final decoded = jsonDecode(detail);
+      if (decoded is! Map<String, dynamic>) return null;
+      final powerupId = decoded['powerupId'];
+      final price = decoded['price'];
+      if (powerupId is! String || powerupId.isEmpty) return null;
+      if (price is! num) return null;
+      return PowerupPurchaseDetail(
+        powerupId: powerupId,
+        price: price.toInt(),
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+}
+
+/// Server item id for a power-up spend: `race_powerup_<id>`.
+/// Pure helper so the spend call shape is unit-testable.
+String racePowerupItemId(String powerupId) => 'race_powerup_$powerupId';

@@ -1370,6 +1370,30 @@ abstract class AppLocalizations {
   /// **'Unlock {car} for {coins} Ad Coins? You have {have}.'**
   String tjRacingUnlockPrompt(Object car, Object coins, Object have);
 
+  /// No description provided for @tjRacingPowerupPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Buy {item} for {coins} Ad Coins? You have {have}.'**
+  String tjRacingPowerupPrompt(Object coins, Object have, Object item);
+
+  /// No description provided for @tjRacingPowerupBuy.
+  ///
+  /// In en, this message translates to:
+  /// **'Buy — {coins} Ad Coins'**
+  String tjRacingPowerupBuy(Object coins);
+
+  /// No description provided for @tjRacingPowerupBought.
+  ///
+  /// In en, this message translates to:
+  /// **'Power-up bought!'**
+  String get tjRacingPowerupBought;
+
+  /// No description provided for @tjRacingPowerupAlreadyOwned.
+  ///
+  /// In en, this message translates to:
+  /// **'Already owned — no coins charged'**
+  String get tjRacingPowerupAlreadyOwned;
+
   /// No description provided for @tjRacingDone.
   ///
   /// In en, this message translates to:

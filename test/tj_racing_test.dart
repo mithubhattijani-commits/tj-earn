@@ -365,6 +365,39 @@ void main() {
       expect(detail?.price, 200);
     });
 
+    test('powerup_purchase_requested detail carries powerupId + price', () {
+      final event = UnityEvent.tryParse(
+        '{"type":"powerup_purchase_requested","placement":"",'
+        '"race_id":"","detail":'
+        '"{\\"powerupId\\":\\"nitro_boost\\",\\"price\\":10}"}',
+      );
+      expect(event, isNotNull);
+      final detail = PowerupPurchaseDetail.tryParse(event!.detail);
+      expect(detail?.powerupId, 'nitro_boost');
+      expect(detail?.price, 10);
+      // Rejects garbage — a malformed detail must never open a
+      // purchase dialog.
+      expect(PowerupPurchaseDetail.tryParse('not json'), isNull);
+      expect(PowerupPurchaseDetail.tryParse('{"price":10}'), isNull);
+      expect(
+        PowerupPurchaseDetail.tryParse(
+          '{"powerupId":"","price":10}',
+        ),
+        isNull,
+      );
+      expect(
+        PowerupPurchaseDetail.tryParse(
+          '{"powerupId":"shield","price":"15"}',
+        ),
+        isNull,
+      );
+    });
+
+    test('race_powerup item id shape for spend-race-item', () {
+      expect(racePowerupItemId('nitro_boost'), 'race_powerup_nitro_boost');
+      expect(racePowerupItemId('shield'), 'race_powerup_shield');
+    });
+
     test('race_result is not a UnityEvent; garbage is not either', () {
       expect(
         UnityEvent.tryParse(
@@ -407,6 +440,13 @@ void main() {
         ).kind,
         UnityIncomingKind.carLockedTapped,
       );
+      final powerup = UnityIncoming.parse(
+        '{"type":"powerup_purchase_requested","detail":'
+        '"{\\"powerupId\\":\\"shield\\",\\"price\\":15}"}',
+      );
+      expect(powerup.kind, UnityIncomingKind.powerupPurchaseRequested);
+      expect(powerup.powerupPurchase?.powerupId, 'shield');
+      expect(powerup.powerupPurchase?.price, 15);
       expect(
         UnityIncoming.parse('garbage').kind,
         UnityIncomingKind.unknown,
@@ -442,6 +482,30 @@ void main() {
         isTrue,
       );
     });
+
+    test('PowerupGranted envelope carries powerupId as a JSON string', () {
+      for (final id in ['nitro_boost', 'shield']) {
+        final raw = UnityBridge.envelope('PowerupGranted', {'powerupId': id});
+        final decoded = jsonDecode(raw) as Map<String, dynamic>;
+        expect(decoded['method'], 'PowerupGranted');
+        // Unity's JsonUtility cannot parse a nested raw object —
+        // the payload MUST be a string (same as every method).
+        expect(decoded['payload'], isA<String>());
+        final payload =
+            jsonDecode(decoded['payload'] as String) as Map<String, dynamic>;
+        expect(payload['powerupId'], id);
+      }
+    });
+
+    // Placement guarantee (verified by reading
+    // `_showPowerupPurchaseDialog` — the dialog needs the Unity
+    // widget + a server, so there is no widget test for it):
+    // `sendPowerupGranted` is called ONLY inside the try block
+    // after `spendRaceItem` returns. `spendRaceItem` throws on
+    // 402 (not enough Ad Coins), 409 and every other non-200
+    // before the send line, so a failed spend can never grant an
+    // effect in Unity. A fresh spend AND an idempotent replay
+    // both reach the send — either way the item IS granted.
   });
 
   group('AdCoins', () {

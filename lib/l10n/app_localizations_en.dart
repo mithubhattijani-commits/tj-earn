@@ -706,5 +706,21 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String tjRacingPowerupPrompt(Object coins, Object have, Object item) {
+    return 'Buy $item for $coins Ad Coins? You have $have.';
+  }
+
+  @override
+  String tjRacingPowerupBuy(Object coins) {
+    return 'Buy — $coins Ad Coins';
+  }
+
+  @override
+  String get tjRacingPowerupBought => 'Power-up bought!';
+
+  @override
+  String get tjRacingPowerupAlreadyOwned => 'Already owned — no coins charged';
+
+  @override
   String get tjRacingDone => 'Done';
 }

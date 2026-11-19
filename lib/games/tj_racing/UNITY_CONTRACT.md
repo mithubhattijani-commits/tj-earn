@@ -84,6 +84,7 @@ GameObject: **`FlutterBridge`**, method: **`OnFlutterMessage`**.
 | `StartRace` | `{carId, level}` | NOT sent by Flutter in v1 — Unity's own RACE button drives starts (`OnStartRaceRequested` also has no Unity subscriber yet — see gaps). |
 | `QuitToMenu` | `{}` | Back button / close. Flutter pops the screen itself (see gaps). |
 | `ShowRewardedAd` | `{requestId}` | Opt-in rewarded prompt (unlock dialog "Watch Ad"). Unity shows the ad; completion is reported back — Flutter credits afterwards, keyed by `requestId`. |
+| `PowerupGranted` | `{powerupId}` (`"nitro_boost"` \| `"shield"`) | After a SUCCESSFUL server spend for a power-up (`spend-race-item`, item `race_powerup_<id>`) — fresh spend AND idempotent replay (either way the item IS granted). NEVER sent on a failed spend (402 / 409 / other): nothing was granted, so Unity must apply nothing. Unity applies the effect in the race (nitro: full meter via `NitroSystem.AddCharge`; shield: 20 s traffic pass-through) or holds it in `FlutterBridge.PendingPowerups` for the next race if no race is active. |
 
 **SetConfig timing — no ready signal exists.** Unity sends
 nothing when it finishes loading, so Flutter sends the trio
@@ -119,6 +120,7 @@ Unity sends with `SendToFlutter.Send(jsonString)` (from the
 | `rewarded_failed` | `placement`, `detail` (`{"requestId":"...","reason":"..."}`) | Show "ads unavailable, try later". |
 | `interstitial_shown` | `placement`, `detail` `"{}"` | Analytics only (debug log). |
 | `car_locked_tapped` | `detail` (JSON string: `{"carId":"night_falcon","price":200}`) | Player tapped a locked car in Unity's garage — Flutter shows the unlock dialog (Unlock with Ad Coins via `spend-race-item`, or Watch Ad → `ShowRewardedAd`). |
+| `powerup_purchase_requested` | `detail` (JSON string: `{"powerupId":"nitro_boost","price":10}`) | Player tapped a power-up button in Unity's race pause panel — Flutter shows the purchase dialog (Buy with Ad Coins via `spend-race-item`, item `race_powerup_<id>`, or Watch Ad first). On a successful spend Flutter replies with `PowerupGranted` (above); Unity applies the effect or holds it for the next race. |
 
 Any other message is ignored. A `race_result` for a duplicate
 `race_id` or `laps_completed` below the configured laps is
@@ -171,17 +173,41 @@ anything but display + the claim call).
    Fix (Unity): subscribe `UnityAdsManager` to
    `OnRewardedAdRequested`, bootstrap scene loads to the other
    two. Until then, Watch Ad in the unlock dialog cannot pay out.
+   **FIXED 19 Nov 2026 (Unity commit af86b5c)** — all three
+   subscriptions wired; the 30 s timeout stays as a safety net.
 2. **No power-up shop UI in Unity.** `RacingConfig` carries the
    `powerups` list and Flutter's config + `spend-race-item` are
    ready, but no Unity UI offers a power-up purchase. Nothing to
    wire on the Flutter side until Unity adds the trigger.
+   **FIXED 19 Nov 2026 (Unity commit af86b5c)** — pause-panel
+   buttons added (`RaceHUD.BuildPowerUpButtons`), one per
+   configured power-up.
 3. **No car-selected event to Flutter.** MenuUI calls
    `ApplySelectedCar` locally; Flutter's cached selection can go
    stale (harmless: claims use the `car_id` in `race_result`).
 4. **ResultsUI text nit:** "No coins this time — 2nd place or
    better earns coins" is wrong (2nd DOES earn 5). One-line Unity
-   fix ("Win or 2nd place earns coins").
+   fix ("Win or 2nd place earns coins"). **FIXED 19 Nov 2026
+   (Unity commit af86b5c).**
 5. **Unity scripts v1.4.0 vs Dart package 2.0.0** (see Versions).
+   **VERIFIED 19 Nov 2026 (Unity commit af86b5c)** — vendored
+   scripts are byte-identical to upstream v2.0.0; the 1.4.0
+   version number is Unity-side only, no upgrade needed.
+6. **No return message after a power-up purchase (grant loop
+   open).** Unity's pause panel sent `powerup_purchase_requested`
+   fire-and-forget and Flutter spent the Ad Coins server-side but
+   sent nothing back, so the effect was never applied in the
+   race. **FIXED 19 Nov 2026** — `PowerupGranted`
+   (`{powerupId}`, see the Flutter → Unity table) is sent by
+   Flutter only after a successful spend; Unity applies it in
+   `RaceManager.ApplyPowerup` (nitro: full meter; shield: 20 s
+   traffic pass-through) or holds it in
+   `FlutterBridge.PendingPowerups` for the next race. NOTE: no
+   shield mechanic existed anywhere before this fix (only the
+   config def) — the shield effect (player car passes through
+   traffic, layers `RaceLayers.Traffic`/`PlayerCar`) is new code
+   built on the existing traffic colliders, not a pre-existing
+   effect.
 
 ## Open items (not Flutter's to close)
 
@@ -223,5 +249,7 @@ anything but display + the claim call).
    AGP 7.4.2 / NDK r23b / JDK 11 in ITS OWN build.gradle, while
    the Flutter app uses AGP 9.1.0 / JDK 17 — verify the combination
    builds before the v1.0.31 CI run.
-5. **Unity gaps above (§KNOWN UNITY GAPS)** — items 1–2 block the
-   rewarded-ad payout and power-up purchases respectively.
+5. **Unity gaps above (§KNOWN UNITY GAPS)** — items 1, 2, 4, 5
+   and the power-up grant loop (item 6) are all FIXED 19 Nov
+   2026 (Unity commit af86b5c + this fix). Only item 3 (no
+   car-selected event — harmless) remains open.

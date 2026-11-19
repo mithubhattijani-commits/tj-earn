@@ -52,8 +52,11 @@ import '../services/validation.dart'
 /// - Nothing subscribes to `OnStartRaceRequested` /
 ///   `OnQuitToMenuRequested` (Flutter doesn't send `StartRace` in
 ///   v1 — Unity's own RACE button drives starts).
-/// - No power-up shop UI in Unity (config + server spend are
-///   ready; nothing triggers a purchase yet).
+/// - Power-up buttons live in Unity's pause panel (RaceHUD) — a
+///   tap sends `powerup_purchase_requested`; Flutter shows its own
+///   purchase dialog and spends via `spend-race-item`. No return
+///   message to Unity is defined yet, so Unity cannot know the
+///   purchase succeeded (open item in UNITY_CONTRACT.md).
 class TjRacingPlayScreen extends StatefulWidget {
   const TjRacingPlayScreen({
     super.key,
@@ -214,6 +217,10 @@ class _TjRacingPlayScreenState extends State<TjRacingPlayScreen> {
       case UnityIncomingKind.carLockedTapped:
         if (incoming.carLocked != null) {
           _showUnlockDialog(incoming.carLocked!);
+        }
+      case UnityIncomingKind.powerupPurchaseRequested:
+        if (incoming.powerupPurchase != null) {
+          _showPowerupPurchaseDialog(incoming.powerupPurchase!);
         }
       case UnityIncomingKind.unknown:
         break;
@@ -384,6 +391,83 @@ class _TjRacingPlayScreenState extends State<TjRacingPlayScreen> {
             ? t.tjRacingNotEnoughAdCoins
             : t.tjRacingClaimFailed,
       );
+    }
+  }
+
+  /// Power-up purchase (Unity pause panel → `powerup_purchase_requested`).
+  /// Shows Flutter's own dialog and spends Ad Coins ONLY via the
+  /// server (`spend-race-item`, item `race_powerup_<id>` — the
+  /// function generates a fresh idempotency key per call, so a
+  /// retry can never double-charge). The price comes from the
+  /// remote config when the power-up is known, else Unity's detail
+  /// price. On a successful spend (fresh OR idempotent replay —
+  /// either way the item IS granted) Flutter sends
+  /// `PowerupGranted` (`UnityBridge.sendPowerupGranted`) so Unity
+  /// applies the effect in the race (nitro: full meter; shield:
+  /// 20 s traffic pass-through) or holds it for the next race.
+  /// On ANY failed spend (402 / 409 / other) nothing is sent —
+  /// nothing was granted, so Unity must apply nothing.
+  Future<void> _showPowerupPurchaseDialog(
+    PowerupPurchaseDetail detail,
+  ) async {
+    final t = AppLocalizations.of(context)!;
+    final powerup = _config.powerupById(detail.powerupId);
+    final price = powerup?.adCoinsPrice ?? detail.price;
+    final name = powerup?.name ?? detail.powerupId;
+    final have = _player?.adCoins ?? 0;
+    final buy = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(name),
+        content: Text(t.tjRacingPowerupPrompt(name, price, have)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(t.tjRacingWatchAd(_config.adCoins.perRewardedAd)),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text(t.tjRacingPowerupBuy(price)),
+          ),
+        ],
+      ),
+    );
+    if (!mounted) return;
+    if (buy == null) return;
+    if (!buy) {
+      // Watch Ad: earn Ad Coins first, then the player can tap
+      // the power-up again. Nothing is spent here.
+      _requestRewardedAd();
+      return;
+    }
+    try {
+      await SupabaseService.spendRaceItem(
+        item: racePowerupItemId(detail.powerupId),
+        adCoinsPrice: price,
+      );
+      await _refreshBalancesAndSend();
+      if (!mounted) return;
+      // Success (fresh spend OR idempotent replay — the item IS
+      // granted either way): tell Unity to apply the effect now.
+      // Every failure path throws above and never reaches this
+      // line, so a failed spend can never grant an effect.
+      UnityBridge.sendPowerupGranted(detail.powerupId);
+      _snack(t.tjRacingPowerupBought);
+    } catch (e) {
+      if (!mounted) return;
+      final message = e.toString();
+      if (message.contains('not enough')) {
+        // 402: insufficient Ad Coins — nothing was spent.
+        _snack(t.tjRacingNotEnoughAdCoins);
+      } else if (message.contains('already owned')) {
+        // 409: the server refused a second charge — nothing was
+        // spent twice. Refresh so the shown balance is exact.
+        await _refreshBalancesAndSend();
+        if (!mounted) return;
+        _snack(t.tjRacingPowerupAlreadyOwned);
+      } else {
+        _snack(t.tjRacingClaimFailed);
+      }
     }
   }
 
