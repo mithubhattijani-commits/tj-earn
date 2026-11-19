@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -10,18 +12,18 @@ import 'package:tj_earn/services/game_reward_ad_service.dart';
 import 'package:tj_earn/services/remote_config_service.dart';
 
 void main() {
-  group('level generation', () {
+  group('level generation (path model)', () {
     test('levels 1-200 are all solvable by greedy play', () {
       for (var level = 1; level <= 200; level++) {
         final board = generateLevel(level);
         final game = ArrowPuzzleGame(board);
         var guard = 0;
-        while (!game.isWon && guard < 500) {
+        while (!game.isWon && guard < 1000) {
           guard++;
           final hint = game.findHint();
           expect(hint, isNotNull,
               reason: 'level $level deadlocked with '
-                  '${game.arrowsLeft} arrows left');
+                  '${game.arrowsLeft} paths left');
           final result = game.tap(hint!);
           expect(result.kind, TapKind.cleared,
               reason: 'level $level: hint cell was not clear');
@@ -37,13 +39,10 @@ void main() {
       for (final level in [1, 7, 25, 51, 100, 200]) {
         final a = generateLevel(level);
         final b = generateLevel(level);
-        expect(a.size, b.size);
-        expect(a.arrows.length, b.arrows.length);
-        for (final entry in a.arrows.entries) {
-          expect(b.arrows[entry.key], entry.value);
-        }
-        expect(a.stones.length, b.stones.length);
-        expect(a.stones.containsAll(b.stones), isTrue);
+        expect(a.cols, b.cols);
+        expect(a.rows, b.rows);
+        expect(a.pathCount, b.pathCount);
+        expect(a.paths, b.paths);
       }
     });
 
@@ -51,173 +50,312 @@ void main() {
       final date = DateTime(2026, 11, 18);
       final a = generateDailyLevel(date);
       final b = generateDailyLevel(date);
-      expect(a.size, b.size);
-      expect(a.arrows.length, b.arrows.length);
-      for (final entry in a.arrows.entries) {
-        expect(b.arrows[entry.key], entry.value);
-      }
+      expect(a.cols, b.cols);
+      expect(a.rows, b.rows);
+      expect(a.pathCount, b.pathCount);
+      expect(a.paths, b.paths);
     });
 
-    test('board sizes and stones scale with level', () {
-      expect(sizeForLevel(1), 8);
-      expect(sizeForLevel(6), 9);
-      expect(sizeForLevel(16), 10);
-      expect(sizeForLevel(31), 11);
-      expect(sizeForLevel(41), 12);
-      expect(sizeForLevel(51), 15);
-      expect(sizeForLevel(61), 16);
-      expect(sizeForLevel(76), 17);
-      expect(stonesForLevel(1), 0);
-      expect(stonesForLevel(20), 0);
-      expect(stonesForLevel(21), greaterThan(0));
+    test('board sizes scale with level (L51 is the recording 26x50)',
+        () {
+      // Tall rectangle at every level: rows ~ cols / 0.52, the
+      // recording's aspect (~0.52). Level 51 is exactly the
+      // recording's lattice: 26 cols x 50 rows.
+      expect(colsForLevel(1), 10);
+      expect(rowsForLevel(1), 19);
+      expect(colsForLevel(6), 12);
+      expect(rowsForLevel(6), 23);
+      expect(colsForLevel(16), 14);
+      expect(rowsForLevel(16), 27);
+      expect(colsForLevel(31), 17);
+      expect(rowsForLevel(31), 33);
+      expect(colsForLevel(41), 21);
+      expect(rowsForLevel(41), 40);
+      expect(colsForLevel(51), 26);
+      expect(rowsForLevel(51), 50);
+      expect(colsForLevel(61), 28);
+      expect(rowsForLevel(61), 54);
+      expect(colsForLevel(76), 30);
+      expect(rowsForLevel(76), 58);
+      expect(targetPathsForLevel(51), 152);
+      expect(targetPathsForLevel(1), 22);
       expect(difficultyForLevel(1), 'Normal');
       expect(difficultyForLevel(31), 'Hard');
       expect(difficultyForLevel(61), 'Expert');
     });
 
-    test('maze density: level 1 is simpler but still a maze, '
-        'level 51 is dense', () {
+    test('path-cover generation: coverage, segment lengths, L51 = 152',
+        () {
       final l1 = generateLevel(1);
-      expect(l1.size, 8);
-      // A maze, not a sparse grid: at least ~30 arrows on L1.
-      expect(l1.arrowCount, greaterThanOrEqualTo(30));
-      expect(
-        l1.arrowCount / (l1.size * l1.size),
-        greaterThanOrEqualTo(0.45),
-      );
+      expect(l1.cols, 10);
+      expect(l1.rows, 19);
+      // A maze, not a sparse grid: ~22 paths on L1, ~55% of cells
+      // covered by path cells (the coverage varies with the sampled
+      // path lengths, so the floor allows for that variance).
+      expect(l1.pathCount, inInclusiveRange(20, 25));
+      final l1Covered =
+          l1.paths.fold<int>(0, (sum, p) => sum + p.length);
+      expect(l1Covered / (l1.cols * l1.rows), greaterThanOrEqualTo(0.38));
+
       final l51 = generateLevel(51);
-      expect(l51.size, 15);
-      // The user's Level 51 reference shows 152 arrows; ours lands
-      // in the same 150-155 band on a 15x15 board.
-      expect(l51.arrowCount, inInclusiveRange(150, 155));
-      expect(
-        l51.arrowCount / (l51.size * l51.size),
-        greaterThanOrEqualTo(0.65),
-      );
+      expect(l51.cols, 26);
+      expect(l51.rows, 50);
+      // Level 51 matches the recording: 152 paths (the recording's
+      // moves counter reads 152), ~55% coverage.
+      expect(l51.pathCount, inInclusiveRange(145, 160));
+      final l51Covered =
+          l51.paths.fold<int>(0, (sum, p) => sum + p.length);
+      expect(l51Covered / (l51.cols * l51.rows),
+          inInclusiveRange(0.40, 0.65));
+      // Segment lengths follow the recording's measured distribution:
+      // median ~4 cells, mean ~4.6, most paths 1-10 cells long.
+      final lens = l51.paths.map((p) => p.length).toList()..sort();
+      final median = lens[lens.length ~/ 2];
+      expect(median, inInclusiveRange(3, 5));
+      final mean = lens.reduce((a, b) => a + b) / lens.length;
+      expect(mean, inInclusiveRange(3.5, 6.0));
+      expect(lens.first, greaterThanOrEqualTo(1));
+      expect(lens.last, lessThanOrEqualTo(20));
     });
 
     test('every level 1-200 stays dense (no fallback boards)', () {
-      // The old generator stalled on larger boards and fell back to
-      // a 2-arrow board for some levels; the layer-ordered generator
-      // must never do that.
+      // The generator must reach (or nearly reach) its target path
+      // count at every level — never a tiny fallback board.
       for (var level = 1; level <= 200; level++) {
         final board = generateLevel(level);
+        final target = targetPathsForLevel(level);
         expect(
-          board.arrowCount,
-          greaterThanOrEqualTo(30),
-          reason: 'level $level has only ${board.arrowCount} arrows',
+          board.pathCount,
+          greaterThanOrEqualTo((target * 0.95).round()),
+          reason: 'level $level has only ${board.pathCount} paths '
+              '(target $target)',
         );
+        final covered =
+            board.paths.fold<int>(0, (sum, p) => sum + p.length);
         expect(
-          board.arrowCount / (board.size * board.size),
-          greaterThanOrEqualTo(0.55),
-          reason: 'level $level fill is too sparse',
+          covered / (board.cols * board.rows),
+          greaterThanOrEqualTo(0.35),
+          reason: 'level $level coverage is too sparse',
         );
       }
+    });
+
+    test('paths are vertex-disjoint and well-formed', () {
+      for (final level in [1, 25, 51, 100, 200]) {
+        final board = generateLevel(level);
+        final seen = <int>{};
+        for (final path in board.paths) {
+          // No cell belongs to two paths.
+          for (final cell in path.cells) {
+            expect(seen.add(cell), isTrue,
+                reason: 'level $level: cell $cell in two paths');
+          }
+          // Consecutive cells are orthogonally adjacent.
+          for (var i = 1; i < path.cells.length; i++) {
+            final a = path.cells[i - 1];
+            final b = path.cells[i];
+            final ar = a ~/ board.cols;
+            final ac = a % board.cols;
+            final br = b ~/ board.cols;
+            final bc = b % board.cols;
+            expect((ar - br).abs() + (ac - bc).abs(), 1,
+                reason: 'level $level: path cells $a -> $b not adjacent');
+          }
+          // The head direction points away from the body (or is a
+          // free choice for a 1-cell path).
+          if (path.length > 1) {
+            final head = path.headCell;
+            final prev = path.cells[path.cells.length - 2];
+            final hr = head ~/ board.cols;
+            final hc = head % board.cols;
+            final pr = prev ~/ board.cols;
+            final pc = prev % board.cols;
+            expect(hr - pr, path.headDirection.dRow);
+            expect(hc - pc, path.headDirection.dCol);
+          }
+        }
+        // cellToPath agrees with the paths.
+        expect(board.cellToPath.length, seen.length);
+      }
+    });
+
+    test('rectangular board geometry: index math and exit rays', () {
+      // 4x2 board: path A = cells (0,0)-(0,1), head at (0,1) facing
+      // right (ray 2, 3, clear); path B = cell (1,1) facing up
+      // (ray 1 — which holds A's head, so B is blocked).
+      final board = ArrowBoard(
+        cols: 4,
+        rows: 2,
+        paths: [
+          const ArrowPath([0, 1], Direction.right),
+          const ArrowPath([5], Direction.up),
+        ],
+      );
+      expect(board.index(1, 1), 5);
+      expect(board.index(0, 3), 3);
+      expect(board.exitRay(0), <int>[2, 3]);
+      expect(board.isClear(0), isTrue);
+      expect(board.exitRay(1), <int>[1]);
+      expect(board.isClear(1), isFalse,
+          reason: 'A\'s head sits on B\'s ray');
+      expect(board.pathIdForCell(0), 0);
+      expect(board.pathIdForCell(5), 1);
+      expect(board.pathIdForCell(2), isNull);
     });
   });
 
-  group('maze path geometry', () {
-    test('path starts on a non-exit edge and ends on the exit edge, '
-        'with axis-aligned segments inside the unit square', () {
-      for (final dir in Direction.values) {
-        for (var cell = 0; cell < 60; cell++) {
-          final pts = mazePathPoints(
-            cellIndex: cell,
-            direction: dir,
-            boardSize: 8,
-          );
-          expect(pts.length, greaterThanOrEqualTo(2),
-              reason: 'cell $cell $dir: path too short');
-          // Last point sits on the exit edge.
-          final last = pts.last;
-          switch (dir) {
-            case Direction.right:
-              expect(last.x, closeTo(1.0, 1e-9));
-            case Direction.down:
-              expect(last.y, closeTo(1.0, 1e-9));
-            case Direction.left:
-              expect(last.x, closeTo(0.0, 1e-9));
-            case Direction.up:
-              expect(last.y, closeTo(0.0, 1e-9));
-          }
-          // First point is NOT on the exit edge (it enters the cell).
-          final first = pts.first;
-          switch (dir) {
-            case Direction.right:
-              expect(first.x, lessThan(0.999));
-            case Direction.down:
-              expect(first.y, lessThan(0.999));
-            case Direction.left:
-              expect(first.x, greaterThan(0.001));
-            case Direction.up:
-              expect(first.y, greaterThan(0.001));
-          }
-          // Every point inside the unit square, every segment
-          // axis-aligned (maze lines only run horizontal/vertical).
-          for (final p in pts) {
-            expect(p.x, inInclusiveRange(0.0, 1.0));
-            expect(p.y, inInclusiveRange(0.0, 1.0));
-          }
-          for (var i = 1; i < pts.length; i++) {
-            final a = pts[i - 1];
-            final b = pts[i];
-            expect(
-              (a.x - b.x).abs() < 1e-9 || (a.y - b.y).abs() < 1e-9,
-              isTrue,
-              reason: 'cell $cell $dir: segment $a -> $b is diagonal',
-            );
-          }
-        }
+  group('path geometry', () {
+    test('path polyline runs through cell centres and ends on the '
+        'exit edge, with axis-aligned segments', () {
+      // Path (1,1)-(1,2) on a 4-col board, head facing right.
+      final pts = pathPolylinePoints(
+        pathCells: [5, 6],
+        headDirection: Direction.right,
+        cols: 4,
+      );
+      // Centres (1.5,1.5), (2.5,1.5), then the tip on the exit
+      // (right) edge of cell (1,2): x == 3.
+      expect(pts.length, 3);
+      expect(pts.last.x, closeTo(3.0, 1e-9));
+      expect(pts.last.y, closeTo(1.5, 1e-9));
+      for (var i = 1; i < pts.length; i++) {
+        final a = pts[i - 1];
+        final b = pts[i];
+        expect(
+          (a.x - b.x).abs() < 1e-9 || (a.y - b.y).abs() < 1e-9,
+          isTrue,
+          reason: 'segment $a -> $b is diagonal',
+        );
       }
     });
 
-    test('maze path is deterministic per cell', () {
-      for (final dir in Direction.values) {
-        final a = mazePathPoints(
-          cellIndex: 7,
-          direction: dir,
-          boardSize: 8,
-        );
-        final b = mazePathPoints(
-          cellIndex: 7,
-          direction: dir,
-          boardSize: 8,
-        );
-        expect(a, b);
+    test('path polyline is deterministic per path', () {
+      final a = pathPolylinePoints(
+        pathCells: [5, 6, 10],
+        headDirection: Direction.down,
+        cols: 4,
+      );
+      final b = pathPolylinePoints(
+        pathCells: [5, 6, 10],
+        headDirection: Direction.down,
+        cols: 4,
+      );
+      expect(a, b);
+    });
+
+    test('cell segments: tail starts at the centre, middle runs '
+        'edge to edge, head ends at the centre', () {
+      // Straight path (0,0)-(0,1)-(0,2) on a 4-col board.
+      const cells = [0, 1, 2];
+      // Tail cell (0,0): starts at the centre, exits right.
+      final tail = cellSegmentPoints(
+        pathCells: cells,
+        cellIndex: 0,
+        cols: 4,
+      );
+      expect(tail, [
+        const Point(0.5, 0.5),
+        const Point(1.0, 0.5),
+      ]);
+      // Middle cell (0,1): enters left, exits right.
+      final mid = cellSegmentPoints(
+        pathCells: cells,
+        cellIndex: 1,
+        cols: 4,
+      );
+      expect(mid, [
+        const Point(0.0, 0.5),
+        const Point(0.5, 0.5),
+        const Point(1.0, 0.5),
+      ]);
+      // Head cell (0,2): enters left, ends at the centre (the
+      // triangle is drawn from there to the tip).
+      final head = cellSegmentPoints(
+        pathCells: cells,
+        cellIndex: 2,
+        cols: 4,
+      );
+      expect(head, [
+        const Point(0.0, 0.5),
+        const Point(0.5, 0.5),
+      ]);
+    });
+
+    test('cell segments turn at right angles and join at shared edges',
+        () {
+      // L-shaped path (0,0)-(1,0)-(1,1) on a 4-col board.
+      const cells = [0, 4, 5];
+      // Cell (1,0) turns: enters from the top, exits right.
+      final turn = cellSegmentPoints(
+        pathCells: cells,
+        cellIndex: 4,
+        cols: 4,
+      );
+      expect(turn, [
+        const Point(0.5, 0.0),
+        const Point(0.5, 0.5),
+        const Point(1.0, 0.5),
+      ]);
+      // The exit midpoint of one cell is the entry midpoint of the
+      // next (in board coordinates).
+      for (var i = 0; i < cells.length - 1; i++) {
+        final a = cellSegmentPoints(
+          pathCells: cells,
+          cellIndex: cells[i],
+          cols: 4,
+        ).last;
+        final b = cellSegmentPoints(
+          pathCells: cells,
+          cellIndex: cells[i + 1],
+          cols: 4,
+        ).first;
+        final ar = cells[i] ~/ 4;
+        final ac = cells[i] % 4;
+        final br = cells[i + 1] ~/ 4;
+        final bc = cells[i + 1] % 4;
+        expect(a.x + ac, closeTo(b.x + bc, 1e-9));
+        expect(a.y + ar, closeTo(b.y + br, 1e-9));
       }
     });
 
-    test('paths wind (most have at least one turn)', () {
+    test('segments wind (most multi-cell paths have a turn)', () {
       var turning = 0;
       var total = 0;
-      for (var cell = 0; cell < 100; cell++) {
-        for (final dir in Direction.values) {
+      for (var level = 1; level <= 20; level++) {
+        final board = generateLevel(level);
+        for (final path in board.paths) {
+          if (path.length < 3) continue;
           total++;
-          final pts = mazePathPoints(
-            cellIndex: cell,
-            direction: dir,
-            boardSize: 8,
-          );
-          if (pts.length > 2) turning++;
+          var hasTurn = false;
+          for (var i = 2; i < path.cells.length; i++) {
+            final a = path.cells[i - 2];
+            final b = path.cells[i - 1];
+            final c = path.cells[i];
+            final d1 = (b ~/ board.cols) - (a ~/ board.cols) != 0;
+            final d2 = (c ~/ board.cols) - (b ~/ board.cols) != 0;
+            if (d1 != d2) hasTurn = true;
+          }
+          if (hasTurn) turning++;
         }
       }
-      // At least half the arrows wind rather than running straight.
       expect(turning / total, greaterThan(0.5));
     });
   });
 
-  group('tap rules', () {
-    // 3x3 board: (0,0) -> faces right, blocked by (0,1); (0,1) -> clear.
+  group('tap rules (heads only block)', () {
+    // 3x3 board: path A = cell (0,0) facing right (ray 1, 2);
+    // path B = cell (0,1) facing right — B's HEAD sits on A's ray,
+    // so A is blocked until B leaves.
     ArrowBoard manualBoard() => ArrowBoard(
-          size: 3,
-          arrows: {
-            0: const ArrowCell(Direction.right, 0),
-            1: const ArrowCell(Direction.right, 1),
-          },
-          stones: <int>{},
+          cols: 3,
+          rows: 3,
+          paths: [
+            const ArrowPath([0], Direction.right),
+            const ArrowPath([1], Direction.right),
+          ],
         );
 
-    test('clear tap removes the arrow, blocked tap costs a heart', () {
+    test('clear tap removes the path, blocked tap costs a heart', () {
       final game = ArrowPuzzleGame(manualBoard());
       expect(game.findHint(), 1);
       expect(game.tap(0).kind, TapKind.blocked);
@@ -226,6 +364,63 @@ void main() {
       expect(game.tap(1).kind, TapKind.cleared);
       expect(game.tap(0).kind, TapKind.cleared);
       expect(game.isWon, isTrue);
+    });
+
+    test('tapping any cell of a path removes the WHOLE path', () {
+      final game = ArrowPuzzleGame(
+        ArrowBoard(
+          cols: 4,
+          rows: 4,
+          paths: [
+            // A 5-cell winding path, head at (1,2) facing right.
+            const ArrowPath([4, 5, 6, 10, 11], Direction.right),
+            const ArrowPath([0], Direction.down),
+          ],
+        ),
+      );
+      expect(game.arrowsLeft, 2);
+      // Tap the TAIL cell of the long path.
+      final result = game.tap(4);
+      expect(result.kind, TapKind.cleared);
+      expect(result.exitedPathCells, [4, 5, 6, 10, 11]);
+      expect(game.arrowsLeft, 1);
+      // Every cell of the removed path is now empty.
+      for (final cell in [4, 5, 6, 10, 11]) {
+        expect(game.pathIdForCell(cell), isNull);
+        expect(game.tap(cell).kind, TapKind.invalid);
+      }
+    });
+
+    test('moves counter = path count (one move per path)', () {
+      final game = ArrowPuzzleGame(generateLevel(51));
+      expect(game.arrowsLeft, game.totalArrows);
+      expect(game.totalArrows, inInclusiveRange(145, 160));
+      while (!game.isWon) {
+        game.tap(game.findHint()!);
+      }
+      expect(game.moves, game.totalArrows);
+      expect(game.arrowsLeft, 0);
+    });
+
+    test('a shaft on the ray does NOT block (heads-only rule)', () {
+      // Path A = cell (0,0) facing right (ray 1, 2). Path C is a
+      // 2-cell path whose TAIL (cell (0,2)) sits on A's ray but
+      // whose head (cell (1,2), facing down) does not. Under the
+      // old full-ray rule A would be blocked; under heads-only it
+      // is clear — this is what the recording shows (the rope
+      // passes over shafts).
+      final game = ArrowPuzzleGame(
+        ArrowBoard(
+          cols: 3,
+          rows: 3,
+          paths: [
+            const ArrowPath([0], Direction.right),
+            const ArrowPath([2, 5], Direction.down),
+          ],
+        ),
+      );
+      expect(game.isClear(0), isTrue);
+      expect(game.tap(0).kind, TapKind.cleared);
     });
 
     test('tapping an empty cell is invalid and costs nothing', () {
@@ -262,21 +457,22 @@ void main() {
   });
 
   group('power', () {
-    test('armed tap clears a blocked arrow with no heart lost', () {
+    test('armed tap clears a blocked path with no heart lost', () {
       final game = ArrowPuzzleGame(
         ArrowBoard(
-          size: 3,
-          arrows: {
-            0: const ArrowCell(Direction.right, 0),
-            1: const ArrowCell(Direction.right, 1),
-          },
-          stones: <int>{},
+          cols: 3,
+          rows: 3,
+          paths: [
+            const ArrowPath([0], Direction.right),
+            const ArrowPath([1], Direction.right),
+          ],
         ),
       );
       game.powerArmed = true;
       final result = game.tap(0);
       expect(result.kind, TapKind.powerCleared);
       expect(result.revealedPath, contains(1));
+      expect(result.exitedPathCells, [0]);
       expect(game.hearts, 3);
       expect(game.powerArmed, isFalse);
       expect(game.arrowsLeft, 1);
@@ -286,17 +482,18 @@ void main() {
         () {
       final game = ArrowPuzzleGame(
         ArrowBoard(
-          size: 3,
-          arrows: {
-            0: const ArrowCell(Direction.right, 0),
-            1: const ArrowCell(Direction.right, 1),
-            3: const ArrowCell(Direction.right, 2),
-            4: const ArrowCell(Direction.right, 3),
-          },
-          stones: <int>{},
+          cols: 3,
+          rows: 3,
+          paths: [
+            const ArrowPath([0], Direction.right),
+            const ArrowPath([1], Direction.right),
+            const ArrowPath([3], Direction.right),
+            const ArrowPath([4], Direction.right),
+          ],
         ),
       );
-      // (0,0) is blocked by (0,1); (1,0) is blocked by (1,1).
+      // (0,0) is blocked by (0,1)'s head; (1,0) is blocked by
+      // (1,1)'s head.
       game.powerArmed = true;
       expect(game.tap(0).kind, TapKind.powerCleared);
       expect(game.powerArmed, isFalse);
@@ -307,36 +504,44 @@ void main() {
   });
 
   group('navy monochrome (v1.0.29)', () {
-    test('every arrow draws in the same navy, whatever its colorIndex',
-        () {
-      // The 6-colour palette is gone: colorIndex is retained for
-      // stability but must not affect the colour.
+    test('every path draws in the same navy', () {
+      // The 6-colour palette is gone: every path draws navy.
       expect(arrowNavy, const Color(0xFF14122E));
-      for (var colorIndex = 0; colorIndex < 6; colorIndex++) {
-        final painter = MazeArrowPainter(
-          direction: Direction.right,
-          colorIndex: colorIndex,
-          cellIndex: 0,
-          boardSize: 15,
-        );
-        expect(
-          MazeArrowPainter.colorFor(highlight: painter.highlight),
-          arrowNavy,
-          reason: 'colorIndex $colorIndex must still draw navy',
-        );
-      }
+      expect(
+        PathSegmentPainter.colorFor(highlight: false),
+        arrowNavy,
+      );
     });
 
-    test('hint highlight is light blue, not amber', () {
-      expect(exitTrailBlue, const Color(0xFF6F7DAC));
+    test('hint highlight is bright blue, not amber', () {
+      // The recording's exiting path is a vivid blue (#3584E2,
+      // median trail pixel) — not the grey slate blue used before.
+      expect(exitTrailBlue, const Color(0xFF3584E2));
       expect(
-        MazeArrowPainter.colorFor(highlight: true),
+        PathSegmentPainter.colorFor(highlight: true),
         exitTrailBlue,
       );
       expect(exitTrailBlue, isNot(Colors.amber));
       expect(
-        MazeArrowPainter.colorFor(highlight: true),
+        PathSegmentPainter.colorFor(highlight: true),
         isNot(Colors.amber.shade700),
+      );
+    });
+
+    test('empty-cell dots are the recording\'s faint grey-blue', () {
+      expect(emptyDotColor, const Color(0xFFDDDEE5));
+    });
+
+    test('arrow shafts and heads match the recording\'s proportions',
+        () {
+      // Shafts ~3px on a 19px pitch (0.16); heads ~12px on a 19px
+      // pitch but small relative to a multi-cell path (0.55 long,
+      // 0.56 wide).
+      expect(PathSegmentPainter.strokeWidthFor(19), closeTo(3.0, 0.1));
+      expect(PathSegmentPainter.headLengthFor(19), closeTo(10.45, 0.2));
+      expect(
+        PathSegmentPainter.headHalfWidthFor(19) * 2,
+        closeTo(10.64, 0.2),
       );
     });
 
@@ -348,12 +553,12 @@ void main() {
     test('exit trail is set on a NORMAL exit, not just Power', () {
       final game = ArrowPuzzleGame(
         ArrowBoard(
-          size: 3,
-          arrows: {
-            0: const ArrowCell(Direction.right, 0),
-            1: const ArrowCell(Direction.right, 1),
-          },
-          stones: <int>{},
+          cols: 3,
+          rows: 3,
+          paths: [
+            const ArrowPath([0], Direction.right),
+            const ArrowPath([1], Direction.right),
+          ],
         ),
       );
       // (0,1) is clear: its exit ray is [2].
@@ -370,12 +575,12 @@ void main() {
     test('blocked and invalid taps reveal no trail', () {
       final game = ArrowPuzzleGame(
         ArrowBoard(
-          size: 3,
-          arrows: {
-            0: const ArrowCell(Direction.right, 0),
-            1: const ArrowCell(Direction.right, 1),
-          },
-          stones: <int>{},
+          cols: 3,
+          rows: 3,
+          paths: [
+            const ArrowPath([0], Direction.right),
+            const ArrowPath([1], Direction.right),
+          ],
         ),
       );
       expect(game.tap(0).revealedPath, isEmpty); // blocked
@@ -391,7 +596,7 @@ void main() {
             body: SizedBox(
               width: 300,
               height: 300,
-              child: PowerGridOverlay(boardSize: 15),
+              child: PowerGridOverlay(cols: 26, rows: 50),
             ),
           ),
         ),
@@ -413,13 +618,159 @@ void main() {
         find.byKey(const ValueKey('power-grid-overlay')),
         findsNothing,
       );
-      // And the fresh Level 51 board shows the 150-155 arrows.
+      // And the fresh Level 51 board shows (the recording's 152
+      // paths as the moves counter).
       expect(find.text('Level 51'), findsOneWidget);
     });
   });
 
+  group('exit animation (pull-out)', () {
+    test('path polyline ends on the exit edge, in board coordinates',
+        () {
+      final pts = pathPolylinePoints(
+        pathCells: [5, 6], // row 1, cols 1-2 on a 4-col board
+        headDirection: Direction.right,
+        cols: 4,
+      );
+      // Last point on the exit (right) edge of cell (1,2): x == 3.
+      expect(pts.last.x, closeTo(3.0, 1e-9));
+      expect(pts.last.y, closeTo(1.5, 1e-9));
+      // The head centre is the second-to-last point.
+      expect(pts[pts.length - 2].x, closeTo(2.5, 1e-9));
+      expect(pts[pts.length - 2].y, closeTo(1.5, 1e-9));
+    });
+
+    test('pullPolyline: no travel leaves the polyline unchanged', () {
+      const pts = [
+        Point(0.0, 0.0),
+        Point(1.0, 0.0),
+        Point(1.0, 1.0),
+      ];
+      final pulled = pullPolyline(
+        points: pts,
+        direction: Direction.down,
+        headTravel: 0,
+      );
+      expect(pulled, pts);
+    });
+
+    test('pullPolyline: the head moves along the exit ray and the '
+        'rope slides forward along its own path (no stretch)', () {
+      // L-shaped polyline, head at (1,1), pulled down. A point at
+      // arc-distance d from the head lands on the ray at
+      // head + dir * (travel - d) once travel >= d; a point still
+      // beyond the pulled length slides FORWARD along the rope by
+      // travel (the tail follows the path the head took).
+      const pts = [
+        Point(0.0, 0.0),
+        Point(1.0, 0.0),
+        Point(1.0, 1.0),
+      ];
+      // Travel 0.5: head at (1,1.5); the middle point (distance 1)
+      // slides to (1,0.5) — halfway along the head's old segment;
+      // the tail (distance 2) slides to (0.5,0).
+      var pulled = pullPolyline(
+        points: pts,
+        direction: Direction.down,
+        headTravel: 0.5,
+      );
+      expect(pulled.last.x, closeTo(1.0, 1e-9));
+      expect(pulled.last.y, closeTo(1.5, 1e-9));
+      expect(pulled[1].x, closeTo(1.0, 1e-9));
+      expect(pulled[1].y, closeTo(0.5, 1e-9));
+      expect(pulled[0].x, closeTo(0.5, 1e-9));
+      expect(pulled[0].y, closeTo(0.0, 1e-9));
+      // Travel 1.5: the middle point (distance 1) is now on the ray,
+      // 0.5 behind the head's start; the tail slides to (1,0.5).
+      pulled = pullPolyline(
+        points: pts,
+        direction: Direction.down,
+        headTravel: 1.5,
+      );
+      expect(pulled.last.y, closeTo(2.5, 1e-9));
+      expect(pulled[1].x, closeTo(1.0, 1e-9));
+      expect(pulled[1].y, closeTo(1.5, 1e-9));
+      expect(pulled[0].x, closeTo(1.0, 1e-9));
+      expect(pulled[0].y, closeTo(0.5, 1e-9));
+      // Travel 2.5: the whole polyline is on the ray — a straight
+      // vertical line from (1,1.5) to (1,3.5).
+      pulled = pullPolyline(
+        points: pts,
+        direction: Direction.down,
+        headTravel: 2.5,
+      );
+      expect(pulled.last.y, closeTo(3.5, 1e-9));
+      expect(pulled[1].x, closeTo(1.0, 1e-9));
+      expect(pulled[1].y, closeTo(2.5, 1e-9));
+      expect(pulled[0].x, closeTo(1.0, 1e-9));
+      expect(pulled[0].y, closeTo(1.5, 1e-9));
+    });
+
+    test('pullPolyline never stretches the rope (no long diagonal)', () {
+      // A winding path: pulling it must not stretch any segment —
+      // the joining segment between the pulled and sliding parts
+      // stays short (the old snap version stretched it into a long
+      // diagonal on winding paths). The discrete slide compresses
+      // the rope slightly where the shift crosses a corner (the
+      // chord cuts the corner), so the total may shrink a little —
+      // but it never grows, and no single segment ever stretches.
+      final pts = pathPolylinePoints(
+        pathCells: [0, 1, 5, 6, 10],
+        headDirection: Direction.down,
+        cols: 4,
+      );
+      double arcLen(List<Point<double>> p) {
+        var total = 0.0;
+        for (var i = 1; i < p.length; i++) {
+          final dx = p[i].x - p[i - 1].x;
+          final dy = p[i].y - p[i - 1].y;
+          total += sqrt(dx * dx + dy * dy);
+        }
+        return total;
+      }
+
+      final before = arcLen(pts);
+      for (final travel in [0.5, 1.5, 2.5, 3.5, 4.5, 5.5]) {
+        final pulled = pullPolyline(
+          points: pts,
+          direction: Direction.down,
+          headTravel: travel,
+        );
+        // The rope never stretches overall.
+        expect(arcLen(pulled), lessThanOrEqualTo(before + 1e-9));
+        // No single segment stretches beyond its original length
+        // (segments are 1.0 or 0.5 in the original).
+        for (var i = 1; i < pulled.length; i++) {
+          final dx = pulled[i].x - pulled[i - 1].x;
+          final dy = pulled[i].y - pulled[i - 1].y;
+          expect(sqrt(dx * dx + dy * dy), lessThanOrEqualTo(1.0 + 1e-9));
+        }
+      }
+    });
+
+    test('tap result carries the exited path and direction', () {
+      final game = ArrowPuzzleGame(
+        ArrowBoard(
+          cols: 3,
+          rows: 3,
+          paths: [
+            const ArrowPath([0], Direction.right),
+            const ArrowPath([1], Direction.right),
+          ],
+        ),
+      );
+      final first = game.tap(1);
+      expect(first.kind, TapKind.cleared);
+      expect(first.exitedPathCells, [1]);
+      expect(first.exitedDirection, Direction.right);
+      final second = game.tap(0);
+      expect(second.kind, TapKind.cleared);
+      expect(second.exitedPathCells, [0]);
+    });
+  });
+
   group('hint', () {
-    test('hint always points at a currently clear arrow', () {
+    test('hint always points at a currently clear path', () {
       for (var level = 1; level <= 50; level++) {
         final game = ArrowPuzzleGame(generateLevel(level));
         while (!game.isWon) {
@@ -433,7 +784,7 @@ void main() {
 
     test('hint is null only on an empty board', () {
       final game = ArrowPuzzleGame(
-        ArrowBoard(size: 2, arrows: {}, stones: <int>{}),
+        ArrowBoard(cols: 2, rows: 2, paths: []),
       );
       expect(game.findHint(), isNull);
     });

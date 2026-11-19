@@ -11,25 +11,26 @@ import '../services/remote_config_service.dart';
 import '../services/supabase_service.dart';
 import '../services/unity_ads_service.dart';
 
-/// Arrow Puzzle play screen (v1.0.29, navy monochrome rebuild) —
-/// follows the user's Level 51 screen recording: white background,
-/// Level title, arrows-left chip, 3 hearts, difficulty chip, dense
-/// maze board of thin NAVY (#14122E) tangled arrow paths, hint bulb +
-/// ruler (Power) tools at the bottom, Unity banner. Exiting arrows
-/// leave a light-blue (#6F7DAC) trail along their exit ray for
-/// ~700ms; while Power is armed a faint light-blue grid (#D9DEEF)
-/// overlays the board.
+/// Arrow Puzzle play screen (path-model rebuild) — follows the
+/// user's Level 51 screen recording, measured frame-by-frame: white
+/// background, "Level 51" title with a blue back chevron and a blue
+/// outline gear, arrows-left chip, 3 hearts, difficulty chip, a TALL
+/// rectangular board (26x50 at L51) of thin NAVY (#14122E) winding
+/// arrow paths — one arrow = one long polyline path, with a SMALL
+/// head at one end — faint grey dots in empty cells, hint bulb +
+/// ruler (Power) tools at the bottom, Unity banner. A tapped path
+/// turns BRIGHT BLUE (#3584E2) and is pulled out along its exit ray
+/// — the polyline straightening behind its head like a rope, then
+/// fading — exactly as in the recording. While Power is armed a
+/// faint light-blue grid (#D9DEEF) overlays the board, spanning the
+/// full screen width (the recording's grid runs edge to edge, not
+/// just over the board).
 ///
-/// Rules (user-confirmed): tap an arrow — it exits if its path is
-/// clear, otherwise it costs 1 heart (3 hearts per attempt). Hint
-/// highlights a safe move (2 free/day, then coins). Power: the next
-/// tapped arrow exits in any direction ignoring blocking, no heart
-/// lost, and its exit path is revealed — consumed on that tap.
-///
-/// Rules (user-confirmed): tap an arrow — it exits if its path is
-/// clear, otherwise it costs 1 heart (3 hearts per attempt). Hint
-/// highlights a safe move (2 free/day, then coins). Power: the next
-/// tapped arrow exits in any direction ignoring blocking, no heart
+/// Rules: tap a path — it exits if no other path's HEAD lies on its
+/// exit ray (shafts never block; the recording's rope passes over
+/// them), otherwise it costs 1 heart (3 hearts per attempt). Hint
+/// highlights a safe path (2 free/day, then coins). Power: the next
+/// tapped path exits in any direction ignoring blocking, no heart
 /// lost, and its exit path is revealed — consumed on that tap.
 /// TWO CURRENCIES: Level Coins come ONLY from completing a level
 /// (server claim) and are the only coins that become cash; Ad Coins
@@ -38,16 +39,19 @@ import '../services/unity_ads_service.dart';
 /// sits behind the remote-config flag (default OFF, Unity ticket
 /// 00946156) — while it is off, the coin prices are the only live
 /// path and the Watch Ad button is hidden entirely.
-/// Navy monochrome board colours (v1.0.29, sampled from the user's
-/// Level 51 screen recording with PIL — anti-aliased, so ±small
-/// variance on the samples).
+/// Board colours (sampled from the user's Level 51 screen recording
+/// with PIL).
 ///
-/// [arrowNavy] is the single colour of every arrow on the board.
-/// [exitTrailBlue] is the light slate blue of the exit trail left
-/// when an arrow slides out, and of the hint highlight.
-/// [powerGridColor] is the faint grid shown while Power is armed.
+/// [arrowNavy] is the single colour of every path on the board
+/// (median dark pixel #161532, i.e. #14122E within anti-aliasing).
+/// [exitTrailBlue] is the BRIGHT blue of the exiting path and the
+/// hint highlight (median trail pixel #3584E2 — a vivid blue, not
+/// the grey slate blue used before). [emptyDotColor] is the faint
+/// grey-blue dot in empty cells (#DDDEE5). [powerGridColor] is the
+/// faint grid shown while Power is armed.
 const Color arrowNavy = Color(0xFF14122E);
-const Color exitTrailBlue = Color(0xFF6F7DAC);
+const Color exitTrailBlue = Color(0xFF3584E2);
+const Color emptyDotColor = Color(0xFFDDDEE5);
 const Color powerGridColor = Color(0xFFD9DEEF);
 
 class ArrowPuzzlePlayScreen extends StatefulWidget {
@@ -66,21 +70,26 @@ class ArrowPuzzlePlayScreen extends StatefulWidget {
   State<ArrowPuzzlePlayScreen> createState() => _ArrowPuzzlePlayScreenState();
 }
 
-class _ArrowPuzzlePlayScreenState extends State<ArrowPuzzlePlayScreen> {
+class _ArrowPuzzlePlayScreenState extends State<ArrowPuzzlePlayScreen>
+    with SingleTickerProviderStateMixin {
   late ArrowPuzzleGame _game;
   int _heartsLost = 0;
   int _freeHintsLeft = 0;
   int? _balance;
   int? _adCoinsBalance;
-  int? _hintCell;
-  List<int> _revealedPath = [];
+  Set<int> _hintCells = <int>{};
   int? _shakeCell;
   Timer? _hintTimer;
-  Timer? _revealTimer;
   Timer? _shakeTimer;
   bool _winDialogShown = false;
   bool _loseDialogShown = false;
   bool _lifeBoughtThisAttempt = false;
+
+  /// The arrow currently sliding out (bright blue, pulled along its
+  /// exit ray), driven by [_exitController]. Null when no exit is
+  /// animating.
+  _ExitingArrow? _exiting;
+  late final AnimationController _exitController;
 
   ArrowPuzzleConfig get _cfg =>
       RemoteConfigService.instance.config.arrowPuzzle;
@@ -88,6 +97,15 @@ class _ArrowPuzzlePlayScreenState extends State<ArrowPuzzlePlayScreen> {
   @override
   void initState() {
     super.initState();
+    _exitController = AnimationController(
+      vsync: this,
+      // The recording's exit takes ~0.5s from tap to gone.
+      duration: const Duration(milliseconds: 550),
+    )..addStatusListener((status) {
+        if (status == AnimationStatus.completed && mounted) {
+          setState(() => _exiting = null);
+        }
+      });
     _newGame();
     _loadExtras();
   }
@@ -95,8 +113,8 @@ class _ArrowPuzzlePlayScreenState extends State<ArrowPuzzlePlayScreen> {
   @override
   void dispose() {
     _hintTimer?.cancel();
-    _revealTimer?.cancel();
     _shakeTimer?.cancel();
+    _exitController.dispose();
     super.dispose();
   }
 
@@ -106,8 +124,8 @@ class _ArrowPuzzlePlayScreenState extends State<ArrowPuzzlePlayScreen> {
         : generateLevel(widget.level);
     _game = ArrowPuzzleGame(board);
     _heartsLost = 0;
-    _hintCell = null;
-    _revealedPath = [];
+    _hintCells = <int>{};
+    _exiting = null;
     _shakeCell = null;
     _winDialogShown = false;
     _loseDialogShown = false;
@@ -208,31 +226,44 @@ class _ArrowPuzzlePlayScreenState extends State<ArrowPuzzlePlayScreen> {
       case TapKind.invalid:
         return;
       case TapKind.cleared:
-        setState(() => _hintCell = null);
-        _showExitTrail(result.revealedPath);
+        setState(() => _hintCells = <int>{});
+        _startExitAnimation(result);
         if (_game.isWon) _onWin();
       case TapKind.blocked:
         _heartsLost++;
         _flashShake(cellIndex);
         if (_game.isGameOver) _onLose();
       case TapKind.powerCleared:
-        _showExitTrail(result.revealedPath);
+        _startExitAnimation(result);
         if (_game.isWon) _onWin();
     }
     setState(() {});
   }
 
-  /// Highlights the exited arrow's exit ray in light blue, fading
-  /// after ~700ms. Used for EVERY exit — a normal tap as well as a
-  /// Power tap — matching the recording, where the arrow slides out
-  /// along a straight light-blue line.
-  void _showExitTrail(List<int> path) {
-    if (path.isEmpty) return;
-    setState(() => _revealedPath = path);
-    _revealTimer?.cancel();
-    _revealTimer = Timer(const Duration(milliseconds: 700), () {
-      if (mounted) setState(() => _revealedPath = []);
+  /// Starts the exit animation for the path that just left: the
+  /// path's polyline, in bright blue, pulled out along its exit ray
+  /// — first recolouring in place, then straightening behind its
+  /// head like a rope, then fading — exactly as in the user's
+  /// recording (where the tapped path turns blue and slides out
+  /// visibly). The path is already gone from the board; this
+  /// overlay draws it sliding away.
+  void _startExitAnimation(TapResult result) {
+    final cells = result.exitedPathCells;
+    final dir = result.exitedDirection;
+    if (cells.isEmpty || dir == null) return;
+    final polyline = pathPolylinePoints(
+      pathCells: cells,
+      headDirection: dir,
+      cols: _game.cols,
+    );
+    setState(() {
+      _exiting = _ExitingArrow(
+        polyline: polyline,
+        direction: dir,
+        headCell: cells.last,
+      );
     });
+    _exitController.forward(from: 0);
   }
 
   void _flashShake(int cellIndex) {
@@ -246,10 +277,13 @@ class _ArrowPuzzlePlayScreenState extends State<ArrowPuzzlePlayScreen> {
   void _applyHint() {
     final cell = _game.findHint();
     if (cell == null) return;
-    setState(() => _hintCell = cell);
+    // Highlight the WHOLE hinted path, not just its head cell.
+    final pathId = _game.pathIdForCell(cell);
+    final path = pathId == null ? null : _game.pathById(pathId);
+    setState(() => _hintCells = path == null ? <int>{cell} : path.cells.toSet());
     _hintTimer?.cancel();
     _hintTimer = Timer(const Duration(seconds: 2), () {
-      if (mounted) setState(() => _hintCell = null);
+      if (mounted) setState(() => _hintCells = <int>{});
     });
   }
 
@@ -667,37 +701,35 @@ class _ArrowPuzzlePlayScreenState extends State<ArrowPuzzlePlayScreen> {
   }
 
   Widget _buildCell(int index) {
-    final arrow = _game.arrows[index];
-    final isStone = _game.stones.contains(index);
-    final isHint = _hintCell == index;
-    final isRevealed = _revealedPath.contains(index);
+    final pathId = _game.pathIdForCell(index);
+    final path = pathId == null ? null : _game.pathById(pathId);
+    final isHint = _hintCells.contains(index);
     final isShake = _shakeCell == index;
-    // Maze board: cells are transparent — the thin navy lines flow
+    // Path board: cells are transparent — the thin navy lines flow
     // across cell borders into one tangled maze on white. Only the
-    // transient states tint a cell, in the light exit-trail blue.
+    // transient states tint a cell, in the bright exit blue. Empty
+    // cells show the recording's faint grey dot.
     final Color? bg;
     if (isShake) {
       bg = Colors.red.shade100;
-    } else if (isRevealed) {
-      bg = exitTrailBlue.withValues(alpha: 0.45);
     } else if (isHint) {
       bg = exitTrailBlue.withValues(alpha: 0.18);
     } else {
       bg = null;
     }
     Widget? child;
-    if (isStone) {
-      child = const CustomPaint(painter: _StoneDotPainter());
-    } else if (arrow != null) {
+    if (path != null) {
       child = CustomPaint(
-        painter: MazeArrowPainter(
-          direction: arrow.direction,
-          colorIndex: arrow.colorIndex,
+        painter: PathSegmentPainter(
+          pathCells: path.cells,
           cellIndex: index,
-          boardSize: _game.size,
+          headDirection: path.headDirection,
+          cols: _game.cols,
           highlight: isHint,
         ),
       );
+    } else {
+      child = const CustomPaint(painter: _EmptyDotPainter());
     }
     return GestureDetector(
       onTap: () => _onCellTap(index),
@@ -716,8 +748,12 @@ class _ArrowPuzzlePlayScreenState extends State<ArrowPuzzlePlayScreen> {
     );
   }
 
+  /// A round tool button (hint bulb / Power ruler). The icon is an
+  /// emoji, matching the recording's 3D-looking yellow bulb and
+  /// purple ruler (the flat Material icons looked nothing like
+  /// them). [badge] is the free-hints count on the bulb.
   Widget _toolButton({
-    required IconData icon,
+    required String emoji,
     required Color color,
     required VoidCallback onTap,
     int? badge,
@@ -745,7 +781,9 @@ class _ArrowPuzzlePlayScreenState extends State<ArrowPuzzlePlayScreen> {
                 ),
               ],
             ),
-            child: Icon(icon, size: 36, color: color),
+            child: Center(
+              child: Text(emoji, style: const TextStyle(fontSize: 36)),
+            ),
           ),
           if (badge != null)
             Positioned(
@@ -775,235 +813,348 @@ class _ArrowPuzzlePlayScreenState extends State<ArrowPuzzlePlayScreen> {
   @override
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context)!;
-    final size = _game.size;
+    final cols = _game.cols;
+    final rows = _game.rows;
     final title = widget.dailyChallenge
         ? t.arrowPuzzleDailyChallenge
         : t.arrowPuzzleLevel(widget.level);
     final difficulty = widget.dailyChallenge
         ? 'Hard'
         : difficultyForLevel(widget.level);
+    // The recording has no AppBar: "Level 51" is centred with a blue
+    // back chevron on the left and a blue outline gear on the right.
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        foregroundColor: const Color(0xFF1F2937),
-        elevation: 0,
-        title: Text(title),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            tooltip: t.arrowPuzzleReplay,
-            onPressed: _restartLevel,
-          ),
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.settings),
-            onSelected: (value) {
-              if (value == 'restart') {
-                _restartLevel();
-              } else if (value == 'quit') {
-                Navigator.of(context).pop();
-              }
-            },
-            itemBuilder: (context) => [
-              PopupMenuItem(
-                value: 'restart',
-                child: Text(t.arrowPuzzleReplay),
-              ),
-              const PopupMenuItem(
-                value: 'quit',
-                child: Text('Quit'),
-              ),
-            ],
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade200,
-                    borderRadius: BorderRadius.circular(20),
+      body: SafeArea(
+        child: Column(
+          children: [
+            Padding(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              child: Row(
+                children: [
+                  GestureDetector(
+                    onTap: () => Navigator.of(context).pop(),
+                    child: const Icon(
+                      Icons.chevron_left,
+                      size: 36,
+                      color: Color(0xFF2196F3),
+                    ),
                   ),
-                  child: Row(
-                    children: [
-                      const Icon(
-                        Icons.navigation,
-                        size: 16,
+                  Expanded(
+                    child: Text(
+                      title,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w600,
                         color: Color(0xFF1F2937),
                       ),
-                      const SizedBox(width: 4),
-                      Text(
-                        // Arrows left (the reference's "152"), not moves.
-                        '${_game.arrowsLeft}',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF1F2937),
-                        ),
+                    ),
+                  ),
+                  PopupMenuButton<String>(
+                    icon: const Icon(
+                      Icons.settings_outlined,
+                      color: Color(0xFF2196F3),
+                      size: 28,
+                    ),
+                    onSelected: (value) {
+                      if (value == 'restart') {
+                        _restartLevel();
+                      } else if (value == 'quit') {
+                        Navigator.of(context).pop();
+                      }
+                    },
+                    itemBuilder: (context) => [
+                      PopupMenuItem(
+                        value: 'restart',
+                        child: Text(t.arrowPuzzleReplay),
+                      ),
+                      const PopupMenuItem(
+                        value: 'quit',
+                        child: Text('Quit'),
                       ),
                     ],
                   ),
+                ],
+              ),
+            ),
+            Padding(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade200,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          // The recording's chip icon is a small grey
+                          // cursor arrow pointing up-right.
+                          Icons.near_me,
+                          size: 16,
+                          color: Color(0xFF1F2937),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          // Arrows left (the reference's "152"), not moves.
+                          '${_game.arrowsLeft}',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF1F2937),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Row(
+                    children: List.generate(
+                      3,
+                      (i) => Icon(
+                        i < _game.hearts
+                            ? Icons.favorite
+                            : Icons.favorite_border,
+                        color: Colors.red,
+                        size: 28,
+                      ),
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade200,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      difficulty,
+                      style: const TextStyle(color: Color(0xFF1F2937)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (_game.powerArmed)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Text(
+                  t.arrowPuzzlePowerActive,
+                  style: const TextStyle(
+                    color: Color(0xFF1E88E5),
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-                Row(
-                  children: List.generate(
-                    3,
-                    (i) => Icon(
-                      i < _game.hearts ? Icons.favorite : Icons.favorite_border,
-                      color: Colors.red,
-                      size: 28,
+              ),
+            Expanded(
+              child: Align(
+                alignment: Alignment.topCenter,
+                child: Container(
+                  constraints: const BoxConstraints(maxWidth: 500),
+                  padding: const EdgeInsets.all(8),
+                  child: AspectRatio(
+                    aspectRatio: cols / rows,
+                    child: Stack(
+                      // The Power grid paints beyond the board's
+                      // left/right edges (full screen width, like
+                      // the recording), so the stack must not clip.
+                      clipBehavior: Clip.none,
+                      children: [
+                        // The Power grid sits UNDER the board: the
+                        // recording's grid lines run behind the navy
+                        // arrows, which stay crisp on top.
+                        if (_game.powerArmed)
+                          Positioned.fill(
+                            child: PowerGridOverlay(
+                              key: const ValueKey('power-grid-overlay'),
+                              cols: cols,
+                              rows: rows,
+                            ),
+                          ),
+                        GridView.builder(
+                          physics: const NeverScrollableScrollPhysics(),
+                          gridDelegate:
+                              SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: cols,
+                            crossAxisSpacing: 0,
+                            mainAxisSpacing: 0,
+                          ),
+                          itemCount: cols * rows,
+                          itemBuilder: (context, index) =>
+                              _buildCell(index),
+                        ),
+                        // The exiting arrow, sliding out in bright
+                        // blue over the board. Clipped to the board:
+                        // the recording's trail never leaves it.
+                        if (_exiting != null)
+                          Positioned.fill(
+                            child: ClipRect(
+                              child: AnimatedBuilder(
+                                animation: _exitController,
+                                builder: (context, child) {
+                                  return CustomPaint(
+                                    painter: _ExitingArrowPainter(
+                                      exiting: _exiting!,
+                                      progress: _exitController.value,
+                                      cols: cols,
+                                      rows: rows,
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
                   ),
                 ),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade200,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    difficulty,
-                    style: const TextStyle(color: Color(0xFF1F2937)),
-                  ),
-                ),
-              ],
+              ),
             ),
-          ),
-          if (_game.powerArmed)
             Padding(
-              padding: const EdgeInsets.only(bottom: 4),
-              child: Text(
-                t.arrowPuzzlePowerActive,
-                style: const TextStyle(
-                  color: Color(0xFF1E88E5),
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          Expanded(
-            child: Align(
-              alignment: Alignment.topCenter,
-              child: Container(
-                constraints: const BoxConstraints(maxWidth: 420),
-                padding: const EdgeInsets.all(8),
-                child: AspectRatio(
-                  aspectRatio: 1,
-                  child: Stack(
-                    children: [
-                      GridView.builder(
-                        physics: const NeverScrollableScrollPhysics(),
-                        gridDelegate:
-                            SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: size,
-                          crossAxisSpacing: 0,
-                          mainAxisSpacing: 0,
-                        ),
-                        itemCount: size * size,
-                        itemBuilder: (context, index) => _buildCell(index),
-                      ),
-                      // While Power (ruler) is armed, a faint
-                      // light-blue grid overlays the whole board.
-                      // Pointer-transparent: taps still reach the
-                      // cells underneath.
-                      if (_game.powerArmed)
-                        Positioned.fill(
-                          child: PowerGridOverlay(
-                            key: const ValueKey('power-grid-overlay'),
-                            boardSize: size,
-                          ),
-                        ),
-                    ],
+              padding: const EdgeInsets.only(bottom: 16, top: 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  _toolButton(
+                    emoji: '💡',
+                    color: Colors.amber.shade700,
+                    badge: _freeHintsLeft,
+                    onTap: _onHint,
                   ),
-                ),
+                  _toolButton(
+                    emoji: '📏',
+                    color: Colors.purple,
+                    active: _game.powerArmed,
+                    onTap: _onPower,
+                  ),
+                ],
               ),
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            child: Text(
-              '${t.balance}: ${_balance ?? '—'} ${t.coins}',
-              style: Theme.of(context)
-                  .textTheme
-                  .bodySmall
-                  ?.copyWith(color: Colors.black54),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.only(bottom: 16, top: 8),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _toolButton(
-                  icon: Icons.lightbulb,
-                  color: Colors.amber.shade700,
-                  badge: _freeHintsLeft,
-                  onTap: _onHint,
-                ),
-                _toolButton(
-                  icon: Icons.straighten,
-                  color: Colors.purple,
-                  active: _game.powerArmed,
-                  onTap: _onPower,
-                ),
-              ],
-            ),
-          ),
-          const UnityBannerAdWidget(),
-        ],
+            const UnityBannerAdWidget(),
+          ],
+        ),
       ),
     );
   }
 }
 
-/// Draws one arrow as a thin winding maze path (see [mazePathPoints]):
-/// a thin NAVY polyline (one colour for every arrow, v1.0.29) that
-/// starts on one cell edge, turns once or twice at right angles, and
-/// ends with an arrowhead on the exit edge. Neighbouring cells' lines
-/// meet at shared edges, so the board reads as one tangled maze.
-/// [highlight] (hint) draws the line in the light exit-trail blue.
-/// [colorIndex] is accepted for stability and ignored for colour.
-class MazeArrowPainter extends CustomPainter {
-  MazeArrowPainter({
+/// One path sliding out: its polyline (in board-cell coordinates)
+/// plus the direction it is pulled along and the head cell it
+/// started from (for the exit-ray length). Held in state while the
+/// exit animation runs.
+class _ExitingArrow {
+  const _ExitingArrow({
+    required this.polyline,
     required this.direction,
-    required this.colorIndex,
+    required this.headCell,
+  });
+
+  /// The path's polyline in board-cell coordinates (see
+  /// [pathPolylinePoints]); the last point is the arrowhead tip.
+  final List<math.Point<double>> polyline;
+  final Direction direction;
+
+  /// The head cell the path started from (for the ray length).
+  final int headCell;
+}
+
+/// Draws one cell's piece of a path (see [cellSegmentPoints]): a
+/// thin NAVY shaft (one colour for every path, v1.0.29) that runs
+/// from the entry edge-midpoint, through the cell centre, to the
+/// exit edge-midpoint — so neighbouring cells' segments meet at the
+/// shared edges and the board reads as one tangled maze of long
+/// winding paths. The head cell also draws a SMALL filled arrowhead
+/// triangle at the tip (centre + 0.5 in the head direction). The
+/// recording's heads are ~12px on a 19px pitch (~0.63) but read as
+/// small because each path is several cells long — so the head is
+/// 0.55 of the cell long, far smaller relative to the path than the
+/// old one-arrow-per-cell heads were. Shafts are ~0.16 of the pitch
+/// thick. [highlight] (hint) draws the segment in the bright exit
+/// blue.
+class PathSegmentPainter extends CustomPainter {
+  PathSegmentPainter({
+    required this.pathCells,
     required this.cellIndex,
-    required this.boardSize,
+    required this.headDirection,
+    required this.cols,
     this.highlight = false,
   });
 
-  final Direction direction;
-
-  /// Retained for stability/determinism; the navy rebuild draws
-  /// every arrow in [arrowNavy] regardless of this value.
-  final int colorIndex;
+  /// The whole path's cells (head-last), so this cell's segment can
+  /// be found from its neighbours in the path.
+  final List<int> pathCells;
   final int cellIndex;
-  final int boardSize;
+  final Direction headDirection;
+  final int cols;
   final bool highlight;
 
-  /// The colour an arrow is drawn in: the single navy for every
-  /// arrow, or the light exit-trail blue for a highlighted (hint)
-  /// arrow. Independent of [colorIndex] by design.
+  /// The colour a segment is drawn in: the single navy for every
+  /// path, or the bright exit blue for a highlighted (hint) path.
   static Color colorFor({required bool highlight}) =>
       highlight ? exitTrailBlue : arrowNavy;
+
+  /// Shaft width as a fraction of the cell: the recording's shafts
+  /// are ~3px on a 19px pitch (0.16).
+  static double strokeWidthFor(double cellSize) =>
+      (cellSize * 0.16).clamp(2.0, 5.0);
+
+  /// Arrowhead length / half-width as a fraction of the cell: the
+  /// recording's heads are ~12px on a 19px pitch (0.63) but read as
+  /// small on a multi-cell path — 0.55 long, 0.56 wide.
+  static double headLengthFor(double cellSize) => cellSize * 0.55;
+  static double headHalfWidthFor(double cellSize) => cellSize * 0.28;
+
+  /// Draws an arrowhead triangle at [tip], pointing along
+  /// ([ux], [uy]) (a unit vector), in [color].
+  static void drawHead(
+    Canvas canvas,
+    Offset tip,
+    double ux,
+    double uy,
+    double cellSize,
+    Color color,
+  ) {
+    final headLen = headLengthFor(cellSize);
+    final headHalf = headHalfWidthFor(cellSize);
+    final base = Offset(tip.dx - ux * headLen, tip.dy - uy * headLen);
+    final perp = Offset(-uy, ux);
+    final head = Path()
+      ..moveTo(tip.dx, tip.dy)
+      ..lineTo(
+        base.dx + perp.dx * headHalf,
+        base.dy + perp.dy * headHalf,
+      )
+      ..lineTo(
+        base.dx - perp.dx * headHalf,
+        base.dy - perp.dy * headHalf,
+      )
+      ..close();
+    canvas.drawPath(
+      head,
+      Paint()
+        ..color = color
+        ..style = PaintingStyle.fill,
+    );
+  }
 
   @override
   void paint(Canvas canvas, Size size) {
     final s = size.shortestSide;
     final color = colorFor(highlight: highlight);
-    // Inset only a hair: neighbouring cells' lines must meet at the
-    // shared edge so the maze reads as long interlocking paths, not
-    // isolated squiggles. (A bigger inset visibly breaks the paths.)
+    // Inset only a hair: neighbouring cells' segments must meet at
+    // the shared edge so the maze reads as long interlocking paths,
+    // not isolated squiggles. (A bigger inset visibly breaks the
+    // paths.)
     const inset = 0.005;
-    final points = mazePathPoints(
+    final points = cellSegmentPoints(
+      pathCells: pathCells,
       cellIndex: cellIndex,
-      direction: direction,
-      boardSize: boardSize,
+      cols: cols,
     )
         .map(
           (p) => Offset(
@@ -1012,9 +1163,10 @@ class MazeArrowPainter extends CustomPainter {
           ),
         )
         .toList(growable: false);
+    if (points.isEmpty) return;
     final stroke = Paint()
       ..color = color
-      ..strokeWidth = (s * 0.075).clamp(2.5, 4.0)
+      ..strokeWidth = strokeWidthFor(s)
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round
       ..style = PaintingStyle.stroke;
@@ -1024,70 +1176,190 @@ class MazeArrowPainter extends CustomPainter {
       path.lineTo(points[i].dx, points[i].dy);
     }
     canvas.drawPath(path, stroke);
-    // Arrowhead at the end, pointing along the final segment.
-    final tip = points.last;
-    final prev = points[points.length - 2];
-    final dx = tip.dx - prev.dx;
-    final dy = tip.dy - prev.dy;
-    final len = math.sqrt(dx * dx + dy * dy);
-    if (len > 0.01) {
-      final ux = dx / len;
-      final uy = dy / len;
-      final headLen = s * 0.15;
-      final headHalf = s * 0.10;
-      final base = Offset(tip.dx - ux * headLen, tip.dy - uy * headLen);
-      final perp = Offset(-uy, ux);
-      final head = Path()
-        ..moveTo(tip.dx, tip.dy)
-        ..lineTo(
-          base.dx + perp.dx * headHalf,
-          base.dy + perp.dy * headHalf,
-        )
-        ..lineTo(
-          base.dx - perp.dx * headHalf,
-          base.dy - perp.dy * headHalf,
-        )
-        ..close();
-      canvas.drawPath(
-        head,
-        Paint()
-          ..color = color
-          ..style = PaintingStyle.fill,
+    // Arrowhead on the head cell, at the tip (centre + 0.5 in the
+    // head direction), pointing along the head direction.
+    if (cellIndex == pathCells.last) {
+      final ux = headDirection.dCol.toDouble();
+      final uy = headDirection.dRow.toDouble();
+      final tip = Offset(
+        (inset + (0.5 + ux * 0.5) * (1 - 2 * inset)) * s,
+        (inset + (0.5 + uy * 0.5) * (1 - 2 * inset)) * s,
       );
+      drawHead(canvas, tip, ux, uy, s, color);
     }
   }
 
   @override
-  bool shouldRepaint(covariant MazeArrowPainter old) =>
-      old.direction != direction ||
+  bool shouldRepaint(covariant PathSegmentPainter old) =>
+      old.pathCells != pathCells ||
       old.cellIndex != cellIndex ||
-      old.boardSize != boardSize ||
+      old.headDirection != headDirection ||
+      old.cols != cols ||
       old.highlight != highlight;
 }
 
-/// Faint light-blue grid over the whole board while Power (ruler) is
-/// armed (v1.0.29, from the user's recording): 1px [powerGridColor]
-/// lines at every cell boundary, above the board and below the
-/// HUD/tools. Pointer-transparent so taps still reach the cells.
-class PowerGridOverlay extends StatelessWidget {
-  const PowerGridOverlay({super.key, required this.boardSize});
+/// Faint grey dot in an empty cell (the recording's empty areas are
+/// dotted, not blank): one #DDDEE5 dot per empty cell, ~0.16 of the
+/// cell across, centred.
+class _EmptyDotPainter extends CustomPainter {
+  const _EmptyDotPainter();
 
-  final int boardSize;
+  @override
+  void paint(Canvas canvas, Size size) {
+    final s = size.shortestSide;
+    canvas.drawCircle(
+      Offset(s / 2, s / 2),
+      s * 0.08,
+      Paint()
+        ..color = emptyDotColor
+        ..style = PaintingStyle.fill,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _EmptyDotPainter old) => false;
+}
+
+/// The exiting path, sliding out in bright blue: the tapped path's
+/// polyline, recoloured bright blue and pulled along its exit ray —
+/// first in place, then straightening behind its head like a rope
+/// ([pullPolyline]), then fading — exactly as in the user's
+/// recording, where the tapped path turns blue and slides out
+/// visibly. [progress] is the animation controller's value (0..1):
+/// 0-0.15 the path sits blue in place, 0.15-0.85 it is pulled out,
+/// 0.85-1 it fades away. The head travels the path's arc length
+/// plus the REAL exit-ray length (head cell to board edge), so the
+/// whole long path leaves the board — the old 0.75 fudge assumed
+/// the head was already near the edge, which is false for a
+/// multi-cell path starting deep in the board.
+class _ExitingArrowPainter extends CustomPainter {
+  _ExitingArrowPainter({
+    required this.exiting,
+    required this.progress,
+    required this.cols,
+    required this.rows,
+  });
+
+  final _ExitingArrow exiting;
+  final double progress;
+  final int cols;
+  final int rows;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final cellW = size.width / cols;
+    final cellH = size.height / rows;
+    final cell = math.min(cellW, cellH);
+    // Arc length of the polyline, in board-cell units.
+    var arcLen = 0.0;
+    final pts = exiting.polyline;
+    for (var i = 1; i < pts.length; i++) {
+      final dx = pts[i].x - pts[i - 1].x;
+      final dy = pts[i].y - pts[i - 1].y;
+      arcLen += math.sqrt(dx * dx + dy * dy);
+    }
+    // Exit-ray length: head cell to the board edge, in cells.
+    final headRow = exiting.headCell ~/ cols;
+    final headCol = exiting.headCell % cols;
+    final rayLen = switch (exiting.direction) {
+      Direction.up => headRow,
+      Direction.down => rows - 1 - headRow,
+      Direction.left => headCol,
+      Direction.right => cols - 1 - headCol,
+    };
+    double headTravel;
+    double opacity;
+    if (progress < 0.15) {
+      headTravel = 0;
+      opacity = 1;
+    } else if (progress < 0.85) {
+      final t = (progress - 0.15) / 0.70;
+      headTravel = t * (arcLen + rayLen);
+      opacity = 1;
+    } else {
+      headTravel = arcLen + rayLen;
+      opacity = (1 - progress) / 0.15;
+    }
+    final pulled = pullPolyline(
+      points: pts,
+      direction: exiting.direction,
+      headTravel: headTravel,
+    );
+    final color = exitTrailBlue.withValues(alpha: opacity);
+    final pixelPts = pulled
+        .map((p) => Offset(p.x * cellW, p.y * cellH))
+        .toList(growable: false);
+    final stroke = Paint()
+      ..color = color
+      ..strokeWidth = PathSegmentPainter.strokeWidthFor(cell)
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round
+      ..style = PaintingStyle.stroke;
+    final path = Path()
+      ..moveTo(pixelPts.first.dx, pixelPts.first.dy);
+    for (var i = 1; i < pixelPts.length; i++) {
+      path.lineTo(pixelPts[i].dx, pixelPts[i].dy);
+    }
+    canvas.drawPath(path, stroke);
+    // Arrowhead at the pulled head, pointing along the exit ray.
+    final tip = pixelPts.last;
+    final prev = pixelPts[pixelPts.length - 2];
+    final dx = tip.dx - prev.dx;
+    final dy = tip.dy - prev.dy;
+    final len = math.sqrt(dx * dx + dy * dy);
+    if (len > 0.01) {
+      PathSegmentPainter.drawHead(
+        canvas,
+        tip,
+        dx / len,
+        dy / len,
+        cell,
+        color,
+      );
+    } else {
+      // Fully straightened: the head points along the exit ray.
+      final ux = exiting.direction.dCol.toDouble();
+      final uy = exiting.direction.dRow.toDouble();
+      PathSegmentPainter.drawHead(canvas, tip, ux, uy, cell, color);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _ExitingArrowPainter old) =>
+      old.progress != progress || old.exiting != exiting;
+}
+
+/// Faint light-blue grid over the board while Power (ruler) is armed
+/// (from the user's recording): 1px [powerGridColor] lines at every
+/// cell boundary. The recording's grid spans the FULL SCREEN WIDTH —
+/// edge to edge, well beyond the board — and runs from the board's
+/// top to its bottom, so the vertical lines are drawn far past the
+/// board's left/right edges (the board stack does not clip) while
+/// the horizontal lines stay within the board's height. The grid
+/// sits UNDER the arrows (the board paints it first), so the navy
+/// lines stay crisp on top. Pointer-transparent so taps still reach
+/// the cells.
+class PowerGridOverlay extends StatelessWidget {
+  const PowerGridOverlay({super.key, required this.cols, required this.rows});
+
+  final int cols;
+  final int rows;
 
   @override
   Widget build(BuildContext context) {
     return IgnorePointer(
       child: CustomPaint(
-        painter: _PowerGridPainter(boardSize: boardSize),
+        painter: _PowerGridPainter(cols: cols, rows: rows),
       ),
     );
   }
 }
 
 class _PowerGridPainter extends CustomPainter {
-  const _PowerGridPainter({required this.boardSize});
+  const _PowerGridPainter({required this.cols, required this.rows});
 
-  final int boardSize;
+  final int cols;
+  final int rows;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -1095,37 +1367,26 @@ class _PowerGridPainter extends CustomPainter {
       ..color = powerGridColor
       ..strokeWidth = 1.0
       ..style = PaintingStyle.stroke;
-    final stepX = size.width / boardSize;
-    final stepY = size.height / boardSize;
-    for (var i = 0; i <= boardSize; i++) {
+    final stepX = size.width / cols;
+    final stepY = size.height / rows;
+    // Vertical lines: the board's column boundaries, extended far
+    // past both edges so the grid spans the full screen width.
+    for (var i = -80; i <= cols + 80; i++) {
       final x = i * stepX;
       canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
-      final y = i * stepY;
-      canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
+    }
+    // Horizontal lines: the board's row boundaries, also full-width.
+    for (var j = 0; j <= rows; j++) {
+      final y = j * stepY;
+      canvas.drawLine(
+        Offset(-2000, y),
+        Offset(size.width + 2000, y),
+        paint,
+      );
     }
   }
 
   @override
   bool shouldRepaint(covariant _PowerGridPainter old) =>
-      old.boardSize != boardSize;
-}
-
-/// A stone blocker on the maze board: a small dark dot.
-class _StoneDotPainter extends CustomPainter {
-  const _StoneDotPainter();
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final s = size.shortestSide;
-    canvas.drawCircle(
-      Offset(s / 2, s / 2),
-      s * 0.16,
-      Paint()
-        ..color = const Color(0xFF1A2450)
-        ..style = PaintingStyle.fill,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant _StoneDotPainter old) => false;
+      old.cols != cols || old.rows != rows;
 }

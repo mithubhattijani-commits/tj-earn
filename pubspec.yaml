@@ -2,11 +2,11 @@ name: tj_earn
 description: "TJ Earn - rewards app (Flutter + Supabase). Stage 1 foundation: auth, server-side wallet, withdrawals, in-app updater."
 publish_to: 'none'
 
-# v1.0.27+28 (Arrow Puzzle game + Watch Ads Ad Coins, 18 Nov 2026):
-# maze board (tangled colourful paths, user-approved mockup v3).
-# versionCode 28 is higher than the live v1.0.26/vc27, so the
-# updater prompts users to update.
-version: 1.0.29+30
+# v1.0.30+31 (Arrow Puzzle path model, video-match, 19 Nov 2026):
+# long thin winding paths, small heads, 152 moves at L51, rope
+# pull-out exit. versionCode 31 is higher than the live v1.0.29/vc30,
+# so the updater prompts users to update.
+version: 1.0.30+31
 
 environment:
   sdk: ^3.13.7
