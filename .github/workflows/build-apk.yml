@@ -28,7 +28,11 @@ jobs:
           sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/boost "$AGENT_TOOLSDIRECTORY" || true
           df -h
 
-      - name: Set up Java 17
+      - name: Set up .NET 6 (Unity il2cpp runtime)
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "6.0.x"
+          - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
