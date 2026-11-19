@@ -615,4 +615,97 @@ class AppLocalizationsUr extends AppLocalizations {
   String referAutoApplied(String code) {
     return 'ریفرل $code لگا دیا گیا! 🎉';
   }
+
+  @override
+  String get tjRacingSubtitle => '3D اسٹریٹ ریسنگ — کوئنز جیتیں';
+
+  @override
+  String get tjRacingSettings => 'سیٹنگز';
+
+  @override
+  String get tjRacingAdCoins => 'ایڈ کوئنز';
+
+  @override
+  String tjRacingUnlock(Object coins) {
+    return 'ان لاک کریں — $coins ایڈ کوئنز';
+  }
+
+  @override
+  String tjRacingWatchAd(Object coins) {
+    return 'اشتہار دیکھیں — $coins ایڈ کوئنز پائیں';
+  }
+
+  @override
+  String get tjRacingSensitivity => 'ٹلٹ حساسیت';
+
+  @override
+  String get tjRacingControls => 'کنٹرولز';
+
+  @override
+  String get tjRacingTilt => 'ٹلٹ';
+
+  @override
+  String get tjRacingButtons => 'بٹن';
+
+  @override
+  String get tjRacingCalibrateNote =>
+      'ٹلٹ ہر ریس کے شروع میں خود کیلیبریٹ ہوتا ہے۔';
+
+  @override
+  String tjRacingResultWin(Object coins, Object rs) {
+    return 'آپ نے $coins کوئنز جیتے = $rs';
+  }
+
+  @override
+  String get tjRacingResultNoCoins => 'اس بار کوئی کوئن نہیں — ریس جاری رکھیں!';
+
+  @override
+  String tjRacingTotalEarned(Object rs) {
+    return 'کل کمائی: $rs';
+  }
+
+  @override
+  String tjRacingWithdrawProgress(Object have, Object needed) {
+    return 'نکالنے کے لیے $needed روپے چاہییں — آپ کے پاس $have روپے ہیں';
+  }
+
+  @override
+  String tjRacingWithdrawReady(Object rs) {
+    return 'نکالنے کے لیے تیار — $rs دستیاب';
+  }
+
+  @override
+  String get tjRacingCapReached => 'روزانہ ریس حد مکمل (200/دن)';
+
+  @override
+  String get tjRacingClaimFailed =>
+      'آپ کے کوئنز نہیں مل سکے۔ دوبارہ کوشش کریں۔';
+
+  @override
+  String get tjRacingNotEnoughAdCoins => 'ایڈ کوئنز کم ہیں';
+
+  @override
+  String get tjRacingUnlocked => 'ان لاک ہو گیا!';
+
+  @override
+  String get tjRacingAdNotAvailable => 'ابھی کوئی اشتہار دستیاب نہیں';
+
+  @override
+  String tjRacingEarnedToday(Object rs) {
+    return 'آج کی ریس کمائی: $rs';
+  }
+
+  @override
+  String get tjRacingBoth => 'دونوں';
+
+  @override
+  String get tjRacingRecalibrate => 'ٹلٹ دوبارہ کیلیبریٹ کریں';
+
+  @override
+  String tjRacingUnlockPrompt(Object car, Object coins, Object have) {
+    return '$car کو $coins ایڈ کوئنز میں ان لاک کریں؟ آپ کے پاس $have ہیں۔';
+  }
+
+  @override
+  String get tjRacingDone => 'ہو گیا';
 }

@@ -3,7 +3,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
+import '../services/remote_config_service.dart';
 import '../services/supabase_service.dart';
+import '../services/validation.dart' show formatCoinsAsPkr;
 
 /// In-app article reader (Jaani, 3 Nov 2026).
 /// Opens the nigraantv.xyz article in a WebView. A countdown enforces the
@@ -111,6 +113,12 @@ class _ArticleReaderScreenState extends State<ArticleReaderScreen> {
     }
   }
 
+  /// Coins per article from remote config (default 5). The Rs value
+  /// is always shown next to it (user order 19 Nov 2026): every cash
+  /// earning displays its Rs value, "5 coins = Rs 0.05".
+  int get _rewardCoins =>
+      RemoteConfigService.instance.config.earnRates.readRewardCoins;
+
   Future<void> _claim() async {
     setState(() {
       _claiming = true;
@@ -132,7 +140,12 @@ class _ArticleReaderScreenState extends State<ArticleReaderScreen> {
         _claiming = false;
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('+5 coins earned!')),
+        SnackBar(
+          content: Text(
+            '+$_rewardCoins coins earned! '
+            '(${formatCoinsAsPkr(_rewardCoins)})',
+          ),
+        ),
       );
       // Pop back with claimed=true after a beat.
       Future.delayed(const Duration(milliseconds: 800), () {
@@ -185,11 +198,16 @@ class _ArticleReaderScreenState extends State<ArticleReaderScreen> {
                 children: [
                   Expanded(
                     child: _claimed
-                        ? const Text('+5 coins claimed!',
-                            style: TextStyle(color: Colors.green))
+                        ? Text(
+                            '+$_rewardCoins coins claimed! '
+                            '(${formatCoinsAsPkr(_rewardCoins)})',
+                            style: const TextStyle(color: Colors.green),
+                          )
                         : _secondsLeft > 0
                             ? Text(
-                                'Read for $_secondsLeft s to earn +5 coins',
+                                'Read for $_secondsLeft s to earn '
+                                '+$_rewardCoins coins '
+                                '(${formatCoinsAsPkr(_rewardCoins)})',
                                 style: Theme.of(context).textTheme.bodySmall,
                               )
                             : _claimError != null
@@ -212,7 +230,7 @@ class _ArticleReaderScreenState extends State<ArticleReaderScreen> {
                             child: CircularProgressIndicator(
                                 strokeWidth: 2),
                           )
-                        : const Text('Claim +5'),
+                        : Text('Claim +$_rewardCoins'),
                   ),
                 ],
               ),

@@ -10,11 +10,14 @@ import '../services/startup_bundle_service.dart';
 import '../services/supabase_service.dart';
 import '../services/updater_service.dart';
 import '../services/unity_ads_service.dart';
+import '../services/validation.dart'
+    show coinsPerPkr, formatCoinsAsPkr, minWithdrawalCoins;
 import 'admin_screen.dart';
 import 'articles_tab.dart';
 import 'games_screen.dart';
 import 'referral_tab.dart';
 import 'settings_tab.dart';
+import 'tj_racing_play_screen.dart';
 import 'withdraw_tab.dart';
 
 /// v1.0.20 shell (Jaani, 3 Nov 2026): website <-> app integration.
@@ -371,6 +374,11 @@ class _HomeTab extends StatefulWidget {
 
 class _HomeTabState extends State<_HomeTab> {
   late Future<int> _balance;
+
+  /// Lifetime cash earnings (gross positive credits, Ad Coins
+  /// excluded). Null while loading / on failure — the line simply
+  /// hides instead of blocking the balance card.
+  late Future<int?> _totalEarned;
   bool _checkingIn = false;
   String? _checkinMessage;
   bool _checkinIsError = false;
@@ -379,6 +387,15 @@ class _HomeTabState extends State<_HomeTab> {
   void initState() {
     super.initState();
     _balance = _loadBalance();
+    _totalEarned = _loadTotalEarned();
+  }
+
+  Future<int?> _loadTotalEarned() async {
+    try {
+      return await SupabaseService.getTotalEarnedCoins();
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<int> _loadBalance() async {
@@ -398,6 +415,7 @@ class _HomeTabState extends State<_HomeTab> {
     if (!mounted) return;
     setState(() {
       _balance = _loadBalance();
+      _totalEarned = _loadTotalEarned();
     });
   }
 
@@ -443,7 +461,7 @@ class _HomeTabState extends State<_HomeTab> {
   /// Rs equivalent of a coin balance (1 coin = Rs 0.01), formatted
   /// without trailing zeros (1000 coins -> "10", 1050 coins -> "10.50").
   String _rsValue(int coins) {
-    final double rs = coins / 100;
+    final double rs = coins / coinsPerPkr;
     return rs == rs.roundToDouble()
         ? rs.toInt().toString()
         : rs.toStringAsFixed(2);
@@ -499,6 +517,41 @@ class _HomeTabState extends State<_HomeTab> {
                     Text(
                       t.balanceRsApprox(_rsValue(coins)),
                       style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                    const SizedBox(height: 8),
+                    // Total earned + progress to withdrawal (user
+                    // order 19 Nov 2026): every cash earning shows
+                    // its Rs value — "Total earned: Rs 12.40" and
+                    // "Rs 100 needed to withdraw — you are at Rs 37".
+                    // The total comes from the ledger (see
+                    // SupabaseService.getTotalEarnedCoins); while it
+                    // loads or fails the line hides — the balance
+                    // above never waits for it.
+                    FutureBuilder<int?>(
+                      future: _totalEarned,
+                      builder: (context, earnedSnapshot) {
+                        final total = earnedSnapshot.data;
+                        if (total == null) {
+                          return const SizedBox.shrink();
+                        }
+                        return Text(
+                          t.tjRacingTotalEarned(formatCoinsAsPkr(total)),
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      coins >= minWithdrawalCoins
+                          ? t.tjRacingWithdrawReady(
+                              formatCoinsAsPkr(coins),
+                            )
+                          : t.tjRacingWithdrawProgress(
+                              _rsValue(minWithdrawalCoins),
+                              _rsValue(coins),
+                            ),
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodySmall,
                     ),
                   ],
                 );
@@ -562,16 +615,20 @@ class _HomeTabState extends State<_HomeTab> {
                 ),
               ),
             ],
-            // Play & Earn (RapidoReach wall, v1.0.25): shown only when
-            // the server enables it in remote config — the wall needs
-            // the `rapidoreach-wall-url` Edge Function deployed and
-            // RAPIDOREACH_APP_ID / RAPIDOREACH_APP_KEY set. Listens to
-            // the config notifier so the tile appears without a restart
-            // once the operator flips the switch.
+            // Play & Earn (RapidoReach wall, v1.0.25) + TJ Racing 3D
+            // (v1.0.31): shown only when the server enables them in
+            // remote config. The wall needs the
+            // `rapidoreach-wall-url` Edge Function deployed and
+            // RAPIDOREACH_APP_ID / RAPIDOREACH_APP_KEY set; the
+            // racing tile needs `games.tj_racing.enabled` (and the
+            // Unity export wired — until then the tile stays off).
+            // Listens to the config notifier so a tile appears
+            // without a restart once the operator flips the switch.
             ValueListenableBuilder<RemoteConfig>(
               valueListenable: RemoteConfigService.instance.notifier,
               builder: (context, config, _) {
-                if (!config.rapidoreach.enabled) {
+                if (!config.rapidoreach.enabled &&
+                    !config.tjRacing.enabled) {
                   return const SizedBox.shrink();
                 }
                 return Column(
@@ -613,6 +670,61 @@ class _HomeTabState extends State<_HomeTab> {
                                       ),
                                       const SizedBox(height: 4),
                                       Text(t.gamesSubtitle),
+                                    ],
+                                  ),
+                                ),
+                                const Icon(Icons.chevron_right),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                    // TJ Racing 3D (v1.0.31): the in-app game, shown
+                    // when the server enables it
+                    // (`games.tj_racing.enabled`). The tile opens the
+                    // Unity host screen directly — the menu, garage
+                    // and race UI all live in Unity (MainMenu scene).
+                    // Replaces the removed Arrow Puzzle tile; the
+                    // RapidoReach wall above is untouched.
+                    if (config.tjRacing.enabled) ...[
+                      const SizedBox(height: 16),
+                      Card(
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(12),
+                          onTap: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => TjRacingPlayScreen(
+                                  config: config.tjRacing,
+                                ),
+                              ),
+                            );
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.all(20),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.sports_motorsports,
+                                  size: 40,
+                                  color:
+                                      Theme.of(context).colorScheme.primary,
+                                ),
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        config.tjRacing.title,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .titleMedium,
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(t.tjRacingSubtitle),
                                     ],
                                   ),
                                 ),

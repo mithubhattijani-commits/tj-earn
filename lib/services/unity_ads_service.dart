@@ -8,18 +8,35 @@ import 'package:unity_ads_plugin/unity_ads_plugin.dart';
 /// COMPLIANT MODEL (17 Nov 2026, Unity ticket #00945584): coins-to-cash
 /// via rewarded ads is PROHIBITED on self-serve Unity Ads — rewards for
 /// watching ads must be in-app virtual only, never cash. TJ Earn pays
-/// cash for READING, so NO cash coin may ever come from any ad view.
+/// cash for READING and RACING, so NO cash coin may ever come from any
+/// ad view.
 ///
-/// The in-app game and its Watch Ads Ad Coins were REMOVED in v1.0.31
-/// (user order 19 Nov 2026) — the rewarded placement is gone with it.
-/// What remains (all earning only):
+/// TJ Racing 3D (v1.0.31) ad model — same placements, same Game ID:
 /// - Game ID: 800417967 (Android, "TJ Earn" project)
-/// - Banner placement: BP_Banner_Android (Active) — passive bottom slot.
+/// - Banner placement: BP_Banner_Android (Active) — passive bottom
+///   slot in the Flutter shell. (Unity shows its OWN banner top
+///   strip inside the game view, from its own Ads init.)
 /// - Interstitial placement: BP_Interstitial_Android (Active) — shown
-///   between articles via [maybeShowArticleInterstitial], gated by the
-///   remote-config earn rates (every Nth article, min gap). Never
-///   rewarded, never tied to any coin grant.
+///   between articles via [maybeShowArticleInterstitial] (gated by the
+///   remote-config earn rates). Never rewarded, never tied to any
+///   coin grant. Race interstitials are UNITY-owned (ResultsUI
+///   Continue → `MaybeShowInterstitialAfterContinue`, every 3rd
+///   race, min 3 min, never after a win) — Flutter never triggers
+///   one.
+/// - Rewarded placement: BP_Rewarded_Android — TJ Racing Ad Coins
+///   ONLY, shown by UNITY (`ShowRewardedAd` message →
+///   `rewarded_completed` event → server claim). Flutter never
+///   shows a rewarded ad itself (the old Arrow Puzzle
+///   `showRewardedAd` was removed with the game; there is no
+///   Flutter-side rewarded path anymore).
 /// - App Open placement: BP_AppOpen_Android (Active) — cold start only.
+///
+/// NOTE (dual Ads init, 19 Nov 2026): the Flutter plugin init
+/// here AND Unity's own `UnityAdsManager` init inside the player
+/// both initialise Unity Ads with the same Game ID. That is the
+/// design per the Unity integration contract; verify on a real
+/// device once the export is wired that both inits coexist and
+/// that article interstitials still show after a game session.
 ///
 /// Test mode is ON for development. Flip [testMode] to false for
 /// production builds.
@@ -29,7 +46,6 @@ class UnityAdsService {
   /// Dual-ad system (Jaani, 2 Nov 2026): every app visit + every coin
   /// claim shows a Unity ad. Interstitial after claims, App Open on launch.
   /// Placement IDs follow the existing BP_ naming convention.
-  ///
   static const String interstitialPlacementId = 'BP_Interstitial_Android';
   static const String appOpenPlacementId = 'BP_AppOpen_Android';
   static const String bannerPlacementId = 'BP_Banner_Android';

@@ -615,4 +615,96 @@ class AppLocalizationsEn extends AppLocalizations {
   String referAutoApplied(String code) {
     return 'Referral $code applied! 🎉';
   }
+
+  @override
+  String get tjRacingSubtitle => '3D street racing — win coins';
+
+  @override
+  String get tjRacingSettings => 'SETTINGS';
+
+  @override
+  String get tjRacingAdCoins => 'Ad Coins';
+
+  @override
+  String tjRacingUnlock(Object coins) {
+    return 'Unlock — $coins Ad Coins';
+  }
+
+  @override
+  String tjRacingWatchAd(Object coins) {
+    return 'Watch Ad — Get $coins Ad Coins';
+  }
+
+  @override
+  String get tjRacingSensitivity => 'Tilt sensitivity';
+
+  @override
+  String get tjRacingControls => 'Controls';
+
+  @override
+  String get tjRacingTilt => 'Tilt';
+
+  @override
+  String get tjRacingButtons => 'Buttons';
+
+  @override
+  String get tjRacingCalibrateNote =>
+      'Tilt auto-calibrates at every race start.';
+
+  @override
+  String tjRacingResultWin(Object coins, Object rs) {
+    return 'You won $coins coins = $rs';
+  }
+
+  @override
+  String get tjRacingResultNoCoins => 'No coins this time — keep racing!';
+
+  @override
+  String tjRacingTotalEarned(Object rs) {
+    return 'Total earned: $rs';
+  }
+
+  @override
+  String tjRacingWithdrawProgress(Object have, Object needed) {
+    return 'Rs $needed needed to withdraw — you are at Rs $have';
+  }
+
+  @override
+  String tjRacingWithdrawReady(Object rs) {
+    return 'Ready to withdraw — $rs available';
+  }
+
+  @override
+  String get tjRacingCapReached => 'Daily race limit reached (200/day)';
+
+  @override
+  String get tjRacingClaimFailed => 'Could not claim your coins. Try again.';
+
+  @override
+  String get tjRacingNotEnoughAdCoins => 'Not enough Ad Coins';
+
+  @override
+  String get tjRacingUnlocked => 'Unlocked!';
+
+  @override
+  String get tjRacingAdNotAvailable => 'No ad available right now';
+
+  @override
+  String tjRacingEarnedToday(Object rs) {
+    return 'Race earnings today: $rs';
+  }
+
+  @override
+  String get tjRacingBoth => 'Both';
+
+  @override
+  String get tjRacingRecalibrate => 'Re-calibrate tilt';
+
+  @override
+  String tjRacingUnlockPrompt(Object car, Object coins, Object have) {
+    return 'Unlock $car for $coins Ad Coins? You have $have.';
+  }
+
+  @override
+  String get tjRacingDone => 'Done';
 }

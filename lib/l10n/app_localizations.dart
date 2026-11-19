@@ -1225,6 +1225,156 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Referral {code} applied! 🎉'**
   String referAutoApplied(String code);
+
+  /// No description provided for @tjRacingSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'3D street racing — win coins'**
+  String get tjRacingSubtitle;
+
+  /// No description provided for @tjRacingSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'SETTINGS'**
+  String get tjRacingSettings;
+
+  /// No description provided for @tjRacingAdCoins.
+  ///
+  /// In en, this message translates to:
+  /// **'Ad Coins'**
+  String get tjRacingAdCoins;
+
+  /// No description provided for @tjRacingUnlock.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock — {coins} Ad Coins'**
+  String tjRacingUnlock(Object coins);
+
+  /// No description provided for @tjRacingWatchAd.
+  ///
+  /// In en, this message translates to:
+  /// **'Watch Ad — Get {coins} Ad Coins'**
+  String tjRacingWatchAd(Object coins);
+
+  /// No description provided for @tjRacingSensitivity.
+  ///
+  /// In en, this message translates to:
+  /// **'Tilt sensitivity'**
+  String get tjRacingSensitivity;
+
+  /// No description provided for @tjRacingControls.
+  ///
+  /// In en, this message translates to:
+  /// **'Controls'**
+  String get tjRacingControls;
+
+  /// No description provided for @tjRacingTilt.
+  ///
+  /// In en, this message translates to:
+  /// **'Tilt'**
+  String get tjRacingTilt;
+
+  /// No description provided for @tjRacingButtons.
+  ///
+  /// In en, this message translates to:
+  /// **'Buttons'**
+  String get tjRacingButtons;
+
+  /// No description provided for @tjRacingCalibrateNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Tilt auto-calibrates at every race start.'**
+  String get tjRacingCalibrateNote;
+
+  /// No description provided for @tjRacingResultWin.
+  ///
+  /// In en, this message translates to:
+  /// **'You won {coins} coins = {rs}'**
+  String tjRacingResultWin(Object coins, Object rs);
+
+  /// No description provided for @tjRacingResultNoCoins.
+  ///
+  /// In en, this message translates to:
+  /// **'No coins this time — keep racing!'**
+  String get tjRacingResultNoCoins;
+
+  /// No description provided for @tjRacingTotalEarned.
+  ///
+  /// In en, this message translates to:
+  /// **'Total earned: {rs}'**
+  String tjRacingTotalEarned(Object rs);
+
+  /// No description provided for @tjRacingWithdrawProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Rs {needed} needed to withdraw — you are at Rs {have}'**
+  String tjRacingWithdrawProgress(Object have, Object needed);
+
+  /// No description provided for @tjRacingWithdrawReady.
+  ///
+  /// In en, this message translates to:
+  /// **'Ready to withdraw — {rs} available'**
+  String tjRacingWithdrawReady(Object rs);
+
+  /// No description provided for @tjRacingCapReached.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily race limit reached (200/day)'**
+  String get tjRacingCapReached;
+
+  /// No description provided for @tjRacingClaimFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not claim your coins. Try again.'**
+  String get tjRacingClaimFailed;
+
+  /// No description provided for @tjRacingNotEnoughAdCoins.
+  ///
+  /// In en, this message translates to:
+  /// **'Not enough Ad Coins'**
+  String get tjRacingNotEnoughAdCoins;
+
+  /// No description provided for @tjRacingUnlocked.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlocked!'**
+  String get tjRacingUnlocked;
+
+  /// No description provided for @tjRacingAdNotAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'No ad available right now'**
+  String get tjRacingAdNotAvailable;
+
+  /// No description provided for @tjRacingEarnedToday.
+  ///
+  /// In en, this message translates to:
+  /// **'Race earnings today: {rs}'**
+  String tjRacingEarnedToday(Object rs);
+
+  /// No description provided for @tjRacingBoth.
+  ///
+  /// In en, this message translates to:
+  /// **'Both'**
+  String get tjRacingBoth;
+
+  /// No description provided for @tjRacingRecalibrate.
+  ///
+  /// In en, this message translates to:
+  /// **'Re-calibrate tilt'**
+  String get tjRacingRecalibrate;
+
+  /// No description provided for @tjRacingUnlockPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock {car} for {coins} Ad Coins? You have {have}.'**
+  String tjRacingUnlockPrompt(Object car, Object coins, Object have);
+
+  /// No description provided for @tjRacingDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get tjRacingDone;
 }
 
 class _AppLocalizationsDelegate

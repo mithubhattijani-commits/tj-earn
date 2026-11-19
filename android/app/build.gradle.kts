@@ -37,7 +37,12 @@ android {
         // FIXED FOREVER: com.tjearn.app. Never change this — changing the
         // package name breaks the in-app update chain for installed users.
         applicationId = "com.tjearn.app"
-        minSdk = flutter.minSdkVersion
+        // minSdk 22 (was flutter.minSdkVersion = 21): Unity 2022.3 LTS
+        // and flutter_embed_unity_2022_3_android 2.0.0 both require
+        // API 22+ (the plugin's own build.gradle sets minSdk 22).
+        // Pinned Unity: 2022.3.62f2+. NDK is already fine — Flutter
+        // 3.47.8 defaults to NDK 28.2, above Unity 2022.3's r23b.
+        minSdk = 22
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName

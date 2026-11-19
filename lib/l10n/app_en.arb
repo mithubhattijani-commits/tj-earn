@@ -199,5 +199,30 @@
         "example": "SKD9FTHE"
       }
     }
-  }
+  },
+  "tjRacingSubtitle": "3D street racing — win coins",
+  "tjRacingSettings": "SETTINGS",
+  "tjRacingAdCoins": "Ad Coins",
+  "tjRacingUnlock": "Unlock — {coins} Ad Coins",
+  "tjRacingWatchAd": "Watch Ad — Get {coins} Ad Coins",
+  "tjRacingSensitivity": "Tilt sensitivity",
+  "tjRacingControls": "Controls",
+  "tjRacingTilt": "Tilt",
+  "tjRacingButtons": "Buttons",
+  "tjRacingCalibrateNote": "Tilt auto-calibrates at every race start.",
+  "tjRacingResultWin": "You won {coins} coins = {rs}",
+  "tjRacingResultNoCoins": "No coins this time — keep racing!",
+  "tjRacingTotalEarned": "Total earned: {rs}",
+  "tjRacingWithdrawProgress": "Rs {needed} needed to withdraw — you are at Rs {have}",
+  "tjRacingWithdrawReady": "Ready to withdraw — {rs} available",
+  "tjRacingCapReached": "Daily race limit reached (200/day)",
+  "tjRacingClaimFailed": "Could not claim your coins. Try again.",
+  "tjRacingNotEnoughAdCoins": "Not enough Ad Coins",
+  "tjRacingUnlocked": "Unlocked!",
+  "tjRacingAdNotAvailable": "No ad available right now",
+  "tjRacingEarnedToday": "Race earnings today: {rs}",
+  "tjRacingBoth": "Both",
+  "tjRacingRecalibrate": "Re-calibrate tilt",
+  "tjRacingUnlockPrompt": "Unlock {car} for {coins} Ad Coins? You have {have}.",
+  "tjRacingDone": "Done"
 }
