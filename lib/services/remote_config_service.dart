@@ -135,103 +135,6 @@ class EarnRatesConfig {
   }
 }
 
-/// Arrow Puzzle game switch + economy (v1.0.27).
-///
-/// JSON shape in tj-earn.json (optional — every key falls back to the
-/// bundled default when missing or malformed):
-///   "games": {
-///     "arrow_puzzle": {
-///       "enabled": true,                    // show the game tile
-///       "level_reward_coins": 5,            // coins per first completion
-///       "daily_cap": 200,                   // game coins/day (own bucket)
-///       "free_hints_per_day": 2,            // free hints, resets daily
-///       "hint_price_coins": 10,             // extra hint price
-///       "power_price_coins": 15,            // power price
-///       "life_price_coins": 20,             // extra-life price
-///       "interstitial_every_nth_level": 3,  // non-rewarded interstitial
-///       "interstitial_min_gap_minutes": 3,
-///       "ad_coins_per_ad": 10,              // Ad Coins per watched ad
-///       "ad_coins_daily_cap": 100,          // max Ad Coins/day
-///       "ads_for_rewards_enabled": false    // default OFF in code; the
-///                                            // v1.0.27 RELEASED config
-///                                            // sets it ON per user order
-///                                            // 18 Nov ~14:54 (Unity
-///                                            // ticket 00946156 still
-///                                            // Open — risk accepted)
-///     }
-///   }
-///
-/// Server truth: the `claim-game-level` / `spend-game-item` /
-/// `claim-ad-reward` Edge Functions enforce the same values from
-/// app_config. These remote-config values only drive the APP's
-/// display + ad frequency — the server never trusts them.
-///
-/// TWO CURRENCIES: Ad Coins (earned by watching ads, in-game only)
-/// and Level Coins (earned by completing levels, cash-redeemable)
-/// never mix — Ad Coins can never become cash or Level Coins
-/// (see `games/arrow_puzzle/ad_coins.dart`).
-class ArrowPuzzleConfig {
-  const ArrowPuzzleConfig({
-    this.enabled = false,
-    this.levelRewardCoins = 5,
-    this.dailyCap = 200,
-    this.freeHintsPerDay = 2,
-    this.hintPriceCoins = 10,
-    this.powerPriceCoins = 15,
-    this.lifePriceCoins = 20,
-    this.interstitialEveryNthLevel = 3,
-    this.interstitialMinGapMinutes = 3,
-    this.adCoinsPerAd = 10,
-    this.adCoinsDailyCap = 100,
-    this.adsForRewardsEnabled = false,
-  });
-
-  final bool enabled;
-  final int levelRewardCoins;
-  final int dailyCap;
-  final int freeHintsPerDay;
-  final int hintPriceCoins;
-  final int powerPriceCoins;
-  final int lifePriceCoins;
-  final int interstitialEveryNthLevel;
-  final int interstitialMinGapMinutes;
-
-  /// Ad Coins granted per fully-watched rewarded ad (Watch Ads).
-  final int adCoinsPerAd;
-
-  /// Max Ad Coins earnable per day (own bucket, server-enforced).
-  final int adCoinsDailyCap;
-
-  final bool adsForRewardsEnabled;
-
-  static int _asInt(Object? v, int fallback) {
-    if (v is int) return v;
-    if (v is num) return v.toInt();
-    if (v is String) return int.tryParse(v.trim()) ?? fallback;
-    return fallback;
-  }
-
-  factory ArrowPuzzleConfig.fromJson(Map<String, dynamic> j) {
-    int clamp(int v, int min, int max) =>
-        v < min ? min : (v > max ? max : v);
-    return ArrowPuzzleConfig(
-      enabled: j['enabled'] == true,
-      levelRewardCoins: clamp(_asInt(j['level_reward_coins'], 5), 0, 100),
-      dailyCap: clamp(_asInt(j['daily_cap'], 200), 1, 1000),
-      freeHintsPerDay: clamp(_asInt(j['free_hints_per_day'], 2), 0, 10),
-      hintPriceCoins: clamp(_asInt(j['hint_price_coins'], 10), 0, 1000),
-      powerPriceCoins: clamp(_asInt(j['power_price_coins'], 15), 0, 1000),
-      lifePriceCoins: clamp(_asInt(j['life_price_coins'], 20), 0, 1000),
-      interstitialEveryNthLevel:
-          clamp(_asInt(j['interstitial_every_nth_level'], 3), 1, 100),
-      interstitialMinGapMinutes:
-          clamp(_asInt(j['interstitial_min_gap_minutes'], 3), 0, 60),
-      adCoinsPerAd: clamp(_asInt(j['ad_coins_per_ad'], 10), 0, 100),
-      adCoinsDailyCap: clamp(_asInt(j['ad_coins_daily_cap'], 100), 1, 1000),
-      adsForRewardsEnabled: j['ads_for_rewards_enabled'] == true,
-    );
-  }
-}
 
 /// Play & Earn wall switch (RapidoReach, v1.0.25).
 ///
@@ -261,7 +164,6 @@ class RemoteConfig {
     this.forceUpdate = const ForceUpdateConfig(),
     this.earnRates = const EarnRatesConfig(),
     this.rapidoreach = const RapidoreachConfig(),
-    this.arrowPuzzle = const ArrowPuzzleConfig(),
   });
 
   final String displayName;
@@ -271,14 +173,8 @@ class RemoteConfig {
   final ForceUpdateConfig forceUpdate;
   final EarnRatesConfig earnRates;
   final RapidoreachConfig rapidoreach;
-  final ArrowPuzzleConfig arrowPuzzle;
 
   factory RemoteConfig.fromJson(Map<String, dynamic> j) {
-    final games = j['games'];
-    final arrowPuzzleJson = games is Map<String, dynamic> &&
-            games['arrow_puzzle'] is Map<String, dynamic>
-        ? games['arrow_puzzle'] as Map<String, dynamic>
-        : null;
     return RemoteConfig(
       displayName: (j['display_name'] as String?)?.trim().isNotEmpty == true
           ? (j['display_name'] as String).trim()
@@ -309,9 +205,6 @@ class RemoteConfig {
               j['rapidoreach'] as Map<String, dynamic>,
             )
           : const RapidoreachConfig(),
-      arrowPuzzle: arrowPuzzleJson != null
-          ? ArrowPuzzleConfig.fromJson(arrowPuzzleJson)
-          : const ArrowPuzzleConfig(),
     );
   }
 }
