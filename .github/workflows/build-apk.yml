@@ -17,7 +17,7 @@ jobs:
       - name: Download unityLibrary (TJ Racing Unity export)
         run: |
           curl -sL -o unityLibrary.zip https://github.com/mithubhattijani-commits/tj-racing/releases/download/unityLibrary-v1.0.31/unityLibrary.zip
-          echo "abce5f82be9137497edf54e6c0a1280c8743e2b6d28845e69968d963c5cbdc30  unityLibrary.zip" | sha256sum -c -
+          echo "b384535c2071f78959d82edf493abd622132a68ae8f4a76835d8e2469b48d163  unityLibrary.zip" | sha256sum -c -
           unzip -o unityLibrary.zip -d android/
           rm -f android/unityLibrary/PLACEHOLDER_README.md
           test -f android/unityLibrary/build.gradle
