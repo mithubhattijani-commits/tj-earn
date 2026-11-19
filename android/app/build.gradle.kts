@@ -74,7 +74,29 @@ flutter {
     source = "../.."
 }
 
+// TJ Racing 3D (Unity-as-a-Library, v1.0.31): the Unity export's libs/
+// (unity-classes.jar) resolve via flatDir. The export currently ships
+// only that jar, consumed by unityLibrary itself via fileTree — this
+// repo is belt-and-braces per the Unity export docs. Guarded: the
+// export only exists at CI build time (release-asset download), so
+// local builds without it skip this repo entirely.
+if (file("../unityLibrary/build.gradle").exists()) {
+    repositories {
+        flatDir {
+            dirs("../unityLibrary/libs")
+        }
+    }
+}
+
 dependencies {
     // Core library desugaring for flutter_local_notifications.
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
+    // TJ Racing 3D (Unity-as-a-Library, v1.0.31): the Unity export
+    // lands in android/unityLibrary/ via the CI release-asset download
+    // (unityLibrary.zip) before the Flutter build. Guarded: the module
+    // only exists at CI build time, so local builds without the export
+    // skip this dependency and build exactly as before (no Unity).
+    if (file("../unityLibrary/build.gradle").exists()) {
+        implementation(project(":unityLibrary"))
+    }
 }

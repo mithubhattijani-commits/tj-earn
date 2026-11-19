@@ -1,35 +1,32 @@
-# PLACEHOLDER — TJ Racing 3D Unity export goes HERE (v1.0.31)
+# TJ Racing 3D Unity export goes HERE (v1.0.31) — WIRED, delivered by CI
 
-This directory is intentionally EMPTY (no `unityLibrary` yet).
+This directory holds ONLY this file in git. The real `unityLibrary`
+(Unity 2022.3.62f2 export, IL2CPP, arm64-v8a + armeabi-v7a) is NEVER
+committed — it is 314 MB and exceeds GitHub's 100 MB/file limit.
 
-The sibling Unity agent is building the TJ Racing 3D Unity project
-(pinned Unity **2022.3.62f2 or newer**, 2022.3 LTS). When it is ready
-it is exported from Unity via
-`Flutter Embed -> Export project to Flutter app` (android) into
-THIS directory, which then contains the real `unityLibrary`
-(`build.gradle`, `src/`, `libs/`, ...).
+Delivery: `unityLibrary.zip` is a release asset on the tj-racing repo.
+The tj-earn CI workflow downloads it and unzips it into THIS directory
+(`android/unityLibrary/`) BEFORE the Flutter build, then deletes this
+placeholder file. Local builds without the export work exactly as
+before (no Unity) — `android/settings.gradle.kts` includes
+`:unityLibrary` only when `unityLibrary/build.gradle` exists, and
+`android/app/build.gradle.kts` adds the `implementation(project(...))`
+dependency + flatDir repo only under the same guard.
 
-What happens automatically once the export lands:
-
-- `android/settings.gradle.kts` already contains a conditional
-  `include(":unityLibrary")` — it activates as soon as
-  `unityLibrary/build.gradle` exists. Nothing else to change there.
-
-What STILL needs wiring at that point (coordinator follow-up —
-do NOT guess these values, take them from the real export):
+Wiring (done on branch `remove-arrow-puzzle`, v1.0.31):
 
 1. `android/app/build.gradle.kts`:
-   `implementation(project(":unityLibrary"))` in `dependencies`.
-2. A `flatDir` repository pointing at `unityLibrary/libs`
-   (settings/root build file).
-3. `android/gradle.properties`:
-   `unityStreamingAssets=<value printed by the Unity console log
-   after export>` (often blank).
-4. Verify the export's own `build.gradle` (Unity 2022.3 pins Gradle
-   7.5.1 / AGP 7.4.2 / NDK r23b / JDK 11) builds inside this app
-   (AGP 9.1.0 / JDK 17) before the v1.0.31 CI run.
+   `implementation(project(":unityLibrary"))` + flatDir repo for
+   `unityLibrary/libs` (both guarded on the export existing).
+2. `android/gradle.properties`:
+   `unityStreamingAssets=` (empty — the Unity exporter console log
+   printed no streaming-asset extensions).
+3. The export's own `build.gradle` was patched for AGP 9.1.0 INSIDE
+   the zip only (lintOptions→lint, aaptOptions→androidResources,
+   packagingOptions→packaging, compileSdk/minSdk/targetSdk property
+   form). The on-disk export stays pristine; the zip is the delivery
+   artifact. The local Gradle build is blocked by the sandbox, so the
+   v1.0.31 CI build is the first real Gradle test of this wiring.
 
-Until then: a release build CANNOT link Unity (expected — the
-Flutter analyzer + tests still run clean), the racing tile stays
-hidden (`games.tj_racing.enabled` is false in the live config),
-and no fake library is invented here.
+Pinned Unity version: 2022.3.62f2 or newer (flutter_embed_unity
+2.0.0 requirement). Do NOT invent a fake unityLibrary.
