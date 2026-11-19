@@ -597,25 +597,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get walletTitle => 'Wallet';
 
   @override
-  String get watchAdButton => 'Watch Ad';
-
-  @override
-  String get watchAdNote => 'One reward per completed ad. Daily limits apply.';
-
-  @override
-  String get watchAdRewardLine => 'Earn 10 coins per completed video';
-
-  @override
-  String get watchAdSubtitle =>
-      'Watch a short video ad and earn coins. Coins are credited after you finish the full ad.';
-
-  @override
-  String get watchAdTile => 'Watch Ad\nEarn 10 Coins';
-
-  @override
-  String get watchAdTitle => 'Watch Ad & Earn Coins';
-
-  @override
   String get withdrawTitle => 'Withdraw';
 
   @override
@@ -636,116 +617,110 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get arrowPuzzleAdCoins => 'Ad Coins';
+  String get tjRacingSubtitle => '3D street racing — win coins';
 
   @override
-  String arrowPuzzleAdCoinsBalance(Object coins) {
-    return 'Ad Coins: $coins';
+  String get tjRacingSettings => 'SETTINGS';
+
+  @override
+  String get tjRacingAdCoins => 'Ad Coins';
+
+  @override
+  String tjRacingUnlock(Object coins) {
+    return 'Unlock — $coins Ad Coins';
   }
 
   @override
-  String arrowPuzzleAdCoinsEarned(Object coins) {
-    return '+$coins Ad Coins';
-  }
-
-  @override
-  String get arrowPuzzleAdDailyCapReached => 'Daily Ad Coin limit reached';
-
-  @override
-  String get arrowPuzzleAdNotAvailable =>
-      'Ads for rewards are not available yet';
-
-  @override
-  String get arrowPuzzleAlreadyClaimed => 'Already claimed — replay for fun';
-
-  @override
-  String arrowPuzzleBuyHintCoins(Object coins) {
-    return 'Hint — $coins coins';
-  }
-
-  @override
-  String arrowPuzzleBuyLifeCoins(Object coins) {
-    return 'Extra life — $coins coins';
-  }
-
-  @override
-  String arrowPuzzleBuyPowerCoins(Object coins) {
-    return 'Power — $coins coins';
-  }
-
-  @override
-  String arrowPuzzleBuyWithAdCoins(Object coins) {
-    return 'Use $coins Ad Coins';
-  }
-
-  @override
-  String arrowPuzzleCoinsEarned(Object coins) {
-    return '+$coins coins';
-  }
-
-  @override
-  String get arrowPuzzleDailyChallenge => 'Daily Challenge';
-
-  @override
-  String get arrowPuzzleDailyDone => 'Done for today';
-
-  @override
-  String arrowPuzzleFreeHintsLeft(Object count) {
-    return '$count free hints left';
-  }
-
-  @override
-  String get arrowPuzzleGameOver => 'Out of lives!';
-
-  @override
-  String get arrowPuzzleHint => 'Hint';
-
-  @override
-  String arrowPuzzleLevel(Object level) {
-    return 'Level $level';
-  }
-
-  @override
-  String get arrowPuzzleLevelComplete => 'Level Complete!';
-
-  @override
-  String get arrowPuzzleLevelLocked => 'Locked';
-
-  @override
-  String get arrowPuzzleMoves => 'Moves';
-
-  @override
-  String get arrowPuzzleNewGame => 'New Game';
-
-  @override
-  String get arrowPuzzleNextLevel => 'Next Level';
-
-  @override
-  String get arrowPuzzleNotEnoughCoins => 'Not enough coins';
-
-  @override
-  String get arrowPuzzlePlay => 'Play';
-
-  @override
-  String get arrowPuzzlePower => 'Power';
-
-  @override
-  String get arrowPuzzlePowerActive => 'Power active — tap an arrow';
-
-  @override
-  String get arrowPuzzleReplay => 'Replay';
-
-  @override
-  String get arrowPuzzleSubtitle => 'Clear the arrows, earn coins';
-
-  @override
-  String get arrowPuzzleTitle => 'Arrow Puzzle';
-
-  @override
-  String get arrowPuzzleWatchAd => 'Watch ad';
-
-  @override
-  String arrowPuzzleWatchAdGetCoins(Object coins) {
+  String tjRacingWatchAd(Object coins) {
     return 'Watch Ad — Get $coins Ad Coins';
   }
+
+  @override
+  String get tjRacingSensitivity => 'Tilt sensitivity';
+
+  @override
+  String get tjRacingControls => 'Controls';
+
+  @override
+  String get tjRacingTilt => 'Tilt';
+
+  @override
+  String get tjRacingButtons => 'Buttons';
+
+  @override
+  String get tjRacingCalibrateNote =>
+      'Tilt auto-calibrates at every race start.';
+
+  @override
+  String tjRacingResultWin(Object coins, Object rs) {
+    return 'You won $coins coins = $rs';
+  }
+
+  @override
+  String get tjRacingResultNoCoins => 'No coins this time — keep racing!';
+
+  @override
+  String tjRacingTotalEarned(Object rs) {
+    return 'Total earned: $rs';
+  }
+
+  @override
+  String tjRacingWithdrawProgress(Object have, Object needed) {
+    return 'Rs $needed needed to withdraw — you are at Rs $have';
+  }
+
+  @override
+  String tjRacingWithdrawReady(Object rs) {
+    return 'Ready to withdraw — $rs available';
+  }
+
+  @override
+  String get tjRacingCapReached => 'Daily race limit reached (200/day)';
+
+  @override
+  String get tjRacingClaimFailed => 'Could not claim your coins. Try again.';
+
+  @override
+  String get tjRacingNotEnoughAdCoins => 'Not enough Ad Coins';
+
+  @override
+  String get tjRacingUnlocked => 'Unlocked!';
+
+  @override
+  String get tjRacingAdNotAvailable => 'No ad available right now';
+
+  @override
+  String tjRacingEarnedToday(Object rs) {
+    return 'Race earnings today: $rs';
+  }
+
+  @override
+  String get tjRacingBoth => 'Both';
+
+  @override
+  String get tjRacingRecalibrate => 'Re-calibrate tilt';
+
+  @override
+  String tjRacingUnlockPrompt(Object car, Object coins, Object have) {
+    return 'Unlock $car for $coins Ad Coins? You have $have.';
+  }
+
+  @override
+  String tjRacingPowerupPrompt(Object coins, Object have, Object item) {
+    return 'Buy $item for $coins Ad Coins? You have $have.';
+  }
+
+  @override
+  String tjRacingPowerupBuy(Object coins) {
+    return 'Buy — $coins Ad Coins';
+  }
+
+  @override
+  String get tjRacingPowerupBought => 'Power-up bought!';
+
+  @override
+  String get tjRacingPowerupAlreadyOwned => 'Already owned — no coins charged';
+
+  @override
+  String get tjRacingDone => 'Done';
 }

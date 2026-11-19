@@ -5,6 +5,7 @@ import 'package:crypto/crypto.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../config.dart';
+import '../games/tj_racing/ad_coins.dart';
 
 /// All Supabase access for the app.
 ///
@@ -542,32 +543,51 @@ class SupabaseService {  static SupabaseClient get client => Supabase.instance.c
     }
   }
 
-  /// Arrow Puzzle level reward (v1.0.27).
+  /// Client-generated idempotency key (server dedupes on it, so a
+  /// retry after a partial failure can never double-charge or
+  /// double-credit).
+  static String newIdempotencyKey(String prefix) {
+    final random = Random.secure();
+    final bytes = List<int>.generate(16, (_) => random.nextInt(256));
+    final stamp = DateTime.now().microsecondsSinceEpoch.toRadixString(16);
+    return '$prefix-$stamp-${sha256.convert(bytes).toString().substring(0, 16)}';
+  }
+
+  /// TJ Racing 3D race reward (v1.0.31).
   ///
-  /// Coins come ONLY from completing a level, never from an ad. The
-  /// server (`claim-game-level` Edge Function) is authoritative: it
-  /// credits `game_level_coins` once per level per user (idempotency
-  /// key `game-level-<user>-<level>`, or `...-daily-<YYYY-MM-DD>` for
-  /// the Daily Challenge) and enforces the daily game-coin cap
-  /// (`game_level_daily_cap`). The client only renders the result.
-  /// Returns the function payload: `{ok, coins, already, remaining?}`.
-  /// Throws on 429 (daily cap reached) or other failures. A 409
-  /// (already claimed) is returned as data, not thrown — the win
-  /// dialog renders it as state.
-  static Future<Map<String, dynamic>> claimGameLevel(
-    int level, {
-    required bool dailyChallenge,
-    required int moves,
-    required int heartsLost,
+  /// Coins come ONLY from finishing a race, never from an ad. The
+  /// server (`claim-race-level` Edge Function, mirroring
+  /// `claim-game-level`) is authoritative: it credits Level Coins
+  /// once per race id (Unity generates the `race_id` Guid and sends
+  /// it in `race_result`; replays return `already: true`) and
+  /// enforces the daily race-coin cap. The client only renders the
+  /// result. Unity NEVER credits coins — the race result arrives
+  /// from Unity over the plugin message channel and this call is
+  /// the only credit path. Unity's `level_coins_earned` field is
+  /// info-only and is NEVER sent to the server (the server
+  /// re-derives the coins from `position`). Returns the function
+  /// payload: `{ok, coins, already, coins_today, balance_coins?,
+  /// remaining?}`. Throws on 429 (daily cap reached) or other
+  /// failures. A 409 (already claimed) is returned as data, not
+  /// thrown — the result overlay renders it as state.
+  static Future<Map<String, dynamic>> claimRaceLevel({
+    required String raceId,
+    required int position,
+    required int lapsCompleted,
+    int? totalRacers,
+    double? raceTimeSecs,
   }) async {
-    final res = await _invoke('claim-game-level', body: {
-      'level': level,
-      'daily_challenge': dailyChallenge,
-      'moves': moves,
-      'hearts_lost': heartsLost,
+    final res = await _invoke('claim-race-level', body: {
+      'race_id': raceId,
+      'position': position,
+      'laps_completed': lapsCompleted,
+      // ignore: use_null_aware_elements — the `if` form reads clearer.
+      if (totalRacers != null) 'total_racers': totalRacers,
+      // ignore: use_null_aware_elements
+      if (raceTimeSecs != null) 'race_time_secs': raceTimeSecs,
     });
     if (res.status == 429) {
-      throw Exception('game daily cap reached (429)');
+      throw Exception('race daily cap reached (429)');
     }
     final data = res.data;
     if (res.status == 409 && data is Map<String, dynamic>) {
@@ -576,21 +596,22 @@ class SupabaseService {  static SupabaseClient get client => Supabase.instance.c
     if (res.status != 200) {
       final message =
           data is Map && data['error'] is String ? data['error'] : 'failed';
-      throw Exception('claim-game-level failed: $message');
+      throw Exception('claim-race-level failed: $message');
     }
     if (data is Map<String, dynamic>) return data;
-    throw Exception('claim-game-level returned an unexpected response');
+    throw Exception('claim-race-level returned an unexpected response');
   }
 
-  /// Game coins earned today (own bucket, separate from reading).
-  /// Served by `claim-game-level` over GET — no claim is made.
-  static Future<int> getGameCoinsToday() async {
+  /// Race Level Coins earned today (own bucket, separate from
+  /// reading). Served by `claim-race-level` over GET — no claim is
+  /// made.
+  static Future<int> getRaceCoinsToday() async {
     final res = await _invoke(
-      'claim-game-level',
+      'claim-race-level',
       method: HttpMethod.get,
     );
     if (res.status != 200) {
-      throw Exception('get game coins failed: ${res.status}');
+      throw Exception('get race coins failed: ${res.status}');
     }
     final data = res.data;
     if (data is Map && data['coins_today'] is int) {
@@ -599,21 +620,22 @@ class SupabaseService {  static SupabaseClient get client => Supabase.instance.c
     return 0;
   }
 
-  /// Arrow Puzzle Ad Coin claim (Watch Ads, v1.0.27).
+  /// TJ Racing Ad Coin claim (Watch Ads, v1.0.31).
   ///
   /// Ad Coins are earned ONLY by watching a rewarded ad, and only
-  /// through this server claim: the caller must first complete a
-  /// rewarded ad (`GameRewardAdService.tryGrantAdCoins` answering
-  /// `granted`) and then claim with the idempotency key generated
-  /// for that ad view. The server (`claim-ad-reward` Edge Function)
-  /// is authoritative: it credits `game_ad_coins_per_ad` (default
-  /// 10) and enforces the daily cap (`game_ad_coins_daily_cap`,
-  /// default 100, server-side sum of today's `game_ad_reward`
-  /// rows). The client never credits Ad Coins itself.
-  /// Returns the function payload: `{ok, ad_coins, already,
-  /// ad_coins_today, ad_coins_balance, remaining?}`. Throws on 429
-  /// (daily cap reached) or other failures. A 409 (already claimed
-  /// for this key) is returned as data, not thrown.
+  /// through this server claim. The flow is Unity-driven: Flutter
+  /// sends `ShowRewardedAd` with a fresh `requestId`, Unity shows
+  /// the ad and reports `rewarded_completed` with the same
+  /// `requestId`, and Flutter claims here with that `requestId` as
+  /// the idempotency key. The server (`claim-ad-reward` Edge
+  /// Function) is authoritative: it credits
+  /// `game_ad_coins_per_ad` (default 10) and enforces the daily cap
+  /// (`game_ad_coins_daily_cap`, default 100, server-side sum of
+  /// today's `game_ad_reward` rows). The client never credits Ad
+  /// Coins itself. Returns the function payload: `{ok, ad_coins,
+  /// already, ad_coins_today, ad_coins_balance, remaining?}`.
+  /// Throws on 429 (daily cap reached) or other failures. A 409
+  /// (already claimed for this key) is returned as data, not thrown.
   static Future<Map<String, dynamic>> claimAdReward({
     required String idempotencyKey,
   }) async {
@@ -653,54 +675,66 @@ class SupabaseService {  static SupabaseClient get client => Supabase.instance.c
     return const <String, dynamic>{};
   }
 
-  /// Unique-per-attempt idempotency key for coin spends and Ad Coin
-  /// claims. A retry after a partial failure reuses the SAME key, so
-  /// the server can answer "already done" instead of crediting or
-  /// charging twice.
-  static String newIdempotencyKey(String prefix) {
-    final random = Random.secure();
-    final bytes = List<int>.generate(16, (_) => random.nextInt(256));
-    final stamp = DateTime.now().microsecondsSinceEpoch.toRadixString(16);
-    return '$prefix-$stamp-${sha256.convert(bytes).toString().substring(0, 16)}';
-  }
-
-  /// Arrow Puzzle coin spend (hints / power / extra life).
+  /// TJ Racing car / power-up purchase with Ad Coins ONLY (v1.0.31).
   ///
-  /// The server (`spend-game-item` Edge Function) checks the balance
-  /// against the configured price and inserts a negative ledger row.
-  /// The client never deducts coins itself. Each attempt carries a
-  /// fresh client-generated idempotency key, so a retry after a
-  /// partial failure can never double-charge. Returns the payload:
-  /// `{ok:true, new_balance, new_ad_balance}`. Throws when the
-  /// balance is too low (402) or the call fails.
+  /// The server (`spend-race-item` Edge Function, mirroring
+  /// `spend-game-item`) checks the Ad Coin balance against the
+  /// configured price and inserts a negative ledger row. The client
+  /// never deducts coins itself. Each attempt carries a fresh
+  /// client-generated idempotency key, so a retry after a partial
+  /// failure can never double-charge. Returns the payload:
+  /// `{ok:true, ad_coins_balance, ...}`. Throws when the balance is
+  /// too low (402) or the call fails.
   ///
-  /// [currency] selects the bucket (see `ad_coins.dart` — the two
-  /// currencies never mix): `'level_coins'` (default) spends Level
-  /// Coins from the cash balance; `'ad_coins'` spends Ad Coins from
-  /// the in-game-only Ad Coin balance. Ad Coins can never pay for
-  /// anything outside the game and can never become cash.
-  static Future<Map<String, dynamic>> spendGameItem({
+  /// [item] is the car / power-up id prefixed by its kind, e.g.
+  /// `race_car_night_falcon` or `race_powerup_nitro_boost`.
+  /// Level Coins are NEVER accepted here — there is no currency
+  /// parameter at all, so a Level-Coin spend cannot even be
+  /// expressed (see `games/tj_racing/ad_coins.dart`).
+  static Future<Map<String, dynamic>> spendRaceItem({
     required String item,
-    required int level,
-    String currency = 'level_coins',
+    required int adCoinsPrice,
   }) async {
-    final res = await _invoke('spend-game-item', body: {
+    final res = await _invoke('spend-race-item', body: {
       'item': item,
-      'level': level,
-      'currency': currency,
-      'idempotency_key': newIdempotencyKey('spend'),
+      'ad_coins_price': adCoinsPrice,
+      'currency': 'ad_coins',
+      'idempotency_key': newIdempotencyKey('spend-race'),
     });
     final data = res.data;
     if (res.status == 402) {
-      throw Exception('not enough coins');
+      throw Exception('not enough Ad Coins');
     }
     if (res.status != 200) {
       final message =
           data is Map && data['error'] is String ? data['error'] : 'failed';
-      throw Exception('spend-game-item failed: $message');
+      throw Exception('spend-race-item failed: $message');
     }
     if (data is Map<String, dynamic>) return data;
-    throw Exception('spend-game-item returned an unexpected response');
+    throw Exception('spend-race-item returned an unexpected response');
+  }
+
+  /// Lifetime cash earnings (gross positive credits, EXCLUDING Ad
+  /// Coin rows — Ad Coins are in-game only and can never become
+  /// cash). Display only: the Home balance card shows it as
+  /// "Total earned: Rs X" next to the progress-to-withdrawal line.
+  ///
+  /// NOTE: sums the ledger rows the app can fetch (newest 100 via
+  /// [getLedger]); for accounts with a longer history this is a
+  /// lower bound, not an audited lifetime total. A server-side
+  /// lifetime total (e.g. `total_earned_coins` on `get-balance`)
+  /// would make it exact — see the open item in
+  /// `games/tj_racing/UNITY_CONTRACT.md`.
+  static Future<int> getTotalEarnedCoins() async {
+    final rows = await getLedger();
+    var total = 0;
+    for (final row in rows) {
+      final type = row['type'];
+      if (type is String && adCoinLedgerTypes.contains(type)) continue;
+      final amount = (row['amount_coins'] as num?)?.toInt() ?? 0;
+      if (amount > 0) total += amount;
+    }
+    return total;
   }
 }
 

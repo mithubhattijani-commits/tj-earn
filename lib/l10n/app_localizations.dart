@@ -1190,42 +1190,6 @@ abstract class AppLocalizations {
   /// **'Wallet'**
   String get walletTitle;
 
-  /// No description provided for @watchAdButton.
-  ///
-  /// In en, this message translates to:
-  /// **'Watch Ad'**
-  String get watchAdButton;
-
-  /// No description provided for @watchAdNote.
-  ///
-  /// In en, this message translates to:
-  /// **'One reward per completed ad. Daily limits apply.'**
-  String get watchAdNote;
-
-  /// No description provided for @watchAdRewardLine.
-  ///
-  /// In en, this message translates to:
-  /// **'Earn 10 coins per completed video'**
-  String get watchAdRewardLine;
-
-  /// No description provided for @watchAdSubtitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Watch a short video ad and earn coins. Coins are credited after you finish the full ad.'**
-  String get watchAdSubtitle;
-
-  /// No description provided for @watchAdTile.
-  ///
-  /// In en, this message translates to:
-  /// **'Watch Ad\nEarn 10 Coins'**
-  String get watchAdTile;
-
-  /// No description provided for @watchAdTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Watch Ad & Earn Coins'**
-  String get watchAdTitle;
-
   /// No description provided for @withdrawTitle.
   ///
   /// In en, this message translates to:
@@ -1262,191 +1226,179 @@ abstract class AppLocalizations {
   /// **'Referral {code} applied! 🎉'**
   String referAutoApplied(String code);
 
-  /// No description provided for @arrowPuzzleAdCoins.
+  /// No description provided for @tjRacingSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'3D street racing — win coins'**
+  String get tjRacingSubtitle;
+
+  /// No description provided for @tjRacingSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'SETTINGS'**
+  String get tjRacingSettings;
+
+  /// No description provided for @tjRacingAdCoins.
   ///
   /// In en, this message translates to:
   /// **'Ad Coins'**
-  String get arrowPuzzleAdCoins;
+  String get tjRacingAdCoins;
 
-  /// No description provided for @arrowPuzzleAdCoinsBalance.
+  /// No description provided for @tjRacingUnlock.
   ///
   /// In en, this message translates to:
-  /// **'Ad Coins: {coins}'**
-  String arrowPuzzleAdCoinsBalance(Object coins);
+  /// **'Unlock — {coins} Ad Coins'**
+  String tjRacingUnlock(Object coins);
 
-  /// No description provided for @arrowPuzzleAdCoinsEarned.
-  ///
-  /// In en, this message translates to:
-  /// **'+{coins} Ad Coins'**
-  String arrowPuzzleAdCoinsEarned(Object coins);
-
-  /// No description provided for @arrowPuzzleAdDailyCapReached.
-  ///
-  /// In en, this message translates to:
-  /// **'Daily Ad Coin limit reached'**
-  String get arrowPuzzleAdDailyCapReached;
-
-  /// No description provided for @arrowPuzzleAdNotAvailable.
-  ///
-  /// In en, this message translates to:
-  /// **'Ads for rewards are not available yet'**
-  String get arrowPuzzleAdNotAvailable;
-
-  /// No description provided for @arrowPuzzleAlreadyClaimed.
-  ///
-  /// In en, this message translates to:
-  /// **'Already claimed — replay for fun'**
-  String get arrowPuzzleAlreadyClaimed;
-
-  /// No description provided for @arrowPuzzleBuyHintCoins.
-  ///
-  /// In en, this message translates to:
-  /// **'Hint — {coins} coins'**
-  String arrowPuzzleBuyHintCoins(Object coins);
-
-  /// No description provided for @arrowPuzzleBuyLifeCoins.
-  ///
-  /// In en, this message translates to:
-  /// **'Extra life — {coins} coins'**
-  String arrowPuzzleBuyLifeCoins(Object coins);
-
-  /// No description provided for @arrowPuzzleBuyPowerCoins.
-  ///
-  /// In en, this message translates to:
-  /// **'Power — {coins} coins'**
-  String arrowPuzzleBuyPowerCoins(Object coins);
-
-  /// No description provided for @arrowPuzzleBuyWithAdCoins.
-  ///
-  /// In en, this message translates to:
-  /// **'Use {coins} Ad Coins'**
-  String arrowPuzzleBuyWithAdCoins(Object coins);
-
-  /// No description provided for @arrowPuzzleCoinsEarned.
-  ///
-  /// In en, this message translates to:
-  /// **'+{coins} coins'**
-  String arrowPuzzleCoinsEarned(Object coins);
-
-  /// No description provided for @arrowPuzzleDailyChallenge.
-  ///
-  /// In en, this message translates to:
-  /// **'Daily Challenge'**
-  String get arrowPuzzleDailyChallenge;
-
-  /// No description provided for @arrowPuzzleDailyDone.
-  ///
-  /// In en, this message translates to:
-  /// **'Done for today'**
-  String get arrowPuzzleDailyDone;
-
-  /// No description provided for @arrowPuzzleFreeHintsLeft.
-  ///
-  /// In en, this message translates to:
-  /// **'{count} free hints left'**
-  String arrowPuzzleFreeHintsLeft(Object count);
-
-  /// No description provided for @arrowPuzzleGameOver.
-  ///
-  /// In en, this message translates to:
-  /// **'Out of lives!'**
-  String get arrowPuzzleGameOver;
-
-  /// No description provided for @arrowPuzzleHint.
-  ///
-  /// In en, this message translates to:
-  /// **'Hint'**
-  String get arrowPuzzleHint;
-
-  /// No description provided for @arrowPuzzleLevel.
-  ///
-  /// In en, this message translates to:
-  /// **'Level {level}'**
-  String arrowPuzzleLevel(Object level);
-
-  /// No description provided for @arrowPuzzleLevelComplete.
-  ///
-  /// In en, this message translates to:
-  /// **'Level Complete!'**
-  String get arrowPuzzleLevelComplete;
-
-  /// No description provided for @arrowPuzzleLevelLocked.
-  ///
-  /// In en, this message translates to:
-  /// **'Locked'**
-  String get arrowPuzzleLevelLocked;
-
-  /// No description provided for @arrowPuzzleMoves.
-  ///
-  /// In en, this message translates to:
-  /// **'Moves'**
-  String get arrowPuzzleMoves;
-
-  /// No description provided for @arrowPuzzleNewGame.
-  ///
-  /// In en, this message translates to:
-  /// **'New Game'**
-  String get arrowPuzzleNewGame;
-
-  /// No description provided for @arrowPuzzleNextLevel.
-  ///
-  /// In en, this message translates to:
-  /// **'Next Level'**
-  String get arrowPuzzleNextLevel;
-
-  /// No description provided for @arrowPuzzleNotEnoughCoins.
-  ///
-  /// In en, this message translates to:
-  /// **'Not enough coins'**
-  String get arrowPuzzleNotEnoughCoins;
-
-  /// No description provided for @arrowPuzzlePlay.
-  ///
-  /// In en, this message translates to:
-  /// **'Play'**
-  String get arrowPuzzlePlay;
-
-  /// No description provided for @arrowPuzzlePower.
-  ///
-  /// In en, this message translates to:
-  /// **'Power'**
-  String get arrowPuzzlePower;
-
-  /// No description provided for @arrowPuzzlePowerActive.
-  ///
-  /// In en, this message translates to:
-  /// **'Power active — tap an arrow'**
-  String get arrowPuzzlePowerActive;
-
-  /// No description provided for @arrowPuzzleReplay.
-  ///
-  /// In en, this message translates to:
-  /// **'Replay'**
-  String get arrowPuzzleReplay;
-
-  /// No description provided for @arrowPuzzleSubtitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Clear the arrows, earn coins'**
-  String get arrowPuzzleSubtitle;
-
-  /// No description provided for @arrowPuzzleTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Arrow Puzzle'**
-  String get arrowPuzzleTitle;
-
-  /// No description provided for @arrowPuzzleWatchAd.
-  ///
-  /// In en, this message translates to:
-  /// **'Watch ad'**
-  String get arrowPuzzleWatchAd;
-
-  /// No description provided for @arrowPuzzleWatchAdGetCoins.
+  /// No description provided for @tjRacingWatchAd.
   ///
   /// In en, this message translates to:
   /// **'Watch Ad — Get {coins} Ad Coins'**
-  String arrowPuzzleWatchAdGetCoins(Object coins);
+  String tjRacingWatchAd(Object coins);
+
+  /// No description provided for @tjRacingSensitivity.
+  ///
+  /// In en, this message translates to:
+  /// **'Tilt sensitivity'**
+  String get tjRacingSensitivity;
+
+  /// No description provided for @tjRacingControls.
+  ///
+  /// In en, this message translates to:
+  /// **'Controls'**
+  String get tjRacingControls;
+
+  /// No description provided for @tjRacingTilt.
+  ///
+  /// In en, this message translates to:
+  /// **'Tilt'**
+  String get tjRacingTilt;
+
+  /// No description provided for @tjRacingButtons.
+  ///
+  /// In en, this message translates to:
+  /// **'Buttons'**
+  String get tjRacingButtons;
+
+  /// No description provided for @tjRacingCalibrateNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Tilt auto-calibrates at every race start.'**
+  String get tjRacingCalibrateNote;
+
+  /// No description provided for @tjRacingResultWin.
+  ///
+  /// In en, this message translates to:
+  /// **'You won {coins} coins = {rs}'**
+  String tjRacingResultWin(Object coins, Object rs);
+
+  /// No description provided for @tjRacingResultNoCoins.
+  ///
+  /// In en, this message translates to:
+  /// **'No coins this time — keep racing!'**
+  String get tjRacingResultNoCoins;
+
+  /// No description provided for @tjRacingTotalEarned.
+  ///
+  /// In en, this message translates to:
+  /// **'Total earned: {rs}'**
+  String tjRacingTotalEarned(Object rs);
+
+  /// No description provided for @tjRacingWithdrawProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Rs {needed} needed to withdraw — you are at Rs {have}'**
+  String tjRacingWithdrawProgress(Object have, Object needed);
+
+  /// No description provided for @tjRacingWithdrawReady.
+  ///
+  /// In en, this message translates to:
+  /// **'Ready to withdraw — {rs} available'**
+  String tjRacingWithdrawReady(Object rs);
+
+  /// No description provided for @tjRacingCapReached.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily race limit reached (200/day)'**
+  String get tjRacingCapReached;
+
+  /// No description provided for @tjRacingClaimFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not claim your coins. Try again.'**
+  String get tjRacingClaimFailed;
+
+  /// No description provided for @tjRacingNotEnoughAdCoins.
+  ///
+  /// In en, this message translates to:
+  /// **'Not enough Ad Coins'**
+  String get tjRacingNotEnoughAdCoins;
+
+  /// No description provided for @tjRacingUnlocked.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlocked!'**
+  String get tjRacingUnlocked;
+
+  /// No description provided for @tjRacingAdNotAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'No ad available right now'**
+  String get tjRacingAdNotAvailable;
+
+  /// No description provided for @tjRacingEarnedToday.
+  ///
+  /// In en, this message translates to:
+  /// **'Race earnings today: {rs}'**
+  String tjRacingEarnedToday(Object rs);
+
+  /// No description provided for @tjRacingBoth.
+  ///
+  /// In en, this message translates to:
+  /// **'Both'**
+  String get tjRacingBoth;
+
+  /// No description provided for @tjRacingRecalibrate.
+  ///
+  /// In en, this message translates to:
+  /// **'Re-calibrate tilt'**
+  String get tjRacingRecalibrate;
+
+  /// No description provided for @tjRacingUnlockPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock {car} for {coins} Ad Coins? You have {have}.'**
+  String tjRacingUnlockPrompt(Object car, Object coins, Object have);
+
+  /// No description provided for @tjRacingPowerupPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Buy {item} for {coins} Ad Coins? You have {have}.'**
+  String tjRacingPowerupPrompt(Object coins, Object have, Object item);
+
+  /// No description provided for @tjRacingPowerupBuy.
+  ///
+  /// In en, this message translates to:
+  /// **'Buy — {coins} Ad Coins'**
+  String tjRacingPowerupBuy(Object coins);
+
+  /// No description provided for @tjRacingPowerupBought.
+  ///
+  /// In en, this message translates to:
+  /// **'Power-up bought!'**
+  String get tjRacingPowerupBought;
+
+  /// No description provided for @tjRacingPowerupAlreadyOwned.
+  ///
+  /// In en, this message translates to:
+  /// **'Already owned — no coins charged'**
+  String get tjRacingPowerupAlreadyOwned;
+
+  /// No description provided for @tjRacingDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get tjRacingDone;
 }
 
 class _AppLocalizationsDelegate

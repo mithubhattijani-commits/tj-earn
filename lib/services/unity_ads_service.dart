@@ -3,36 +3,41 @@ import 'package:flutter/material.dart';
 
 import 'package:unity_ads_plugin/unity_ads_plugin.dart';
 
-/// Unity Ads integration for TJ Earn (compliant model, v1.0.25;
-/// rewarded Ad Coins wired back in v1.0.27, see below).
+/// Unity Ads integration for TJ Earn (compliant model, v1.0.25).
 ///
 /// COMPLIANT MODEL (17 Nov 2026, Unity ticket #00945584): coins-to-cash
 /// via rewarded ads is PROHIBITED on self-serve Unity Ads — rewards for
 /// watching ads must be in-app virtual only, never cash. TJ Earn pays
-/// cash for READING, so NO cash coin may ever come from any ad view.
-/// The v1.0.25 build therefore removed the rewarded placement
-/// entirely. v1.0.27 wires it back ONLY for Ad Coins (Arrow Puzzle
-/// Watch Ads, user order 18 Nov ~14:54 — flag ON without waiting for
-/// Unity ticket 00946156, suspension risk disclosed and accepted by
-/// the user): Ad Coins are spendable ONLY in-game (hints / power /
-/// extra life), NEVER cash, NEVER convertible to Level Coins. The
-/// server claim (`claim-ad-reward`) is the only credit and enforces
-/// the daily cap; the client never credits Ad Coins itself.
+/// cash for READING and RACING, so NO cash coin may ever come from any
+/// ad view.
 ///
-/// What remains (all earning only):
+/// TJ Racing 3D (v1.0.31) ad model — same placements, same Game ID:
 /// - Game ID: 800417967 (Android, "TJ Earn" project)
-/// - Banner placement: BP_Banner_Android (Active) — passive bottom slot.
+/// - Banner placement: BP_Banner_Android (Active) — passive bottom
+///   slot in the Flutter shell. (Unity shows its OWN banner top
+///   strip inside the game view, from its own Ads init.)
 /// - Interstitial placement: BP_Interstitial_Android (Active) — shown
-///   between articles via [maybeShowArticleInterstitial], gated by the
-///   remote-config earn rates (every Nth article, min gap). Never
-///   rewarded, never tied to any coin grant.
+///   between articles via [maybeShowArticleInterstitial] (gated by the
+///   remote-config earn rates). Never rewarded, never tied to any
+///   coin grant. Race interstitials are UNITY-owned (ResultsUI
+///   Continue → `MaybeShowInterstitialAfterContinue`, every 3rd
+///   race, min 3 min, never after a win) — Flutter never triggers
+///   one.
+/// - Rewarded placement: BP_Rewarded_Android — TJ Racing Ad Coins
+///   ONLY, shown by UNITY (`ShowRewardedAd` message →
+///   `rewarded_completed` event → server claim). Flutter never
+///   shows a rewarded ad itself (the old Arrow Puzzle
+///   `showRewardedAd` was removed with the game; there is no
+///   Flutter-side rewarded path anymore).
 /// - App Open placement: BP_AppOpen_Android (Active) — cold start only.
-/// - Rewarded placement: BP_Rewarded_Android — Arrow Puzzle Watch Ads
-///   ONLY (see [showRewardedAd]). The dashboard placement must exist
-///   for game 800417967; if it does not, the show fails and the UI
-///   reports "ad not available" — no coins are ever granted without a
-///   completed ad view.
-
+///
+/// NOTE (dual Ads init, 19 Nov 2026): the Flutter plugin init
+/// here AND Unity's own `UnityAdsManager` init inside the player
+/// both initialise Unity Ads with the same Game ID. That is the
+/// design per the Unity integration contract; verify on a real
+/// device once the export is wired that both inits coexist and
+/// that article interstitials still show after a game session.
+///
 /// Test mode is ON for development. Flip [testMode] to false for
 /// production builds.
 class UnityAdsService {
@@ -41,16 +46,9 @@ class UnityAdsService {
   /// Dual-ad system (Jaani, 2 Nov 2026): every app visit + every coin
   /// claim shows a Unity ad. Interstitial after claims, App Open on launch.
   /// Placement IDs follow the existing BP_ naming convention.
-  ///
-  /// Rewarded placement (v1.0.27, user order 18 Nov ~14:54): wired
-  /// back ONLY for Arrow Puzzle Ad Coins — in-game virtual currency,
-  /// never cash, never convertible (see the class doc). If the
-  /// dashboard placement does not exist, [showRewardedAd] fails
-  /// closed and no grant happens.
   static const String interstitialPlacementId = 'BP_Interstitial_Android';
   static const String appOpenPlacementId = 'BP_AppOpen_Android';
   static const String bannerPlacementId = 'BP_Banner_Android';
-  static const String rewardedPlacementId = 'BP_Rewarded_Android';
 
   /// Keep true while testing. Production builds set this to false.
   static const bool testMode = false;
@@ -68,7 +66,7 @@ class UnityAdsService {
   static bool get isInitialized => _initialized;
 
   /// Whether init was attempted and failed (so the UI can explain why
-  /// the Watch Ad button is unavailable).
+  /// ads are unavailable).
   static bool get initFailed => _initFailed;
 
   /// Initialize the Unity Ads SDK. Safe to call at app startup and
@@ -160,52 +158,6 @@ class UnityAdsService {
     }
   }
 
-  /// Show a rewarded ad for Arrow Puzzle Ad Coins (v1.0.27).
-  ///
-  /// Returns true ONLY when the ad played to completion — that is the
-  /// single signal the caller uses to claim Ad Coins from the server
-  /// (the client never credits Ad Coins itself). Returns false when
-  /// the ad was skipped, failed to load/show, timed out, or the SDK
-  /// is not initialized — including when the dashboard placement
-  /// `BP_Rewarded_Android` does not exist for this game. Never
-  /// throws, never blocks the UI beyond the ad itself (2 min max).
-  static Future<bool> showRewardedAd() async {
-    if (!_initialized) return false;
-    try {
-      var loaded = false;
-      await UnityAds.load(
-        placementId: rewardedPlacementId,
-        onComplete: (placementId) {
-          loaded = true;
-        },
-        onFailed: (placementId, error, message) {},
-      ).timeout(const Duration(seconds: 10), onTimeout: () {});
-      if (!loaded) return false;
-      final completer = Completer<bool>();
-      UnityAds.showVideoAd(
-        placementId: rewardedPlacementId,
-        onStart: (placementId) {},
-        onClick: (placementId) {},
-        onSkipped: (placementId) {
-          if (!completer.isCompleted) completer.complete(false);
-        },
-        onComplete: (placementId) {
-          if (!completer.isCompleted) completer.complete(true);
-        },
-        onFailed: (placementId, error, message) {
-          if (!completer.isCompleted) completer.complete(false);
-        },
-      );
-      return await completer.future.timeout(
-        const Duration(minutes: 2),
-        onTimeout: () => false,
-      );
-    } catch (_) {
-      // Fail closed: no completed ad, no grant.
-      return false;
-    }
-  }
-
   /// Gated article interstitial (compliant model, v1.0.25).
   ///
   /// Call once per article open (fire-and-forget). Shows a non-rewarded
@@ -226,32 +178,6 @@ class UnityAdsService {
     final last = _lastInterstitialShownAt;
     if (last != null && DateTime.now().difference(last) < minGap) return;
     _articlesOpenedSinceAd = 0;
-    _lastInterstitialShownAt = DateTime.now();
-    await showInterstitialAd();
-  }
-
-  /// Levels completed since the last level interstitial (session counter).
-  static int _levelsCompletedSinceAd = 0;
-
-  /// Gated Arrow Puzzle interstitial (v1.0.27) — mirror of
-  /// [maybeShowArticleInterstitial].
-  ///
-  /// Call once per completed level (fire-and-forget), AFTER the win
-  /// dialog is dismissed. Same non-rewarded placement, same gates:
-  /// every Nth completed level + min gap since the last interstitial
-  /// of either kind (the gap is shared, so articles and levels never
-  /// stack ads). The ad is never a condition for the coin grant.
-  static Future<void> maybeShowLevelInterstitial({
-    required int everyNthLevel,
-    required Duration minGap,
-  }) async {
-    if (!adsEnabled || !_initialized) return;
-    if (everyNthLevel <= 0) return;
-    _levelsCompletedSinceAd++;
-    if (_levelsCompletedSinceAd < everyNthLevel) return;
-    final last = _lastInterstitialShownAt;
-    if (last != null && DateTime.now().difference(last) < minGap) return;
-    _levelsCompletedSinceAd = 0;
     _lastInterstitialShownAt = DateTime.now();
     await showInterstitialAd();
   }

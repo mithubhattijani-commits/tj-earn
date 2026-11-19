@@ -1,12 +1,12 @@
-/// Ad Coins — the in-game-only currency of the Arrow Puzzle
-/// (Watch Ads option, user-approved 18 Nov 2026).
+/// Ad Coins — the in-game-only currency of TJ Racing 3D
+/// (Watch Ads + car/power-up shop, v1.0.31).
 ///
 /// TWO CURRENCIES, NEVER MIXED — this separation is the whole point:
 ///
 /// | | Level Coins | Ad Coins |
 /// |---|---|---|
-/// | Earned by | completing a level (5/level, 200/day cap) | watching a rewarded ad (10/ad, 100/day cap) |
-/// | Spendable on | hints / power / extra life | hints / power / extra life |
+/// | Earned by | winning / placing in a race (10 win, 5 second, 200/day cap) | watching a rewarded ad (10/ad, 100/day cap) |
+/// | Spendable on | NOTHING in-game — never spent | cars + power-ups ONLY |
 /// | Withdrawable as cash | YES (min 10,000 = Rs 100) | NEVER |
 /// | Converts to Level Coins | — | NEVER — no conversion path exists anywhere |
 ///
@@ -16,6 +16,8 @@
 /// types, so Ad Coins can never inflate a cash balance or be
 /// withdrawn. The Ad Coin balance is the sum of `game_ad_reward`
 /// rows minus `game_ad_spend` rows — nothing else touches it.
+/// (Same ledger bucket as the removed Arrow Puzzle — the server
+/// functions `claim-ad-reward` / `spend-game-item` are unchanged.)
 ///
 /// Pure Dart, no Flutter imports (unit-testable). The grant math is
 /// deliberately here, not in a widget, so the cap rules can be
@@ -25,21 +27,14 @@ library;
 /// Ledger type of an Ad Coin credit (one watched ad).
 const String adRewardLedgerType = 'game_ad_reward';
 
-/// Ledger type of an Ad Coin debit (an item bought with Ad Coins).
+/// Ledger type of an Ad Coin debit (a car / power-up bought with
+/// Ad Coins).
 const String adSpendLedgerType = 'game_ad_spend';
 
 /// Ledger types that belong to the Ad Coin bucket.
 const List<String> adCoinLedgerTypes = [
   adRewardLedgerType,
   adSpendLedgerType,
-];
-
-/// Ledger types that belong to the cash (Level Coin) bucket.
-/// Ad Coin types are deliberately absent — the cash balance must
-/// never include them.
-const List<String> cashLedgerTypes = [
-  'game_level',
-  'game_spend',
 ];
 
 /// Ad Coin grant rules (defaults match the remote config).
@@ -70,8 +65,8 @@ class AdCoins {
   /// There is NO conversion from Ad Coins to Level Coins or cash.
   /// This method exists only so the rule is stated in code and
   /// testable: any conversion attempt is a programming error.
-  /// Ad Coins are spent only through `spend-game-item` with
-  /// currency 'ad_coins', and only on in-game items.
+  /// Ad Coins are spent only through `spend-race-item` with
+  /// currency 'ad_coins', and only on cars / power-ups.
   static Never toLevelCoins(int adCoins) {
     throw UnsupportedError(
       'Ad Coins can never convert to Level Coins or cash '

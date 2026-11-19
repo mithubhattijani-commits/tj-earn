@@ -37,7 +37,12 @@ android {
         // FIXED FOREVER: com.tjearn.app. Never change this — changing the
         // package name breaks the in-app update chain for installed users.
         applicationId = "com.tjearn.app"
-        minSdk = flutter.minSdkVersion
+        // minSdk 22 (was flutter.minSdkVersion = 21): Unity 2022.3 LTS
+        // and flutter_embed_unity_2022_3_android 2.0.0 both require
+        // API 22+ (the plugin's own build.gradle sets minSdk 22).
+        // Pinned Unity: 2022.3.62f2+. NDK is already fine — Flutter
+        // 3.47.8 defaults to NDK 28.2, above Unity 2022.3's r23b.
+        minSdk = 22
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
@@ -69,7 +74,29 @@ flutter {
     source = "../.."
 }
 
+// TJ Racing 3D (Unity-as-a-Library, v1.0.31): the Unity export's libs/
+// (unity-classes.jar) resolve via flatDir. The export currently ships
+// only that jar, consumed by unityLibrary itself via fileTree — this
+// repo is belt-and-braces per the Unity export docs. Guarded: the
+// export only exists at CI build time (release-asset download), so
+// local builds without it skip this repo entirely.
+if (file("../unityLibrary/build.gradle").exists()) {
+    repositories {
+        flatDir {
+            dirs("../unityLibrary/libs")
+        }
+    }
+}
+
 dependencies {
     // Core library desugaring for flutter_local_notifications.
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
+    // TJ Racing 3D (Unity-as-a-Library, v1.0.31): the Unity export
+    // lands in android/unityLibrary/ via the CI release-asset download
+    // (unityLibrary.zip) before the Flutter build. Guarded: the module
+    // only exists at CI build time, so local builds without the export
+    // skip this dependency and build exactly as before (no Unity).
+    if (file("../unityLibrary/build.gradle").exists()) {
+        implementation(project(":unityLibrary"))
+    }
 }

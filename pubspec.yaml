@@ -2,11 +2,12 @@ name: tj_earn
 description: "TJ Earn - rewards app (Flutter + Supabase). Stage 1 foundation: auth, server-side wallet, withdrawals, in-app updater."
 publish_to: 'none'
 
-# v1.0.30+31 (Arrow Puzzle path model, video-match, 19 Nov 2026):
-# long thin winding paths, small heads, 152 moves at L51, rope
-# pull-out exit. versionCode 31 is higher than the live v1.0.29/vc30,
-# so the updater prompts users to update.
-version: 1.0.30+31
+# v1.0.31+32 (Arrow Puzzle REMOVED, 19 Nov 2026 — user order):
+# the in-app game is gone (it was never made right). Games tile
+# removed from Home; Ad Coins / Watch Ads go with it. versionCode 32
+# is higher than the live v1.0.30/vc31, so the updater prompts users
+# to update.
+version: 1.0.31+32
 
 environment:
   sdk: ^3.13.7
@@ -19,6 +20,23 @@ dependencies:
   intl: ^0.20.2
   supabase_flutter: ^2.9.0
   unity_ads_plugin: ^0.5.0
+  # TJ Racing 3D (v1.0.31): Unity-as-a-Library embed. flutter_embed_unity
+  # ^2.0.0 supports Unity 2022.3 LTS and 6000.0/6000.3 LTS; the
+  # flutter_embed_unity_2022_3_android override pins the Android
+  # implementation to Unity 2022.3 (per the package changelog migration:
+  # the 6000.0 Android package is now the default, so 2022.3 needs the
+  # explicit override). Resolved 19 Nov 2026: flutter_embed_unity 2.0.0
+  # + flutter_embed_unity_2022_3_android 2.0.0 (the 1.x android line
+  # is incompatible with flutter_embed_unity 2.x — pub solver
+  # requires the 2.0.0 android package). Pinned Unity version: 2022.3.62f2 or newer
+  # (plugin requirement — security advisory; also satisfies the Android
+  # 15 16KB page-size rule, which needs 2022.3.56+). Flutter 3.47.8
+  # satisfies the plugin's Flutter >= 3.35 requirement. The Unity
+  # export (unityLibrary) is NOT in the repo yet — see
+  # android/unityLibrary/PLACEHOLDER_README.md; until it lands, a
+  # release build cannot link, but analyzer + tests run clean.
+  flutter_embed_unity: ^2.0.0
+  flutter_embed_unity_2022_3_android: ^2.0.0
   webview_flutter: ^4.8.0
   http: ^1.3.0
   path_provider: ^2.1.5

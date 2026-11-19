@@ -597,26 +597,6 @@ class AppLocalizationsUr extends AppLocalizations {
   String get walletTitle => 'والیٹ';
 
   @override
-  String get watchAdButton => 'اشتہار دیکھیں';
-
-  @override
-  String get watchAdNote =>
-      'ہر مکمل اشتہار پر ایک انعام۔ روزانہ حد لاگو ہوتی ہے۔';
-
-  @override
-  String get watchAdRewardLine => 'ہر مکمل ویڈیو پر 10 کوئنز ملیں گے';
-
-  @override
-  String get watchAdSubtitle =>
-      'مختصر ویڈیو اشتہار دیکھیں اور کوئنز حاصل کریں۔ مکمل اشتہار دیکھنے پر کوئنز ملتے ہیں۔';
-
-  @override
-  String get watchAdTile => 'ایڈ دیکھیں\n10 کوئنز پائیں';
-
-  @override
-  String get watchAdTitle => 'اشتہار دیکھیں اور کوئنز کمائیں';
-
-  @override
   String get withdrawTitle => 'رقم نکالیں';
 
   @override
@@ -637,118 +617,112 @@ class AppLocalizationsUr extends AppLocalizations {
   }
 
   @override
-  String get arrowPuzzleAdCoins => 'ایڈ کوئنز';
+  String get tjRacingSubtitle => '3D اسٹریٹ ریسنگ — کوئنز جیتیں';
 
   @override
-  String arrowPuzzleAdCoinsBalance(Object coins) {
-    return 'ایڈ کوئنز: $coins';
+  String get tjRacingSettings => 'سیٹنگز';
+
+  @override
+  String get tjRacingAdCoins => 'ایڈ کوئنز';
+
+  @override
+  String tjRacingUnlock(Object coins) {
+    return 'ان لاک کریں — $coins ایڈ کوئنز';
   }
 
   @override
-  String arrowPuzzleAdCoinsEarned(Object coins) {
-    return '+$coins ایڈ کوئنز';
+  String tjRacingWatchAd(Object coins) {
+    return 'اشتہار دیکھیں — $coins ایڈ کوئنز پائیں';
   }
 
   @override
-  String get arrowPuzzleAdDailyCapReached =>
-      'ایڈ کوئنز کی روزانہ حد مکمل ہو گئی';
+  String get tjRacingSensitivity => 'ٹلٹ حساسیت';
 
   @override
-  String get arrowPuzzleAdNotAvailable =>
-      'انعامات کے لیے اشتہار ابھی دستیاب نہیں';
+  String get tjRacingControls => 'کنٹرولز';
 
   @override
-  String get arrowPuzzleAlreadyClaimed =>
-      'پہلے ہی مل چکے ہیں — دوبارہ مزے کے لیے کھیلیں';
+  String get tjRacingTilt => 'ٹلٹ';
 
   @override
-  String arrowPuzzleBuyHintCoins(Object coins) {
-    return 'ہنٹ — $coins کوئنز';
+  String get tjRacingButtons => 'بٹن';
+
+  @override
+  String get tjRacingCalibrateNote =>
+      'ٹلٹ ہر ریس کے شروع میں خود کیلیبریٹ ہوتا ہے۔';
+
+  @override
+  String tjRacingResultWin(Object coins, Object rs) {
+    return 'آپ نے $coins کوئنز جیتے = $rs';
   }
 
   @override
-  String arrowPuzzleBuyLifeCoins(Object coins) {
-    return 'اضافی دل — $coins کوئنز';
+  String get tjRacingResultNoCoins => 'اس بار کوئی کوئن نہیں — ریس جاری رکھیں!';
+
+  @override
+  String tjRacingTotalEarned(Object rs) {
+    return 'کل کمائی: $rs';
   }
 
   @override
-  String arrowPuzzleBuyPowerCoins(Object coins) {
-    return 'پاور — $coins کوئنز';
+  String tjRacingWithdrawProgress(Object have, Object needed) {
+    return 'نکالنے کے لیے $needed روپے چاہییں — آپ کے پاس $have روپے ہیں';
   }
 
   @override
-  String arrowPuzzleBuyWithAdCoins(Object coins) {
-    return '$coins ایڈ کوئنز استعمال کریں';
+  String tjRacingWithdrawReady(Object rs) {
+    return 'نکالنے کے لیے تیار — $rs دستیاب';
   }
 
   @override
-  String arrowPuzzleCoinsEarned(Object coins) {
-    return '+$coins کوئنز';
+  String get tjRacingCapReached => 'روزانہ ریس حد مکمل (200/دن)';
+
+  @override
+  String get tjRacingClaimFailed =>
+      'آپ کے کوئنز نہیں مل سکے۔ دوبارہ کوشش کریں۔';
+
+  @override
+  String get tjRacingNotEnoughAdCoins => 'ایڈ کوئنز کم ہیں';
+
+  @override
+  String get tjRacingUnlocked => 'ان لاک ہو گیا!';
+
+  @override
+  String get tjRacingAdNotAvailable => 'ابھی کوئی اشتہار دستیاب نہیں';
+
+  @override
+  String tjRacingEarnedToday(Object rs) {
+    return 'آج کی ریس کمائی: $rs';
   }
 
   @override
-  String get arrowPuzzleDailyChallenge => 'روزانہ چیلنج';
+  String get tjRacingBoth => 'دونوں';
 
   @override
-  String get arrowPuzzleDailyDone => 'آج مکمل ہو گیا';
+  String get tjRacingRecalibrate => 'ٹلٹ دوبارہ کیلیبریٹ کریں';
 
   @override
-  String arrowPuzzleFreeHintsLeft(Object count) {
-    return '$count مفت ہنٹ باقی';
+  String tjRacingUnlockPrompt(Object car, Object coins, Object have) {
+    return '$car کو $coins ایڈ کوئنز میں ان لاک کریں؟ آپ کے پاس $have ہیں۔';
   }
 
   @override
-  String get arrowPuzzleGameOver => 'دل ختم ہو گئے!';
-
-  @override
-  String get arrowPuzzleHint => 'ہنٹ';
-
-  @override
-  String arrowPuzzleLevel(Object level) {
-    return 'لیول $level';
+  String tjRacingPowerupPrompt(Object coins, Object have, Object item) {
+    return '$item کو $coins ایڈ کوئنز میں خریدیں؟ آپ کے پاس $have ہیں۔';
   }
 
   @override
-  String get arrowPuzzleLevelComplete => 'لیول مکمل!';
-
-  @override
-  String get arrowPuzzleLevelLocked => 'بند ہے';
-
-  @override
-  String get arrowPuzzleMoves => 'چالیں';
-
-  @override
-  String get arrowPuzzleNewGame => 'نیا گیم';
-
-  @override
-  String get arrowPuzzleNextLevel => 'اگلا لیول';
-
-  @override
-  String get arrowPuzzleNotEnoughCoins => 'کوئنز کم ہیں';
-
-  @override
-  String get arrowPuzzlePlay => 'کھیلیں';
-
-  @override
-  String get arrowPuzzlePower => 'پاور';
-
-  @override
-  String get arrowPuzzlePowerActive => 'پاور آن ہے — کسی تیر پر ٹیپ کریں';
-
-  @override
-  String get arrowPuzzleReplay => 'دوبارہ کھیلیں';
-
-  @override
-  String get arrowPuzzleSubtitle => 'تیر صاف کریں، کوئنز کمائیں';
-
-  @override
-  String get arrowPuzzleTitle => 'ایرو پزل';
-
-  @override
-  String get arrowPuzzleWatchAd => 'اشتہار دیکھیں';
-
-  @override
-  String arrowPuzzleWatchAdGetCoins(Object coins) {
-    return 'اشتہار دیکھیں — $coins ایڈ کوئنز حاصل کریں';
+  String tjRacingPowerupBuy(Object coins) {
+    return 'خریدیں — $coins ایڈ کوئنز';
   }
+
+  @override
+  String get tjRacingPowerupBought => 'پاور اپ خرید لیا!';
+
+  @override
+  String get tjRacingPowerupAlreadyOwned =>
+      'پہلے سے موجود ہے — کوئی کوئن نہیں کٹا';
+
+  @override
+  String get tjRacingDone => 'ہو گیا';
 }
