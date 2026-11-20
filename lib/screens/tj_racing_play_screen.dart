@@ -51,20 +51,15 @@ import '../services/validation.dart'
 ///    claims Ad Coins server-side keyed by it.
 /// 4. Back / close → `QuitToMenu` + pop.
 ///
-/// KNOWN UNITY GAPS (19 Nov 2026, Unity agent to fix — Flutter
-/// implements the protocol anyway and fails soft):
-/// - Nothing in Unity subscribes to `OnRewardedAdRequested`, so a
-///   `ShowRewardedAd` currently produces no ad and no event.
-///   Flutter times the request out after 30s ("ad not available")
-///   instead of hanging.
-/// - Nothing subscribes to `OnStartRaceRequested` /
-///   `OnQuitToMenuRequested` (Flutter doesn't send `StartRace` in
-///   v1 — Unity's own RACE button drives starts).
-/// - Power-up buttons live in Unity's pause panel (RaceHUD) — a
-///   tap sends `powerup_purchase_requested`; Flutter shows its own
-///   purchase dialog and spends via `spend-race-item`. No return
-///   message to Unity is defined yet, so Unity cannot know the
-///   purchase succeeded (open item in UNITY_CONTRACT.md).
+/// UNITY HEARTBEAT (v1.0.33): Unity sends `menu_ready` once its
+/// menu is built and `loading_progress` (0-100) as the race scene
+/// loads. If neither arrives within 8 s, this screen recovers in
+/// stages (delayed pause+resume → forced EmbedUnity re-attach via a
+/// fresh key → a Flutter RETRY / BACK overlay) — the v1.0.32 stall
+/// had no host-side recovery at all. Unity's old gaps (no subscribers
+/// for `OnRewardedAdRequested` / `OnStartRaceRequested` /
+/// `OnQuitToMenuRequested`, no power-up return message) were all
+/// fixed 19 Nov 2026 — see UNITY_CONTRACT.md.
 class TjRacingPlayScreen extends StatefulWidget {
   const TjRacingPlayScreen({
     super.key,
@@ -77,7 +72,8 @@ class TjRacingPlayScreen extends StatefulWidget {
   State<TjRacingPlayScreen> createState() => _TjRacingPlayScreenState();
 }
 
-class _TjRacingPlayScreenState extends State<TjRacingPlayScreen> {
+class _TjRacingPlayScreenState extends State<TjRacingPlayScreen>
+    with WidgetsBindingObserver {
   TjRacingConfig get _config => widget.config;
 
   RacingPlayerState? _player;
@@ -87,6 +83,20 @@ class _TjRacingPlayScreenState extends State<TjRacingPlayScreen> {
   Timer? _rewardTimeoutTimer;
   List<Timer> _configTimers = [];
   Timer? _unfreezeTimer;
+
+  // Unity heartbeat watchdog (v1.0.33): Unity sends `menu_ready` once
+  // its menu is built and `loading_progress` as the race scene loads.
+  // If neither arrives, the Unity view is treated as frozen (the
+  // v1.0.32 "LOADING 1%" stall) and recovered in stages — delayed
+  // pause+resume, then a forced platform-view re-attach (new EmbedUnity
+  // key), then a Flutter overlay with RETRY / BACK so the user is never
+  // trapped on a dead game screen.
+  bool _unityReady = false;
+  int _unityViewKeySeed = 0;
+  int _recoveryStage = 0;
+  Timer? _watchdogTimer;
+  bool _loadStuck = false;
+  int? _lastUnityPct;
 
   /// Rs overlay shown over Unity's results screen after a claim
   /// (ResultsUI: "The Rs value is FLUTTER's job"). Dismissible.
@@ -99,6 +109,7 @@ class _TjRacingPlayScreenState extends State<TjRacingPlayScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     // Landscape for the game screen (menu, splash, race) — set
     // FIRST, before the Unity view mounts, so the view is created
     // in landscape instead of rotating mid-mount. Matches Unity's
@@ -113,14 +124,30 @@ class _TjRacingPlayScreenState extends State<TjRacingPlayScreen> {
     // initialising). Same pause + resume, once, while the menu is
     // still showing — harmless if nothing froze.
     _unfreezeTimer = Timer(const Duration(seconds: 2), _unfreezeUnity);
+    // Watchdog: if Unity never signals it is alive (menu_ready /
+    // loading_progress), recover in stages — see _onUnityWatchdog.
+    _armWatchdog();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Background -> foreground can re-trigger the plugin's surface
+    // freeze (activity resume while Unity re-attaches). If Unity never
+    // signalled ready, unfreeze again on return.
+    if (state == AppLifecycleState.resumed && mounted && !_unityReady) {
+      _unfreezeUnity();
+      _armWatchdog();
+    }
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     for (final timer in _configTimers) {
       timer.cancel();
     }
     _unfreezeTimer?.cancel();
+    _watchdogTimer?.cancel();
     _rewardTimeoutTimer?.cancel();
     // Safety net: if this screen is popped by any path other than
     // _leaveGame, portrait must still come back (see _leaveGame).
@@ -130,26 +157,88 @@ class _TjRacingPlayScreenState extends State<TjRacingPlayScreen> {
     super.dispose();
   }
 
-  /// flutter_embed_unity freeze workaround (v1.0.32): the plugin's
-  /// own UnityPlayerSingleton notes that a quick VISIBLE → GONE →
-  /// VISIBLE flicker of the platform view (orientation change, hot
-  /// reload, or a widget rebuild after mount) can leave Unity's UI
-  /// frozen on its last frame while the player itself keeps
-  /// running — the splash then looks stuck forever and taps do
-  /// nothing visible. The plugin's documented unfreeze is pause +
-  /// resume. This screen rebuilds once right after mount (the async
-  /// player load below calls setState), which is exactly that
-  /// trigger, so pause + resume Unity on the frame after that
-  /// rebuild. `pauseUnity` / `resumeUnity` are top-level exports of
-  /// package:flutter_embed_unity/flutter_embed_unity.dart (already
-  /// imported above); the calls go to the plugin's pauseUnity /
-  /// resumeUnity method-channel handlers.
+  /// flutter_embed_unity freeze workaround (v1.0.32, hardened
+  /// v1.0.33): the plugin's own UnityPlayerSingleton notes that a
+  /// quick VISIBLE → GONE → VISIBLE flicker of the platform view
+  /// (orientation change, hot reload, or a widget rebuild after
+  /// mount) can leave Unity's UI frozen on its last frame while the
+  /// player itself keeps running — the splash then looks stuck
+  /// forever and taps do nothing visible. The plugin's documented
+  /// unfreeze is pause + resume. v1.0.32 called them back-to-back in
+  /// one post-frame callback, which can land before the player
+  /// finishes initialising and no-op; v1.0.33 leaves a real 300 ms
+  /// gap between pause and resume, and also runs this once Unity
+  /// signals it is alive (menu_ready) — the point where the resume
+  /// is most likely to take effect. `pauseUnity` / `resumeUnity`
+  /// are top-level exports of package:flutter_embed_unity.
   void _unfreezeUnity() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       pauseUnity();
-      resumeUnity();
+      Future.delayed(const Duration(milliseconds: 300), () {
+        if (mounted) resumeUnity();
+      });
     });
+  }
+
+  void _armWatchdog() {
+    _watchdogTimer?.cancel();
+    _watchdogTimer = Timer(const Duration(seconds: 8), _onUnityWatchdog);
+  }
+
+  /// Watchdog stages (v1.0.33 — the v1.0.32 "LOADING 1%" stall had
+  /// NO host-side recovery: Unity froze on frame 1 and Flutter
+  /// waited forever). Each stage runs only if Unity still has not
+  /// signalled it is alive.
+  void _onUnityWatchdog() {
+    if (!mounted || _unityReady) return;
+    if (_recoveryStage == 0) {
+      // Stage 1: delayed pause + resume.
+      _recoveryStage = 1;
+      _unfreezeUnity();
+      _watchdogTimer = Timer(const Duration(seconds: 4), _onUnityWatchdog);
+    } else if (_recoveryStage == 1) {
+      // Stage 2: force the platform view to detach + re-attach by
+      // rebuilding EmbedUnity with a fresh key — recreates the
+      // UnityPlayer surface, the strongest recovery short of
+      // restarting the screen.
+      _recoveryStage = 2;
+      setState(() => _unityViewKeySeed++);
+      _watchdogTimer = Timer(const Duration(seconds: 6), _onUnityWatchdog);
+    } else {
+      // Stage 3: stop silent recovery — show the Flutter overlay
+      // (it always renders, even if Unity is frozen) with RETRY
+      // (fresh view key + fresh watchdog) and BACK.
+      setState(() => _loadStuck = true);
+    }
+  }
+
+  void _retryUnityLoad() {
+    setState(() {
+      _loadStuck = false;
+      _unityReady = false;
+      _recoveryStage = 0;
+      _unityViewKeySeed++;
+    });
+    _armWatchdog();
+    _unfreezeUnity();
+    final player = _player;
+    if (player != null) _sendFullConfig(player);
+  }
+
+  /// Unity signalled it is alive (menu_ready or loading_progress):
+  /// stop all recovery, re-send the config now (Unity is definitely
+  /// listening), and unfreeze once at the point where a resume is
+  /// most likely to take effect.
+  void _onUnityAlive() {
+    if (_unityReady) return;
+    _unityReady = true;
+    _watchdogTimer?.cancel();
+    _watchdogTimer = null;
+    if (_loadStuck && mounted) setState(() => _loadStuck = false);
+    final player = _player;
+    if (player != null) _sendFullConfig(player);
+    _unfreezeUnity();
   }
 
   Future<void> _loadAndSendConfig() async {
@@ -254,6 +343,15 @@ class _TjRacingPlayScreenState extends State<TjRacingPlayScreen> {
     if (!mounted) return;
     final incoming = UnityIncoming.parse(message);
     switch (incoming.kind) {
+      case UnityIncomingKind.menuReady:
+        // Unity's menu is built and its Update loop is running.
+        _onUnityAlive();
+      case UnityIncomingKind.loadingProgress:
+        // The engine is alive and the race scene is loading — also
+        // a heartbeat (the % is shown in the stuck overlay if the
+        // surface later freezes).
+        _lastUnityPct = incoming.loadingPct;
+        _onUnityAlive();
       case UnityIncomingKind.raceResult:
         _onRaceResult(incoming.raceResult!);
       case UnityIncomingKind.raceStarted:
@@ -715,10 +813,16 @@ class _TjRacingPlayScreenState extends State<TjRacingPlayScreen> {
             // The Unity game (MainMenu scene first; Unity switches
             // to Race_NightCity internally on RACE). One EmbedUnity
             // widget per screen (the plugin supports a single
-            // instance). No ad at game start — Unity's banner shows
-            // automatically on its own Ads init; race interstitials
-            // are Unity-owned (after Continue, never after a win).
-            EmbedUnity(onMessageFromUnity: _onUnityMessage),
+            // instance). The key changes only when the watchdog
+            // forces a platform-view re-attach (v1.0.33 recovery
+            // stage 2) — never on ordinary rebuilds. No ad at game
+            // start — Unity's banner shows automatically on its own
+            // Ads init; race interstitials are Unity-owned (after
+            // Continue, never after a win).
+            EmbedUnity(
+              key: ValueKey('unity-$_unityViewKeySeed'),
+              onMessageFromUnity: _onUnityMessage,
+            ),
             if (_rsOverlay != null)
               Positioned(
                 top: 0,
@@ -732,6 +836,56 @@ class _TjRacingPlayScreenState extends State<TjRacingPlayScreen> {
                 left: 0,
                 right: 0,
                 child: Center(child: CircularProgressIndicator()),
+              ),
+            if (_loadStuck)
+              // Watchdog stage 3 (v1.0.33): Unity never signalled it
+              // is alive. This is a Flutter overlay, so it renders
+              // even if the Unity surface is frozen — the user is
+              // never trapped on a dead game screen.
+              Positioned.fill(
+                child: Container(
+                  color: Colors.black87,
+                  child: Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text(
+                          'Game is not loading',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          _lastUnityPct != null
+                              ? 'Stuck at $_lastUnityPct% — try again or go back.'
+                              : 'Try again or go back.',
+                          style: const TextStyle(color: Colors.white70),
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            FilledButton(
+                              onPressed: _retryUnityLoad,
+                              child: const Text('RETRY'),
+                            ),
+                            const SizedBox(width: 12),
+                            OutlinedButton(
+                              onPressed: _leaveGame,
+                              child: const Text(
+                                'BACK',
+                                style: TextStyle(color: Colors.white),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ),
           ],
         ),

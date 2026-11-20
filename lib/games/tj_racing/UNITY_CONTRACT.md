@@ -121,6 +121,8 @@ Unity sends with `SendToFlutter.Send(jsonString)` (from the
 | `interstitial_shown` | `placement`, `detail` `"{}"` | Analytics only (debug log). |
 | `car_locked_tapped` | `detail` (JSON string: `{"carId":"night_falcon","price":200}`) | Player tapped a locked car in Unity's garage — Flutter shows the unlock dialog (Unlock with Ad Coins via `spend-race-item`, or Watch Ad → `ShowRewardedAd`). |
 | `powerup_purchase_requested` | `detail` (JSON string: `{"powerupId":"nitro_boost","price":10}`) | Player tapped a power-up button in Unity's race pause panel — Flutter shows the purchase dialog (Buy with Ad Coins via `spend-race-item`, item `race_powerup_<id>`, or Watch Ad first). On a successful spend Flutter replies with `PowerupGranted` (above); Unity applies the effect or holds it for the next race. |
+| `menu_ready` | `detail` `"{}"` | **v1.0.33 heartbeat.** Unity's menu is built and its Update loop is running (sent from `MenuUI.Start`). Flutter stops its freeze-recovery watchdog, re-sends the config trio immediately (Unity is definitely listening), and unfreezes once. |
+| `loading_progress` | `detail` (JSON string: `{"pct":0-100}`) | **v1.0.33 heartbeat.** Race-scene preload % (sent from `MenuUI.Update` only when the % changes). Flutter treats it as proof the engine is alive and shows the % in its stuck overlay if the surface later freezes. |
 
 Any other message is ignored. A `race_result` for a duplicate
 `race_id` or `laps_completed` below the configured laps is
