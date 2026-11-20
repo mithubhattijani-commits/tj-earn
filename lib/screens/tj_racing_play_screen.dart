@@ -78,6 +78,7 @@ class _TjRacingPlayScreenState extends State<TjRacingPlayScreen> {
   String? _pendingRewardRequestId;
   Timer? _rewardTimeoutTimer;
   List<Timer> _configTimers = [];
+  Timer? _unfreezeTimer;
 
   /// Rs overlay shown over Unity's results screen after a claim
   /// (ResultsUI: "The Rs value is FLUTTER's job"). Dismissible.
@@ -91,6 +92,12 @@ class _TjRacingPlayScreenState extends State<TjRacingPlayScreen> {
   void initState() {
     super.initState();
     _loadAndSendConfig();
+    // One-shot unfreeze 2 s after the screen opens: the Unity view
+    // can also freeze on a visibility flicker that is NOT our rebuild
+    // (e.g. the activity-resume observer firing while Unity is still
+    // initialising). Same pause + resume, once, while the menu is
+    // still showing — harmless if nothing froze.
+    _unfreezeTimer = Timer(const Duration(seconds: 2), _unfreezeUnity);
   }
 
   @override
@@ -98,8 +105,31 @@ class _TjRacingPlayScreenState extends State<TjRacingPlayScreen> {
     for (final timer in _configTimers) {
       timer.cancel();
     }
+    _unfreezeTimer?.cancel();
     _rewardTimeoutTimer?.cancel();
     super.dispose();
+  }
+
+  /// flutter_embed_unity freeze workaround (v1.0.32): the plugin's
+  /// own UnityPlayerSingleton notes that a quick VISIBLE → GONE →
+  /// VISIBLE flicker of the platform view (orientation change, hot
+  /// reload, or a widget rebuild after mount) can leave Unity's UI
+  /// frozen on its last frame while the player itself keeps
+  /// running — the splash then looks stuck forever and taps do
+  /// nothing visible. The plugin's documented unfreeze is pause +
+  /// resume. This screen rebuilds once right after mount (the async
+  /// player load below calls setState), which is exactly that
+  /// trigger, so pause + resume Unity on the frame after that
+  /// rebuild. `pauseUnity` / `resumeUnity` are top-level exports of
+  /// package:flutter_embed_unity/flutter_embed_unity.dart (already
+  /// imported above); the calls go to the plugin's pauseUnity /
+  /// resumeUnity method-channel handlers.
+  void _unfreezeUnity() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      pauseUnity();
+      resumeUnity();
+    });
   }
 
   Future<void> _loadAndSendConfig() async {
@@ -115,6 +145,10 @@ class _TjRacingPlayScreenState extends State<TjRacingPlayScreen> {
       _sensitivity = player.sensitivity;
       _controlMode = player.controlMode;
     });
+    // The setState above rebuilds the widget tree right after the
+    // Unity view mounted — the visibility flicker that freezes
+    // Unity's UI (see _unfreezeUnity). Unfreeze on the next frame.
+    _unfreezeUnity();
     _sendFullConfig(player);
     // No ready signal from Unity: re-send on a stagger so the
     // config lands even if Unity was still loading on the first
@@ -156,6 +190,10 @@ class _TjRacingPlayScreenState extends State<TjRacingPlayScreen> {
     );
     if (!mounted) return;
     setState(() => _player = player);
+    // Same rebuild-while-mounted trigger as the player load above
+    // (a freeze here would stick the results screen instead of the
+    // splash) — unfreeze on the next frame.
+    _unfreezeUnity();
     UnityBridge.sendBalances(
       levelCoins: player.levelCoins,
       adCoins: player.adCoins,
