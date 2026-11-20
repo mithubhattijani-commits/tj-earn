@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_embed_unity/flutter_embed_unity.dart';
 import 'package:tj_earn/l10n/app_localizations.dart';
 
@@ -12,7 +13,14 @@ import '../services/supabase_service.dart';
 import '../services/validation.dart'
     show formatCoinsAsPkr, minWithdrawalCoins;
 
-/// TJ Racing 3D — Unity host screen (v1.0.31).
+/// TJ Racing 3D — Unity host screen (v1.0.32).
+///
+/// ORIENTATION (v1.0.32): this screen is LANDSCAPE (menu, splash and
+/// race — the approved landscape splash mockup); the rest of the app
+/// is portrait-only (locked in main()). Unity's PlayerSettings
+/// defaultScreenOrientation is LandscapeLeft, so Flutter requests
+/// exactly that here — one fixed orientation, no fighting. Portrait
+/// is restored on every exit (back / pop / dispose).
 ///
 /// The game UI lives in UNITY (MainMenu scene: menu, garage, RACE
 /// button; Race_NightCity scene: race, HUD, results). Flutter is
@@ -78,6 +86,7 @@ class _TjRacingPlayScreenState extends State<TjRacingPlayScreen> {
   String? _pendingRewardRequestId;
   Timer? _rewardTimeoutTimer;
   List<Timer> _configTimers = [];
+  Timer? _unfreezeTimer;
 
   /// Rs overlay shown over Unity's results screen after a claim
   /// (ResultsUI: "The Rs value is FLUTTER's job"). Dismissible.
@@ -90,7 +99,20 @@ class _TjRacingPlayScreenState extends State<TjRacingPlayScreen> {
   @override
   void initState() {
     super.initState();
+    // Landscape for the game screen (menu, splash, race) — set
+    // FIRST, before the Unity view mounts, so the view is created
+    // in landscape instead of rotating mid-mount. Matches Unity's
+    // defaultScreenOrientation (LandscapeLeft) exactly.
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.landscapeLeft,
+    ]);
     _loadAndSendConfig();
+    // One-shot unfreeze 2 s after the screen opens: the Unity view
+    // can also freeze on a visibility flicker that is NOT our rebuild
+    // (e.g. the activity-resume observer firing while Unity is still
+    // initialising). Same pause + resume, once, while the menu is
+    // still showing — harmless if nothing froze.
+    _unfreezeTimer = Timer(const Duration(seconds: 2), _unfreezeUnity);
   }
 
   @override
@@ -98,8 +120,36 @@ class _TjRacingPlayScreenState extends State<TjRacingPlayScreen> {
     for (final timer in _configTimers) {
       timer.cancel();
     }
+    _unfreezeTimer?.cancel();
     _rewardTimeoutTimer?.cancel();
+    // Safety net: if this screen is popped by any path other than
+    // _leaveGame, portrait must still come back (see _leaveGame).
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+    ]);
     super.dispose();
+  }
+
+  /// flutter_embed_unity freeze workaround (v1.0.32): the plugin's
+  /// own UnityPlayerSingleton notes that a quick VISIBLE → GONE →
+  /// VISIBLE flicker of the platform view (orientation change, hot
+  /// reload, or a widget rebuild after mount) can leave Unity's UI
+  /// frozen on its last frame while the player itself keeps
+  /// running — the splash then looks stuck forever and taps do
+  /// nothing visible. The plugin's documented unfreeze is pause +
+  /// resume. This screen rebuilds once right after mount (the async
+  /// player load below calls setState), which is exactly that
+  /// trigger, so pause + resume Unity on the frame after that
+  /// rebuild. `pauseUnity` / `resumeUnity` are top-level exports of
+  /// package:flutter_embed_unity/flutter_embed_unity.dart (already
+  /// imported above); the calls go to the plugin's pauseUnity /
+  /// resumeUnity method-channel handlers.
+  void _unfreezeUnity() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      pauseUnity();
+      resumeUnity();
+    });
   }
 
   Future<void> _loadAndSendConfig() async {
@@ -115,6 +165,10 @@ class _TjRacingPlayScreenState extends State<TjRacingPlayScreen> {
       _sensitivity = player.sensitivity;
       _controlMode = player.controlMode;
     });
+    // The setState above rebuilds the widget tree right after the
+    // Unity view mounted — the visibility flicker that freezes
+    // Unity's UI (see _unfreezeUnity). Unfreeze on the next frame.
+    _unfreezeUnity();
     _sendFullConfig(player);
     // No ready signal from Unity: re-send on a stagger so the
     // config lands even if Unity was still loading on the first
@@ -156,6 +210,10 @@ class _TjRacingPlayScreenState extends State<TjRacingPlayScreen> {
     );
     if (!mounted) return;
     setState(() => _player = player);
+    // Same rebuild-while-mounted trigger as the player load above
+    // (a freeze here would stick the results screen instead of the
+    // splash) — unfreeze on the next frame.
+    _unfreezeUnity();
     UnityBridge.sendBalances(
       levelCoins: player.levelCoins,
       adCoins: player.adCoins,
@@ -549,6 +607,13 @@ class _TjRacingPlayScreenState extends State<TjRacingPlayScreen> {
 
   Future<void> _leaveGame() async {
     UnityBridge.sendQuitToMenu();
+    // Back to portrait BEFORE popping: Unity forced the activity to
+    // landscape while the game ran, and without this the app stays
+    // landscape after leaving the game (v1.0.31 bug). dispose()
+    // re-asserts it as a safety net.
+    await SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+    ]);
     if (mounted) Navigator.of(context).pop();
   }
 

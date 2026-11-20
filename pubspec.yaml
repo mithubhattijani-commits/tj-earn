@@ -2,12 +2,14 @@ name: tj_earn
 description: "TJ Earn - rewards app (Flutter + Supabase). Stage 1 foundation: auth, server-side wallet, withdrawals, in-app updater."
 publish_to: 'none'
 
-# v1.0.31+32 (Arrow Puzzle REMOVED, 19 Nov 2026 — user order):
-# the in-app game is gone (it was never made right). Games tile
-# removed from Home; Ad Coins / Watch Ads go with it. versionCode 32
-# is higher than the live v1.0.30/vc31, so the updater prompts users
-# to update.
-version: 1.0.31+32
+# v1.0.32+33 (TJ Racing splash fix, 20 Nov 2026 — user order): the
+# v1.0.31 splash could stick forever (flutter_embed_unity UI freeze
+# on the post-mount widget rebuild) and its painted START button did
+# nothing. Fix: landscape poster + real START button (Unity), unscaled
+# splash timer + 10 s failsafe + raw-input taps (Unity), pause+resume
+# unfreeze after the rebuild (Flutter). versionCode 33 is higher than
+# the live v1.0.31/vc32, so the updater prompts users to update.
+version: 1.0.32+33
 
 environment:
   sdk: ^3.13.7
