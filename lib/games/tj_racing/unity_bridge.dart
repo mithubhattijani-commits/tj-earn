@@ -175,13 +175,15 @@ enum UnityIncomingKind {
   interstitialShown,
   carLockedTapped,
   powerupPurchaseRequested,
+  menuReady,
+  loadingProgress,
   unknown,
 }
 
 /// One parsed Unity→Flutter message. Exactly one of [raceResult]
 /// / [event] is non-null for known types; [carLocked] /
 /// [rewarded] / [powerupPurchase] carry the parsed `detail`
-/// payloads.
+/// payloads; [loadingPct] carries the `loading_progress` % (0-100).
 class UnityIncoming {
   const UnityIncoming({
     required this.kind,
@@ -191,6 +193,7 @@ class UnityIncoming {
     this.rewarded,
     this.raceStarted,
     this.powerupPurchase,
+    this.loadingPct,
   });
 
   final UnityIncomingKind kind;
@@ -200,6 +203,7 @@ class UnityIncoming {
   final RewardedDetail? rewarded;
   final RaceStartedDetail? raceStarted;
   final PowerupPurchaseDetail? powerupPurchase;
+  final int? loadingPct;
 
   /// Parses any string from `EmbedUnity.onMessageFromUnity`.
   /// Never throws; unknown / malformed input parses as
@@ -250,6 +254,18 @@ class UnityIncoming {
           kind: UnityIncomingKind.powerupPurchaseRequested,
           event: event,
           powerupPurchase: PowerupPurchaseDetail.tryParse(event.detail),
+        );
+      case 'menu_ready':
+        return UnityIncoming(
+          kind: UnityIncomingKind.menuReady,
+          event: event,
+        );
+      case 'loading_progress':
+        final pct = event.detailJson?['pct'];
+        return UnityIncoming(
+          kind: UnityIncomingKind.loadingProgress,
+          event: event,
+          loadingPct: pct is num ? pct.toInt().clamp(0, 100) : null,
         );
       default:
         return UnityIncoming(kind: UnityIncomingKind.unknown, event: event);
