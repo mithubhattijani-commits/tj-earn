@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_embed_unity/flutter_embed_unity.dart';
 import 'package:tj_earn/l10n/app_localizations.dart';
 
@@ -12,7 +13,14 @@ import '../services/supabase_service.dart';
 import '../services/validation.dart'
     show formatCoinsAsPkr, minWithdrawalCoins;
 
-/// TJ Racing 3D — Unity host screen (v1.0.31).
+/// TJ Racing 3D — Unity host screen (v1.0.32).
+///
+/// ORIENTATION (v1.0.32): this screen is LANDSCAPE (menu, splash and
+/// race — the approved landscape splash mockup); the rest of the app
+/// is portrait-only (locked in main()). Unity's PlayerSettings
+/// defaultScreenOrientation is LandscapeLeft, so Flutter requests
+/// exactly that here — one fixed orientation, no fighting. Portrait
+/// is restored on every exit (back / pop / dispose).
 ///
 /// The game UI lives in UNITY (MainMenu scene: menu, garage, RACE
 /// button; Race_NightCity scene: race, HUD, results). Flutter is
@@ -91,6 +99,13 @@ class _TjRacingPlayScreenState extends State<TjRacingPlayScreen> {
   @override
   void initState() {
     super.initState();
+    // Landscape for the game screen (menu, splash, race) — set
+    // FIRST, before the Unity view mounts, so the view is created
+    // in landscape instead of rotating mid-mount. Matches Unity's
+    // defaultScreenOrientation (LandscapeLeft) exactly.
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.landscapeLeft,
+    ]);
     _loadAndSendConfig();
     // One-shot unfreeze 2 s after the screen opens: the Unity view
     // can also freeze on a visibility flicker that is NOT our rebuild
@@ -107,6 +122,11 @@ class _TjRacingPlayScreenState extends State<TjRacingPlayScreen> {
     }
     _unfreezeTimer?.cancel();
     _rewardTimeoutTimer?.cancel();
+    // Safety net: if this screen is popped by any path other than
+    // _leaveGame, portrait must still come back (see _leaveGame).
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+    ]);
     super.dispose();
   }
 
@@ -587,6 +607,13 @@ class _TjRacingPlayScreenState extends State<TjRacingPlayScreen> {
 
   Future<void> _leaveGame() async {
     UnityBridge.sendQuitToMenu();
+    // Back to portrait BEFORE popping: Unity forced the activity to
+    // landscape while the game ran, and without this the app stays
+    // landscape after leaving the game (v1.0.31 bug). dispose()
+    // re-asserts it as a safety net.
+    await SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+    ]);
     if (mounted) Navigator.of(context).pop();
   }
 

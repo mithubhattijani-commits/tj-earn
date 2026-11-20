@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:tj_earn/l10n/app_localizations.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -27,6 +28,16 @@ final ValueNotifier<Locale> appLocale = ValueNotifier(const Locale('en'));
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // The app is portrait-only (v1.0.32): the Unity player forces the
+  // activity to landscape when the game runs (its PlayerSettings
+  // defaultScreenOrientation is LandscapeLeft) and nothing restored
+  // portrait when leaving the game, so the whole app stayed
+  // landscape after the game (v1.0.31 bug). The game screen switches
+  // to landscape itself and restores portrait on exit; this lock is
+  // the app-wide default.
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+  ]);
   final prefs = await SharedPreferences.getInstance();
   final saved = prefs.getString('language');
   // Default language is English: only a saved 'ur' switches to Urdu.
